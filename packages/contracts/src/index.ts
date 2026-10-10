@@ -9,6 +9,7 @@ export interface Order {order_id:string;display_code:string;created_at:string;cr
 export interface Shift {id:string;cashier_id:string;opening_float_vnd:number;status:'OPEN'|'CLOSED';opened_at:string;closed_at?:string;expected_cash_vnd:number;counted_cash_vnd?:number;variance_vnd?:number}
 export interface PaymentReceipt {payment_id:string;cash_tendered_vnd:number;cash_change_vnd:number;cash_net_vnd:number;payment_status:PaymentStatus;receipt_batch_id:string}
 export interface ReceiptCopy {id:string;kind:'CUSTOMER'|'STORE';status:'QUEUED'|'SENT'|'UNKNOWN'|'FAILED'|'WAITING_FOR_PRINTER';attempts:number}
+export interface OrderPage {items:Order[];next_cursor:string|null}
 export interface Summary {paid_orders:number;net_revenue_vnd:number;cash_vnd:number;bank_vnd:number;pending_orders:number;bank_pending:number;last_synced_at:string;shift:Shift|null}
 export interface Employee {id:string;name:string;role:Role;active:boolean}
 export interface User {id:string;name:string;role:Role}
@@ -31,6 +32,7 @@ export class HubClient {
   login(pin:string,user_id:string){return this.request<Session>('/v1/auth/login',{method:'POST',body:JSON.stringify({user_id,pin})})}
   catalog(){return this.request<Catalog>('/v1/catalog')}
   orders(){return this.request<Order[]>('/v1/orders')}
+  orderHistory(cursor?:string){return this.request<OrderPage>('/v1/orders/history?limit=100'+(cursor?'&cursor='+encodeURIComponent(cursor):''))}
   order(id:string){return this.request<Order>('/v1/orders/'+encodeURIComponent(id))}
   createOrder(body:CreateOrderInput,key:string){return this.request<Order>('/v1/orders',{method:'POST',body:JSON.stringify(body)},key)}
   voidOrder(id:string,reason:string,key:string){return this.request<Order>('/v1/orders/'+id+'/void',{method:'POST',body:JSON.stringify({reason})},key)}

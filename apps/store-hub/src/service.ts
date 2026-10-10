@@ -121,6 +121,21 @@ export class StoreService implements OnModuleInit {
    this.store.all<any>('SELECT * FROM orders ORDER BY created_at DESC LIMIT 200');
   return rows.map(r=>this.asOrder(r));
  }
+ history(a:Actor,cursor?:string,requestedLimit?:number){
+  const limit=Math.max(1,Math.min(100,Number.isInteger(requestedLimit)?requestedLimit!:100));
+  let boundary:{t:string;id:string}|null=null;
+  if(cursor){
+   try{if(cursor.length>500)throw new Error('large');const data=JSON.parse(Buffer.from(cursor,'base64url').toString('utf8'));if(typeof data.t!=='string'||typeof data.id!=='string')throw new Error('invalid');boundary=data}
+   catch{throw new StoreError(400,'INVALID_CURSOR','Mã trang không hợp lệ')}
+  }
+  const where:string[]=[];const args:(string|number)[]=[];
+  if(a.role==='STAFF'){where.push('created_by=?');args.push(a.id)}
+  if(boundary){where.push('(created_at<? OR (created_at=? AND id<?))');args.push(boundary.t,boundary.t,boundary.id)}
+  const sql='SELECT * FROM orders '+(where.length?'WHERE '+where.join(' AND '):'')+' ORDER BY created_at DESC,id DESC LIMIT ?';
+  const rows=this.store.all<any>(sql,...args,limit+1),hasMore=rows.length>limit,items=rows.slice(0,limit);
+  const last=items[items.length-1];
+  return {items:items.map(x=>this.asOrder(x)),next_cursor:hasMore&&last?Buffer.from(JSON.stringify({t:last.created_at,id:last.id})).toString('base64url'):null};
+ }
  private asOrder(r:any){return {order_id:r.id,display_code:r.display_code,created_at:r.created_at,created_by:r.created_by,status:r.status,payment_status:r.payment_status,requested_payment_method:r.requested_method,total_vnd:r.total_vnd,version:r.version,note:r.note,items:JSON.parse(r.lines_json)}}
  createOrder(a:Actor,body:any,key:unknown){
   return this.idem('order.create:'+a.id,key,()=>{

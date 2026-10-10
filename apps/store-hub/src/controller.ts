@@ -1,4 +1,4 @@
-import {Controller,Get,Post,Patch,Body,Param,Req,Headers,HttpException} from '@nestjs/common';
+import {Controller,Get,Post,Patch,Body,Param,Req,Headers,Query,HttpException} from '@nestjs/common';
 import {StoreService,StoreError} from './service';
 @Controller('v1')
 export class StoreController {
@@ -8,6 +8,7 @@ export class StoreController {
  @Post('auth/login')login(@Body()b:any){return this.call(()=>this.s.login(b?.user_id,b?.pin))}
  @Get('catalog')catalog(@Req()r:any){return this.call(()=>{this.s.actor(r.headers.authorization);return this.s.catalog()})}
  @Get('orders')orders(@Req()r:any){return this.call(()=>this.s.orders(this.s.actor(r.headers.authorization)))}
+ @Get('orders/history')history(@Req()r:any,@Query('cursor')cursor?:string,@Query('limit')limit?:string){return this.call(()=>this.s.history(this.s.actor(r.headers.authorization),cursor,limit?Number(limit):100))}
  @Get('orders/:id')order(@Req()r:any,@Param('id')id:string){return this.call(()=>this.s.order(this.s.actor(r.headers.authorization),id))}
  @Post('orders')create(@Req()r:any,@Body()b:any,@Headers('idempotency-key')key:string){return this.call(()=>this.s.createOrder(this.s.actor(r.headers.authorization),b,key))}
  @Post('orders/:id/void')voidOrder(@Req()r:any,@Param('id')id:string,@Body()b:any,@Headers('idempotency-key')key:string){return this.call(()=>this.s.voidOrder(this.s.actor(r.headers.authorization,['OWNER','CASHIER']),id,b,key))}
