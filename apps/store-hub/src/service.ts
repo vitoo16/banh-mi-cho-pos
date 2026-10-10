@@ -258,7 +258,7 @@ export class StoreService implements OnModuleInit {
  bankEvent(raw:string,stamp:string,signature:string){
   const secret=process.env.BANK_BRIDGE_SECRET;
   if(!secret||secret.length<32)throw new StoreError(503,'BANK_NOT_CONFIGURED','Bank bridge chưa cấu hình');
-  if(!/^\\d{13}$/.test(stamp||'')||Math.abs(Date.now()-Number(stamp))>300000)throw new StoreError(401,'STALE_EVENT','Giao dịch quá thời hạn');
+  if(!/^[0-9]{13}$/.test(stamp||'')||Math.abs(Date.now()-Number(stamp))>300000)throw new StoreError(401,'STALE_EVENT','Giao dịch quá thời hạn');
   const digest=createHmac('sha256',secret).update(stamp+'.'+raw).digest('hex');
   if(!/^[a-f0-9]{64}$/i.test(signature||'')||!timingSafeEqual(Buffer.from(digest,'hex'),Buffer.from(signature,'hex')))throw new StoreError(401,'INVALID_SIGNATURE','Chữ ký không hợp lệ');
   let e:any;try{e=JSON.parse(raw)}catch{throw new StoreError(400,'INVALID_BODY','Dữ liệu không hợp lệ')}

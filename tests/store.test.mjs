@@ -46,7 +46,7 @@ test('Store Hub: price snapshots, idempotency, exact change, shift and guards',(
   const intent=s.bankIntent(cashier,bankOrder.order_id,'bank-intent-test-01');
   assert.equal(intent.status,'PENDING');
   const {createHmac}=require('node:crypto');const stamp=String(Date.now());
-  const event={provider_tx_id:'provider-transaction-0001',reference:intent.reference,bank_code:'DEMO_BANK',account_number:'123456789',amount_vnd:42000,direction:'CREDIT'};
+  const event={provider_tx_id:'provider-transaction-0001',reference:intent.reference,bank_code:'DEMO_BANK',account_number:'123456789',amount_vnd:40000,direction:'CREDIT'};
   const signed=(e)=>createHmac('sha256',process.env.BANK_BRIDGE_SECRET).update(stamp+'.'+JSON.stringify(e)).digest('hex');
   assert.throws(()=>s.bankEvent(JSON.stringify(event),stamp,'bad'),e=>e.code==='INVALID_SIGNATURE');
   const wrong=s.bankEvent(JSON.stringify(event),stamp,signed(event));assert.equal(wrong.state,'EXCEPTION');
@@ -55,7 +55,7 @@ test('Store Hub: price snapshots, idempotency, exact change, shift and guards',(
   const ok=s.bankEvent(JSON.stringify(correct),stamp,signed(correct));assert.equal(ok.state,'EXCEPTION'); // wrong amount remains held
   assert.equal(s.bankExceptions().length,2);
   const paid={...event,provider_tx_id:'provider-transaction-0003',amount_vnd:42000};
-  // Important: order total is 42,000 after owner price change; same payload is now valid.
+  // Correct exact payment matches the updated price, while earlier mismatches stay exceptions.
   const settled=s.bankEvent(JSON.stringify(paid),stamp,signed(paid));assert.equal(settled.state,'CONFIRMED');
   assert.equal(s.order(staff,bankOrder.order_id).payment_status,'PAID');
   assert.equal(s.bankEvent(JSON.stringify(paid),stamp,signed(paid)).duplicate,true);
