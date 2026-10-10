@@ -42,3 +42,7 @@ The cloud endpoint `POST /v1/providers/sepay/webhook` requires HMAC-SHA256 with 
 SePay transaction IDs have a unique constraint; mismatched amount, direction, receiver, missing reference and duplicate order capture remain exceptions. Only exact verified credits produce a durable cloud settlement. `GET /v1/sync/settlements?after=...` requires HMAC-authenticated Hub polling and returns a signed envelope. Store Hub validates it again, applies its existing idempotent bankEvent transaction and commits its cursor AFTER each recorded provider transaction; a replay cannot duplicate receipts/revenue. Keep `ENABLE_VERIFIED_BANK_INBOX` disabled until a real sandbox and controlled test transfer pass.
 
 **Bank-provider sandbox and account registration are external acceptance requirements.** Cloud HMAC + CI simulated transfer tests do not substitute for verification that SePay can observe the shop's actual linked bank account. No MoMo merchant integration is claimed.
+
+### WAN-offline delayed bank reference
+
+An authenticated SePay credit arriving before the corresponding Hub bank intent has synced remains `UNMATCHED_REFERENCE` and is **not** marked paid. Once the locally committed intent reaches Cloud, the SePay reconciliation service rechecks original destination, amount and still-unpaid order status and settles only if all checks match; otherwise it remains an Owner-visible exception. Covered by the SePay integration test.

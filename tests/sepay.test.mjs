@@ -75,6 +75,33 @@ test('SePay raw HMAC to cloud settlement to verified local cash desk, no duplica
   assert.equal(local.order(staff,order.order_id).payment_status,'PAID');
   assert.equal(local.receipts(cashier,order.order_id).length,2);
   assert.equal(local.summary().bank_vnd,order.total_vnd);
+
+  // SePay receives an authenticated transfer before the Hub intent has synced.
+  const lateOrder=local.createOrder(staff,{catalog_version:catalog.version,requested_payment_method:'BANK',items:[{product_id:catalog.products[0].id,qty:1}]},'sepay-late-order-0002');
+  const lateIntent=local.bankIntent(cashier,lateOrder.order_id,'sepay-late-intent-0002');
+  const late={...rawBase,id:92707,code:lateIntent.reference,content:lateIntent.reference+' late sync',transferAmount:lateOrder.total_vnd};
+  const lateBody=JSON.stringify(late);
+  assert.deepEqual(await sepay.receiveWebhook(Buffer.from(lateBody),sec,sign(lateBody)),{success:true});
+  assert.equal((await cloud.summary()).bank_vnd,order.total_vnd);
+  assert.ok((await cloud.bankExceptions()).some(x=>x.provider_tx_id==='sepay:92707'&&x.reason==='UNMATCHED_REFERENCE'));
+  const lateRows=local.store.all("SELECT id,entity,payload_json FROM sync_outbox WHERE entity IN ('order','bank_intent') ORDER BY seq")
+   .filter(x=>{const p=JSON.parse(x.payload_json);return p.id===lateOrder.order_id||p.order_id===lateOrder.order_id});
+  const lateEvents=lateRows.map(x=>({id:x.id,entity:x.entity,payload:JSON.parse(x.payload_json)}));
+  const lateStamp=String(Date.now());
+  await cloud.ingest(lateEvents,lateStamp,mac(process.env.CLOUD_SYNC_SECRET,lateStamp+'.'+JSON.stringify({events:lateEvents})),process.env.CLOUD_STORE_ID);
+  assert.equal((await cloud.summary()).bank_vnd,order.total_vnd+lateOrder.total_vnd);
+  assert.ok(!(await cloud.bankExceptions()).some(x=>x.provider_tx_id==='sepay:92707'));
+  const nextCursor=String(command.seq),tsNext=String(Date.now());
+  const envelope=await sepay.signedSettlements(nextCursor,process.env.CLOUD_STORE_ID,tsNext,
+   mac(process.env.CLOUD_SYNC_SECRET,tsNext+'.GET:'+process.env.CLOUD_STORE_ID+':'+nextCursor));
+  assert.equal(envelope.payload.settlements.length,1);
+  const next=envelope.payload.settlements[0];
+  const nextEvent=JSON.stringify({provider_tx_id:next.provider_tx_id,reference:next.reference,account_number:next.account_number,
+   bank_code:next.bank_code,amount_vnd:next.amount_vnd,direction:'CREDIT'});
+  const nextTs=String(Date.now());
+  assert.equal(local.bankEvent(nextEvent,nextTs,mac(process.env.BANK_BRIDGE_SECRET,nextTs+'.'+nextEvent)).state,'CONFIRMED');
+  assert.equal(local.order(staff,lateOrder.order_id).payment_status,'PAID');
+  assert.equal(local.receipts(cashier,lateOrder.order_id).length,2);
   const exceptions=await db.pool.query("SELECT reason FROM sepay_events WHERE store_id=$1 AND state='EXCEPTION'",[process.env.CLOUD_STORE_ID]);
   assert.deepEqual(exceptions.rows.map(x=>x.reason).sort(),['AMOUNT_MISMATCH','WRONG_RECEIVER'].sort());
  }finally{await db.onModuleDestroy();rmSync(dir,{recursive:true,force:true})}

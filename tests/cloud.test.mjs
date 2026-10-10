@@ -9,10 +9,11 @@ test('signed cloud replication, deduplication, payment projection and remote Own
  process.env.CLOUD_OWNER_LOGIN_SECRET='ci-owner-password-long-enough';
  const {CloudDb}=require('../apps/cloud-api/dist/db.js');
  const {CloudService}=require('../apps/cloud-api/dist/service.js');
+ const {SePayService}=require('../apps/cloud-api/dist/sepay.js');
  const db=new CloudDb();await db.onModuleInit();
  try{
   await db.pool.query('TRUNCATE synced_events,mirror_orders,mirror_payments,mirror_refunds,mirror_products,mirror_shifts,mirror_cash_movements');
-  const svc=new CloudService(db);
+  const svc=new CloudService(db,new SePayService(db));
   const stamp=String(Date.now()),store='ci-test-store';
   const sign=es=>createHmac('sha256',process.env.CLOUD_SYNC_SECRET).update(stamp+'.'+JSON.stringify({events:es})).digest('hex');
   const order={id:'test-order-1',display_code:'B00001',created_at:new Date().toISOString(),created_by:'staff',status:'COMMITTED',payment_status:'UNPAID',requested_method:'CASH',total_vnd:35000,version:1,lines_json:'[]'};
@@ -30,7 +31,7 @@ test('signed cloud replication, deduplication, payment projection and remote Own
   await assert.rejects(()=>svc.login('owner','wrong','192.0.2.40'));
   const login=await svc.login('owner',process.env.CLOUD_OWNER_LOGIN_SECRET,'192.0.2.40');
   await svc.authorize('Bearer '+login.token);
-  const replica=new CloudService(db);
+  const replica=new CloudService(db,new SePayService(db));
   await replica.authorize('Bearer '+login.token);
   await replica.logout('Bearer '+login.token);
   await assert.rejects(()=>svc.authorize('Bearer '+login.token));
