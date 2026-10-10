@@ -16,6 +16,14 @@ paths:
       security: []
       responses:
         '200': {description: Local pilot readiness (bank and printing remain flagged)}
+  /v1/cashier/operational-status:
+    get:
+      operationId: cashierOperationalStatus
+      summary: Cashier/Owner operational health from local SQLite (not device heartbeat)
+      responses:
+        '200': {description: Unknown and queued printer copies, durable cloud sync backlog and last actual delivery}
+        '401': {description: Missing or expired login}
+        '403': {description: Staff role not permitted}
   /v1/providers/sepay/webhook:
     post:
       operationId: verifiedSePayWebhook

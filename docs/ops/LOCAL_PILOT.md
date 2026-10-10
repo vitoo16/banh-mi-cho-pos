@@ -69,3 +69,9 @@ The cached record can include food notes; do not enter customers' sensitive iden
 ## ESC/POS network spool fault safety
 
 Receipt jobs are journaled in SQLite `receipt_print_attempts` before contacting the printer. Each completed order still creates only two original receipt intents (CUSTOMER, STORE). An attempt enters `UNKNOWN` *before* network I/O; a successful TCP send changes the attempt to `SENT`, which is **not** proof of physical paper or cut. Failed/partial sends remain UNKNOWN and never auto-retry. Cashiers must inspect paper and explicitly request an audited watermarked reprint. Reprinting an already-queued receipt is rejected with `RECEIPT_ALREADY_QUEUED`. An in-flight send cannot override a subsequent explicit reprint request. Simulation: `npm run test:integration` includes a virtual TCP printer, network refusal and reprint race tests; a specific hardware model and its paper-out/cutter must still be verified in shop.
+
+## Thu ngân: vận hành / giấy in chưa xác định
+
+The POS now polls cashier-authorized `GET /v1/cashier/operational-status` separately from orders and shift. It shows UNKNOWN receipt copies with direct order links, pending printer copies, cloud outbox backlog and timestamp of actual acknowledged delivery. It never equates `PRINTER_HOST` configured with paper physically printed or WAN unavailable with the local cash system being offline. A background poll must not erase a payment error message.
+
+When UNKNOWN exists: inspect the physical paper and printer before a cashier-authorized reprint; record a reason and compare physical copies with the two original receipt intents. Test 1024×768 at 125% and 320–390px manually before onsite release; no visual screenshot claim is made by the automated test.

@@ -1,6 +1,6 @@
 import React,{useEffect,useMemo,useRef,useState} from 'react';
 import {createRoot} from 'react-dom/client';
-import {HubClient,formatVnd,type Order,type Shift,type ReceiptCopy,type Session} from '@bmc/contracts';
+import {HubClient,formatVnd,type Order,type Shift,type ReceiptCopy,type Session,type OperationalStatus} from '@bmc/contracts';
 import {ShoppingBag,Wallet,Search,LogOut,Wifi,WifiOff,CheckCircle2,Clock,Printer,Plus,ArrowDownLeft,History,ShieldAlert,RefreshCcw} from 'lucide-react';
 import './styles.css';
 const tokenKey='bmc_cashier_token';
@@ -14,27 +14,53 @@ function App(){
  const [tender,setTender]=useState(''),[floatAmount,setFloatAmount]=useState('1000000'),[counted,setCounted]=useState(''),[reason,setReason]=useState('');
  const [mode,setMode]=useState<'ORDERS'|'SHIFT'>('ORDERS'),[method,setMethod]=useState<'CASH'|'BANK'>('CASH');
  const [copies,setCopies]=useState<ReceiptCopy[]>([]),[message,setMessage]=useState(''),[online,setOnline]=useState(true);
+ const [operations,setOperations]=useState<OperationalStatus|null>(null);
+ const [connectionError,setConnectionError]=useState(''),[historicalOrder,setHistoricalOrder]=useState<Order|null>(null);
  const [bankIntent,setBankIntent]=useState<{reference:string;amount_vnd:number;account_number:string;bank_code:string;status:string}|null>(null);
  const [bankBusy,setBankBusy]=useState(false);
  const createBank=async()=>{if(!current||bankBusy)return;setBankBusy(true);setError('');try{const b=await hub.bankIntent(current.order_id,nonce());setBankIntent(b)}catch(e){setError((e as Error).message)}finally{setBankBusy(false)}};
  const [moveKind,setMoveKind]=useState<'ADD'|'WITHDRAW'|'EXPENSE'>('ADD'),[moveAmount,setMoveAmount]=useState('');
  const keyRef=useRef<string|null>(null);
- const current=useMemo(()=>orders.find(o=>o.order_id===selected),[orders,selected]);
+ const current=useMemo(()=>orders.find(o=>o.order_id===selected)||(historicalOrder?.order_id===selected?historicalOrder:undefined),[orders,selected,historicalOrder]);
  const due=current?.total_vnd||0;const paid=current?.payment_status==='PAID';const cashGiven=moneyInput(tender);const change=Math.max(0,cashGiven-due);
- const refresh=async()=>{try{const [os,sh]=await Promise.all([hub.orders(),hub.shift()]);setOrders(os);setShift(sh);setOnline(true);setError('')}catch(e){setOnline(false);setError(String((e as Error).message||e))}};
+ const refresh=async()=>{
+  try{const [os,sh]=await Promise.all([hub.orders(),hub.shift()]);setOrders(os);setShift(sh);setOnline(true);setConnectionError('')}
+  catch(e){setOnline(false);setConnectionError(String((e as Error).message||e))}
+  // Operational reporting must not make working cash checkout appear disconnected.
+  try{setOperations(await hub.operationalStatus())}catch{setOperations(null)}
+ };
  useEffect(()=>{if(!session)return;void refresh();const id=setInterval(()=>void refresh(),2500);return ()=>clearInterval(id)},[session]);
  useEffect(()=>{if(!current)return;setMethod(current.requested_payment_method==='BANK'?'BANK':'CASH');setCopies([]);setBankIntent(null);setTender('');setMessage('');keyRef.current=null;},[selected]);
+ useEffect(()=>{
+  if(!selected)return;
+  let live=true;
+  void hub.receipts(selected).then(c=>{if(live)setCopies(c)}).catch(()=>{});
+  return ()=>{live=false};
+ },[selected]);
  async function login(e:React.FormEvent){e.preventDefault();setBusy(true);setError('');try{const s=await hub.login(pin,'cashier');sessionStorage.setItem(tokenKey,s.token);setSession(s);setPin('')}catch(e){setError((e as Error).message)}finally{setBusy(false)}}
  async function execute(fn:()=>Promise<unknown>,success:string){if(busy)return;setBusy(true);setError('');try{await fn();setMessage(success);keyRef.current=null;await refresh()}catch(e){setError((e as Error).message+' — Kiểm tra đơn trước khi thử lại.');await refresh()}finally{setBusy(false)}}
  const stableKey=()=>keyRef.current||(keyRef.current=nonce());
  function settle(){if(!current||!shift||paid||cashGiven<due)return;void execute(async()=>{await hub.captureCash(current.order_id,shift.id,cashGiven,current.version,stableKey());const cp=await hub.receipts(current.order_id);setCopies(cp)},'Thanh toán tiền mặt đã ghi nhận. Kiểm tra hai liên in.')}
- function activateOrder(id:string){setSelected(id);setMode('ORDERS')}
+ function activateOrder(id:string){setHistoricalOrder(null);setSelected(id);setMode('ORDERS');setError('')}
+ async function openPrintException(orderId:string){
+  setError('');
+  try{const order=await hub.order(orderId);setHistoricalOrder(order);setSelected(orderId);setMode('ORDERS')}
+  catch(e){setError('Không mở được đơn cần kiểm tra: '+(e as Error).message)}
+ }
  const list=orders.filter(o=>(filter==='ALL'||(filter==='PAID'?o.payment_status==='PAID':o.payment_status!=='PAID'&&o.status==='COMMITTED'))&&(o.display_code.toLowerCase().includes(query.toLowerCase())||o.created_by.toLowerCase().includes(query.toLowerCase())));
  if(!session)return <main className="login-shell"><div className="login-card"><div className="mark"><ShoppingBag size={25}/></div><p className="eyebrow">BÁNH MÌ CHỢ</p><h1>Quầy thu ngân</h1><p className="muted">Một quầy thu tiền, mọi đơn hàng rõ ràng.</p><form onSubmit={login}><label htmlFor="pin">Mã PIN thu ngân</label><input id="pin" autoFocus autoComplete="off" type="password" value={pin} onChange={e=>setPin(e.target.value)} minLength={6} required/><button className="primary full" disabled={busy}>Đăng nhập</button></form>{error&&<div role="alert" className="alert">{error}</div>}<p className="hint">Kết nối với Store Hub nội bộ. Không lưu PIN trên thiết bị.</p></div></main>;
  return <div className="shell">
   <header className="topbar"><div className="brand"><span className="mark small"><ShoppingBag size={19}/></span><span><b>Bánh Mì Chợ</b><small>POS • Thu ngân</small></span></div><div className="top-right"><span className={'network '+(online?'good':'bad')}>{online?<Wifi size={16}/>:<WifiOff size={16}/>} {online?'Store Hub':'Mất kết nối'}</span><span className="pill">Ca: {shift?'Đang mở':'Chưa mở'}</span><button className="ghost" onClick={()=>{void hub.logout().catch(()=>{}).finally(()=>{sessionStorage.removeItem(tokenKey);setSession(null)})}} title="Đăng xuất"><LogOut size={18}/></button></div></header>
   <nav className="mainnav"><button onClick={()=>setMode('ORDERS')} className={mode==='ORDERS'?'active':''}><ShoppingBag size={17}/> Đơn hàng</button><button onClick={()=>setMode('SHIFT')} className={mode==='SHIFT'?'active':''}><Wallet size={17}/> Sổ quỹ & chốt ca</button></nav>
-  {!online&&<div role="alert" className="alert wide">Không kết nối được Store Hub. Không ghi nhận thanh toán khi chưa có xác nhận.</div>}
+  {!online&&<div role="alert" className="alert wide">Không kết nối được Store Hub. Không ghi nhận thanh toán khi chưa có xác nhận. {connectionError}</div>}
+  {operations?.printer.unknown_copies? <section className="print-alert" role="alert" aria-label="Cảnh báo biên nhận in chưa xác định">
+    <div className="print-alert-title"><Printer size={20}/><div><strong>{operations.printer.unknown_copies} liên in chưa xác định</strong><span>Máy in có thể đã xuất giấy. Kiểm tra tại quầy trước khi yêu cầu in lại; không thanh toán lại đơn.</span></div></div>
+    <details><summary>Chọn đơn cần kiểm tra</summary><div className="print-alert-list">{operations.printer.unknown_receipts.map(copy=><button key={copy.id} type="button" onClick={()=>void openPrintException(copy.order_id)}>#{copy.display_code} · {copy.kind==='CUSTOMER'?'Liên khách':'Liên tiệm'}</button>)}</div></details>
+  </section>:null}
+  {operations&&<div className="ops-line" role="status">
+    <span><Printer size={15}/> {operations.printer.driver_configured?'Đã cấu hình bộ in (chưa xác nhận giấy)':'Chưa cấu hình máy in'} · {operations.printer.waiting_copies} liên chờ</span>
+    <span><Wifi size={15}/> {operations.cloud_sync.configured?'Cloud: '+operations.cloud_sync.pending_events+' sự kiện chờ · '+(operations.cloud_sync.last_delivered_at?'Đã gửi gần nhất '+new Date(operations.cloud_sync.last_delivered_at).toLocaleTimeString('vi-VN'):'Chưa có lần gửi thành công'):'Cloud chưa bật · thu tiền mặt qua LAN vẫn hoạt động'}</span>
+   </div>}
   {mode==='SHIFT'?<main className="shiftpage">
     <div><p className="eyebrow">QUẢN LÝ TIỀN MẶT</p><h1>Ca thu ngân</h1><p className="muted">Tiền chuyển khoản không được tính vào két.</p></div>
     {!shift?<section className="surface narrow"><h2>Mở ca</h2><label>Tiền lẻ chủ bàn giao (VNĐ)</label><input inputMode="numeric" value={floatAmount} onChange={e=>setFloatAmount(e.target.value)}/><div className="cashhero">{formatVnd(moneyInput(floatAmount))}</div><button className="primary full" disabled={busy} onClick={()=>void execute(()=>hub.openShift(moneyInput(floatAmount),stableKey()),'Ca đã mở')}>Mở ca thu ngân</button></section>:<>
@@ -57,7 +83,7 @@ function App(){
     </>:current.status==='VOIDED'?<section className="paid-panel"><ShieldAlert size={22}/><div><b>Đơn đã hủy</b><p className="muted">Không ghi doanh thu hay thu tiền cho đơn này.</p></div></section>:<section className="paid-panel"><CheckCircle2 size={26}/><div><b>Đã ghi nhận thanh toán</b><p className="muted">Doanh thu ghi một lần. Trạng thái giấy in được quản lý riêng.</p></div></section>}
     {!paid&&current.status==='COMMITTED'&&<button className="ghost" disabled={busy} onClick={()=>{const reason=window.prompt('Lý do hủy đơn chưa thu tiền?');if(reason&&reason.trim().length>=3&&window.confirm('Xác nhận hủy đơn '+current.display_code+'?'))void execute(()=>hub.voidOrder(current.order_id,reason,nonce()),'Đã hủy đơn')}}>Hủy đơn chưa thu tiền</button>}
     {paid&&shift&&<button className="ghost" disabled={busy} onClick={()=>{const reason=window.prompt('Lý do hoàn tiền mặt toàn bộ đơn?');if(reason&&reason.trim().length>=3&&window.confirm('Xác nhận hoàn '+formatVnd(current.total_vnd)+' tiền mặt, giảm tiền két và ghi lịch sử?'))void execute(()=>hub.refundCash(current.order_id,shift.id,reason,nonce()),'Đã ghi nhận hoàn tiền mặt và trừ sổ quỹ')}}>Hoàn toàn bộ tiền mặt</button>}
-    {paid&&<section className="receipt-section"><div className="section-title"><h2>Hai liên biên nhận</h2><button className="ghost" onClick={()=>void hub.receipts(current.order_id).then(setCopies)}>Kiểm tra</button></div>{copies.length===0?<button className="secondary" onClick={()=>void hub.receipts(current.order_id).then(setCopies)}>Xem trạng thái in</button>:copies.map(copy=><div className="receipt-row" key={copy.id}><div><Printer size={18}/><b>{copy.kind==='CUSTOMER'?'Liên khách':'Liên tiệm'}</b></div><small>{copy.status==='WAITING_FOR_PRINTER'?'Chờ cấu hình máy in':copy.status}</small><button onClick={()=>{const reason=window.prompt('Ghi lý do in lại (từ 3 ký tự)');if(reason&&reason.trim().length>=3)void execute(async()=>{await hub.reprint(copy.id,reason,nonce());setCopies(await hub.receipts(current.order_id))},'Đã ghi yêu cầu in lại — cần kiểm tra máy in')}} disabled={busy}>Yêu cầu in lại</button></div>)}<p className="hint">Bản pilot chưa điều khiển máy in vật lý. Không coi trạng thái hàng đợi là giấy đã in.</p></section>}
+    {paid&&<section className="receipt-section"><div className="section-title"><h2>Hai liên biên nhận</h2><button className="ghost" onClick={()=>void hub.receipts(current.order_id).then(setCopies)}>Kiểm tra</button></div>{copies.length===0?<button className="secondary" onClick={()=>void hub.receipts(current.order_id).then(setCopies)}>Xem trạng thái in</button>:copies.map(copy=><div className="receipt-row" key={copy.id}><div><Printer size={18}/><b>{copy.kind==='CUSTOMER'?'Liên khách':'Liên tiệm'}</b></div><small>{copy.status==='WAITING_FOR_PRINTER'?'Đang chờ máy in':copy.status==='UNKNOWN'?'Chưa rõ giấy đã ra — kiểm tra trước khi in lại':copy.status==='SENT'?'Đã gửi dữ liệu, chưa xác nhận giấy':'Trạng thái '+copy.status}</small><button onClick={()=>{const reason=window.prompt('Ghi lý do in lại (từ 3 ký tự)');if(reason&&reason.trim().length>=3)void execute(async()=>{await hub.reprint(copy.id,reason,nonce());setCopies(await hub.receipts(current.order_id))},'Đã ghi yêu cầu in lại — cần kiểm tra máy in')}} disabled={busy||copy.status==='WAITING_FOR_PRINTER'}>Yêu cầu in lại</button></div>)}<p className="hint">Hệ thống gửi ESC/POS khi máy in được cấu hình. Trạng thái SENT chỉ là gửi dữ liệu, không chứng minh giấy đã ra; liên UNKNOWN cần kiểm tra thủ công.</p></section>}
     {message&&<p className="success-note" role="status">{message}</p>}{error&&<div className="alert" role="alert">{error}</div>}
    </div>:<div className="welcome"><div className="welcome-icon"><ShoppingBag size={30}/></div><p className="eyebrow">BÁN HÀNG NHANH, TIỀN RÕ RÀNG</p><h2>Chọn một đơn để thu tiền</h2><p className="muted">Nhân viên tạo đơn trên điện thoại. Các đơn mới sẽ hiển thị tại hàng đợi bên trái.</p><div className="welcome-stat"><Wallet size={21}/><span>{shift?'Ca thu ngân đang mở':'Hãy mở ca thu ngân trước khi nhận tiền'}</span></div></div>}</section>
    </main>}
