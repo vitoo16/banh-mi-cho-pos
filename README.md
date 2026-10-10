@@ -65,3 +65,7 @@ All UI artifacts are plans only until code/devices are tested. They refine, and 
 ## Pilot application implementation (feature branch)
 
 The initial implementation includes a NestJS/Fastify local Store Hub (SQLite WAL, auth roles, order snapshots, cash/change, shifts), Vite React POS & Owner and Expo RN staff. Read [Local Pilot Runbook](docs/ops/LOCAL_PILOT.md) before attempting to run. Bank transfer choice is **intent only** and bank settlement stays unavailable until the provider is verified. The receipt print driver supports ESC/POS raster over TCP but has not been tested on shop hardware. Cloud PostgreSQL synchronization and real bank callbacks are unfinished; do **not** use real customer transactions yet.
+
+## Remote Owner cloud reporting
+
+Optional cloud mirror + signed outbound Store Hub sync: see [Cloud sync runbook](docs/ops/CLOUD_SYNC_RUNBOOK.md). Cloud Owner reports are read-only and may be stale; local Store Hub remains money authority.
