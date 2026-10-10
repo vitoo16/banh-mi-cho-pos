@@ -1,5 +1,5 @@
 import {Injectable,OnModuleInit,OnModuleDestroy} from '@nestjs/common';
-import {createCanvas} from '@napi-rs/canvas';import {Socket} from 'node:net';
+import {createCanvas} from '@napi-rs/canvas';import {Socket} from 'node:net';import {randomUUID} from 'node:crypto';
 import {StoreService} from './service';
 const formatVnd=(v:number)=>new Intl.NumberFormat('vi-VN').format(v)+'đ';
 /** Pilot ESC/POS over TCP: sends bitmapped Vietnamese text to configured 80mm printer.
@@ -21,13 +21,29 @@ export class ReceiptPrinter implements OnModuleInit,OnModuleDestroy{
    const o=db.row<any>('SELECT * FROM orders WHERE id=?',r.order_id);
    if(!o)return;
    const p=db.row<any>("SELECT tendered_vnd,change_vnd FROM payments WHERE order_id=? ORDER BY created_at LIMIT 1",r.order_id);
-   // Mark uncertain BEFORE any I/O so a crash cannot trigger an untracked duplicate.
-   db.run("UPDATE receipts SET status='UNKNOWN',attempts=attempts+1 WHERE id=?",r.id);
-   const payload=this.render(o,r,p);
+   // Claim and journal before I/O. A crash leaves a durable UNKNOWN attempt,
+   // which must never be retried without an explicit cashier reprint request.
+   const attemptId=randomUUID(),started=new Date().toISOString(),attemptNo=r.attempts+1;
+   const claimed=db.transaction(()=>{
+    const claim=db.run("UPDATE receipts SET status='UNKNOWN',attempts=attempts+1 WHERE id=? AND status='WAITING_FOR_PRINTER' AND attempts=?",r.id,r.attempts);
+    if(!claim.changes)return false;
+    db.run("INSERT INTO receipt_print_attempts(id,receipt_id,started_at,status) VALUES(?,?,?,'UNKNOWN')",attemptId,r.id,started);
+    return true;
+   });
+   if(!claimed)return;
    try{
+    const payload=this.render(o,r,p);
     await this.send(payload);
-    db.run("UPDATE receipts SET status='SENT' WHERE id=?",r.id);
-   }catch(err){console.error('Receipt send uncertain; manual inspection required',r.id);/* Keep UNKNOWN */}
+    db.transaction(()=>{
+     // If the cashier queued a deliberate reprint during this network send,
+     // do not erase the newer WAITING request with an old SENT result.
+     db.run("UPDATE receipts SET status='SENT' WHERE id=? AND status='UNKNOWN' AND attempts=?",r.id,attemptNo);
+     db.run("UPDATE receipt_print_attempts SET status='SENT',finished_at=? WHERE id=?",new Date().toISOString(),attemptId);
+    });
+   }catch(err){
+    db.run("UPDATE receipt_print_attempts SET status='UNKNOWN',finished_at=?,error_code='SEND_UNCERTAIN' WHERE id=?",new Date().toISOString(),attemptId);
+    console.error('Receipt send uncertain; manual inspection required',r.id);
+   }
   }finally{this.running=false}
  }
  private render(o:any,r:any,p:any):Buffer{
