@@ -10,7 +10,7 @@ export interface Shift {id:string;cashier_id:string;opening_float_vnd:number;sta
 export interface PaymentReceipt {payment_id:string;cash_tendered_vnd:number;cash_change_vnd:number;cash_net_vnd:number;payment_status:PaymentStatus;receipt_batch_id:string}
 export interface ReceiptCopy {id:string;kind:'CUSTOMER'|'STORE';status:'QUEUED'|'SENT'|'UNKNOWN'|'FAILED'|'WAITING_FOR_PRINTER';attempts:number}
 export interface OrderPage {items:Order[];next_cursor:string|null}
-export interface Summary {paid_orders:number;net_revenue_vnd:number;cash_vnd:number;bank_vnd:number;pending_orders:number;bank_pending:number;last_synced_at:string;shift:Shift|null}
+export interface Summary {paid_orders:number;net_revenue_vnd:number;cash_vnd:number;bank_vnd:number;/** Cloud only: verified bank funds held outside sales until a cash/bank conflict is resolved. */unallocated_bank_vnd?:number;/** Cloud only: orders with both cash and verified bank funds. */bank_conflict_orders?:number;pending_orders:number;bank_pending:number;last_synced_at:string|null;shift:Shift|null}
 export interface Employee {id:string;name:string;role:Role;active:boolean}
 export interface User {id:string;name:string;role:Role}
 export interface Session {token:string;user:User;device_token?:string}

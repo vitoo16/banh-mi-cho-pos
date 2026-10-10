@@ -129,5 +129,85 @@ test('SePay raw HMAC to cloud settlement to verified local cash desk, no duplica
   assert.equal(local.receipts(cashier,lateOrder.order_id).length,2);
   const exceptions=await db.pool.query("SELECT reason FROM sepay_events WHERE store_id=$1 AND state='EXCEPTION'",[process.env.CLOUD_STORE_ID]);
   assert.deepEqual(exceptions.rows.map(x=>x.reason).sort(),['AMOUNT_MISMATCH','WRONG_RECEIVER'].sort());
+
+  // WAN race: SePay verifies BANK while cashier, disconnected, has collected CASH.
+  // Both transfers are real money but they represent ONE completed sale.
+  const revenueBefore=await cloud.summary();
+  const conflictOrder=local.createOrder(staff,{
+   catalog_version:catalog.version,requested_payment_method:'BANK',
+   items:[{product_id:catalog.products[0].id,qty:1}]
+  },'cash-bank-conflict-order-0003');
+  const conflictIntent=local.bankIntent(cashier,conflictOrder.order_id,'cash-bank-conflict-intent-0003');
+  const candidates=local.store.all("SELECT id,entity,payload_json FROM sync_outbox WHERE entity IN ('order','bank_intent') ORDER BY seq")
+   .filter(x=>{
+    const payload=JSON.parse(x.payload_json);
+    return payload.id===conflictOrder.order_id||payload.order_id===conflictOrder.order_id;
+   });
+  const initialEvents=candidates.map(x=>({id:x.id,entity:x.entity,payload:JSON.parse(x.payload_json)}));
+  const initialStamp=String(Date.now());
+  await cloud.ingest(initialEvents,initialStamp,
+   mac(process.env.CLOUD_SYNC_SECRET,initialStamp+'.'+JSON.stringify({events:initialEvents})),process.env.CLOUD_STORE_ID);
+  const bankCredit={...rawBase,id:92708,code:conflictIntent.reference,
+   content:conflictIntent.reference+' while WAN down',transferAmount:conflictOrder.total_vnd};
+  const creditJson=JSON.stringify(bankCredit);
+  assert.deepEqual(await sepay.receiveWebhook(Buffer.from(creditJson),sec,sign(creditJson)),{success:true});
+  assert.equal((await cloud.summary()).bank_vnd,revenueBefore.bank_vnd+conflictOrder.total_vnd);
+
+  // Cloud is offline from the Hub perspective; cashier captures cash using local authority.
+  const conflictShift=local.openShift(cashier,{opening_float_vnd:100000},'cash-bank-conflict-open-0003');
+  const cash=local.cash(cashier,conflictOrder.order_id,{
+   shift_id:conflictShift.id,cash_tendered_vnd:100000,
+   expected_order_version:conflictOrder.version
+  },'cash-bank-conflict-capture-0003');
+  assert.equal(cash.cash_net_vnd,conflictOrder.total_vnd);
+  assert.equal(local.receipts(cashier,conflictOrder.order_id).length,2);
+  const cashRecords=local.store.all("SELECT id,entity,payload_json FROM sync_outbox WHERE entity IN ('order','payment') ORDER BY seq")
+   .filter(x=>{
+    const payload=JSON.parse(x.payload_json);
+    return (x.entity==='order'&&payload.id===conflictOrder.order_id&&payload.version===2)
+      ||(x.entity==='payment'&&payload.order_id===conflictOrder.order_id);
+   }).map(x=>({id:x.id,entity:x.entity,payload:JSON.parse(x.payload_json)}));
+  const cashStamp=String(Date.now());
+  await cloud.ingest(cashRecords,cashStamp,
+   mac(process.env.CLOUD_SYNC_SECRET,cashStamp+'.'+JSON.stringify({events:cashRecords})),process.env.CLOUD_STORE_ID);
+  const reconciled=await cloud.summary();
+  assert.equal(reconciled.net_revenue_vnd,revenueBefore.net_revenue_vnd+conflictOrder.total_vnd);
+  assert.equal(reconciled.cash_vnd,revenueBefore.cash_vnd+conflictOrder.total_vnd);
+  assert.equal(reconciled.bank_vnd,revenueBefore.bank_vnd,'BANK captured on a CASH-paid order cannot be sale revenue twice');
+  assert.equal(reconciled.unallocated_bank_vnd,conflictOrder.total_vnd);
+  assert.equal(reconciled.bank_conflict_orders,1);
+  assert.ok((await cloud.bankExceptions()).some(x=>x.provider_tx_id==='sepay:92708'
+   &&x.reason==='CASH_AND_BANK_CAPTURE'&&Number(x.amount_vnd)===conflictOrder.total_vnd));
+  // Replaying a cash sync and a SePay webhook cannot create additional revenue or conflicts.
+  await cloud.ingest(cashRecords,cashStamp,
+   mac(process.env.CLOUD_SYNC_SECRET,cashStamp+'.'+JSON.stringify({events:cashRecords})),process.env.CLOUD_STORE_ID);
+  await sepay.receiveWebhook(Buffer.from(creditJson),sec,sign(creditJson));
+  assert.equal((await cloud.summary()).unallocated_bank_vnd,conflictOrder.total_vnd);
+
+  // The signed bank inbox must respect local CASH-paid status; no second settlement or printer batch.
+  const conflictStamp=String(Date.now());
+  const settlementInbox=await sepay.signedSettlements(String(next.seq),process.env.CLOUD_STORE_ID,conflictStamp,
+   mac(process.env.CLOUD_SYNC_SECRET,conflictStamp+'.GET:'+process.env.CLOUD_STORE_ID+':'+String(next.seq)));
+  assert.equal(settlementInbox.payload.settlements.length,1);
+  const bankEntry=settlementInbox.payload.settlements[0];
+  const bodyConflict=JSON.stringify({provider_tx_id:bankEntry.provider_tx_id,reference:bankEntry.reference,
+   account_number:bankEntry.account_number,bank_code:bankEntry.bank_code,amount_vnd:bankEntry.amount_vnd,direction:'CREDIT'});
+  const tsConflict=String(Date.now());
+  assert.equal(local.bankEvent(bodyConflict,tsConflict,mac(process.env.BANK_BRIDGE_SECRET,tsConflict+'.'+bodyConflict)).reason,'ALREADY_SETTLED');
+  assert.equal(local.order(staff,conflictOrder.order_id).payment_status,'PAID');
+  assert.equal(local.store.row('SELECT COUNT(*) n FROM payments WHERE order_id=?',conflictOrder.order_id).n,1);
+  assert.equal(local.receipts(cashier,conflictOrder.order_id).length,2);
+  // A late local bank exception may sync as a separate mirrored event; Owner gets
+  // ONE canonical conflict record, not duplicate rows with the same provider ID.
+  const hubExceptions=local.store.all("SELECT id,entity,payload_json FROM sync_outbox WHERE entity='bank_exception' ORDER BY seq")
+   .filter(x=>JSON.parse(x.payload_json).provider_tx_id==='sepay:92708')
+   .map(x=>({id:x.id,entity:x.entity,payload:JSON.parse(x.payload_json)}));
+  assert.equal(hubExceptions.length,1);
+  const exceptionStamp=String(Date.now());
+  await cloud.ingest(hubExceptions,exceptionStamp,
+   mac(process.env.CLOUD_SYNC_SECRET,exceptionStamp+'.'+JSON.stringify({events:hubExceptions})),process.env.CLOUD_STORE_ID);
+  const canonical=(await cloud.bankExceptions()).filter(x=>x.provider_tx_id==='sepay:92708');
+  assert.equal(canonical.length,1);
+  assert.equal(canonical[0].reason,'CASH_AND_BANK_CAPTURE');
  }finally{await db.onModuleDestroy();rmSync(dir,{recursive:true,force:true})}
 });

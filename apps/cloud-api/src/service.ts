@@ -117,10 +117,17 @@ RETURNING blocked_until`,[bucket]);
 SELECT (SELECT COUNT(*) FROM mirror_orders WHERE store_id=$1 AND payment_status='PAID') AS paid_orders,
 (SELECT COALESCE(SUM(total_vnd),0) FROM mirror_orders WHERE store_id=$1 AND payment_status='PAID') AS net_revenue_vnd,
 (SELECT COALESCE(SUM(amount_vnd),0) FROM mirror_payments WHERE store_id=$1 AND method='CASH')-(SELECT COALESCE(SUM(amount_vnd),0) FROM mirror_refunds WHERE store_id=$1) AS cash_vnd,
-(SELECT COALESCE(SUM(amount_vnd),0) FROM cloud_bank_settlements WHERE store_id=$1)
+(SELECT COALESCE(SUM(s.amount_vnd),0) FROM cloud_bank_settlements s WHERE s.store_id=$1
+  AND NOT EXISTS (SELECT 1 FROM mirror_payments p WHERE p.store_id=s.store_id AND p.order_id=s.order_id AND p.method='CASH'))
 +(SELECT COALESCE(SUM(p.amount_vnd),0) FROM mirror_payments p WHERE p.store_id=$1 AND p.method='BANK'
   AND NOT EXISTS (SELECT 1 FROM cloud_bank_settlements s WHERE s.store_id=p.store_id AND s.order_id=p.order_id))
  AS bank_vnd,
+(SELECT COALESCE(SUM(s.amount_vnd),0) FROM cloud_bank_settlements s WHERE s.store_id=$1
+ AND EXISTS (SELECT 1 FROM mirror_payments p WHERE p.store_id=s.store_id AND p.order_id=s.order_id AND p.method='CASH'))
+ AS unallocated_bank_vnd,
+(SELECT COUNT(*) FROM cloud_bank_settlements s WHERE s.store_id=$1
+ AND EXISTS (SELECT 1 FROM mirror_payments p WHERE p.store_id=s.store_id AND p.order_id=s.order_id AND p.method='CASH'))
+ AS bank_conflict_orders,
 (SELECT COUNT(*) FROM mirror_orders WHERE store_id=$1 AND payment_status='UNPAID' AND status='COMMITTED') AS pending_orders,
 (SELECT COUNT(*) FROM mirror_orders WHERE store_id=$1 AND payment_status='UNPAID' AND requested_method='BANK' AND status='COMMITTED') AS bank_pending`,[store]);
   const r=rows.rows[0],shift=await this.db.pool.query("SELECT * FROM mirror_shifts WHERE store_id=$1 AND status='OPEN' ORDER BY opened_at DESC LIMIT 1",[store]);
@@ -130,7 +137,7 @@ SELECT (SELECT COUNT(*) FROM mirror_orders WHERE store_id=$1 AND payment_status=
    shift.rows[0].opening_float_vnd=Number(shift.rows[0].opening_float_vnd);
   }
   const last=await this.db.pool.query('SELECT MAX(received_at) latest FROM synced_events WHERE store_id=$1',[store]);
-  return {paid_orders:Number(r.paid_orders),net_revenue_vnd:Number(r.net_revenue_vnd),cash_vnd:Number(r.cash_vnd),bank_vnd:Number(r.bank_vnd),pending_orders:Number(r.pending_orders),bank_pending:Number(r.bank_pending),last_synced_at:last.rows[0].latest||null,shift:shift.rows[0]||null};
+  return {paid_orders:Number(r.paid_orders),net_revenue_vnd:Number(r.net_revenue_vnd),cash_vnd:Number(r.cash_vnd),bank_vnd:Number(r.bank_vnd),unallocated_bank_vnd:Number(r.unallocated_bank_vnd),bank_conflict_orders:Number(r.bank_conflict_orders),pending_orders:Number(r.pending_orders),bank_pending:Number(r.bank_pending),last_synced_at:last.rows[0].latest||null,shift:shift.rows[0]||null};
  }
  async orders(){
   const r=await this.db.pool.query('SELECT * FROM mirror_orders WHERE store_id=$1 ORDER BY created_at DESC LIMIT 100',[this.store()]);
@@ -146,10 +153,22 @@ SELECT (SELECT COUNT(*) FROM mirror_orders WHERE store_id=$1 AND payment_status=
  async bankExceptions(){
   const rows=await this.db.pool.query(`SELECT provider_tx_id,order_id,reference,amount_vnd,state,reason,received_at FROM (
  SELECT provider_tx_id,order_id,reference,amount_vnd,state,reason,received_at
- FROM mirror_bank_events WHERE store_id=$1 AND state='EXCEPTION'
+ FROM mirror_bank_events e WHERE e.store_id=$1 AND e.state='EXCEPTION'
+ AND NOT EXISTS (
+  SELECT 1 FROM cloud_bank_settlements s
+  JOIN mirror_payments p ON p.store_id=s.store_id AND p.order_id=s.order_id AND p.method='CASH'
+  WHERE s.store_id=e.store_id AND s.provider_tx_id=e.provider_tx_id
+ )
  UNION ALL
  SELECT 'sepay:'||sepay_id AS provider_tx_id,NULL AS order_id,COALESCE(reference,'') AS reference,amount_vnd,state,reason,received_at
  FROM sepay_events WHERE store_id=$1 AND state='EXCEPTION'
+ UNION ALL
+ SELECT s.provider_tx_id,s.order_id,s.reference,s.amount_vnd,
+  'EXCEPTION'::text AS state,'CASH_AND_BANK_CAPTURE'::text AS reason,s.created_at AS received_at
+ FROM cloud_bank_settlements s
+ WHERE s.store_id=$1
+  AND EXISTS (SELECT 1 FROM mirror_payments p
+   WHERE p.store_id=s.store_id AND p.order_id=s.order_id AND p.method='CASH')
  ) conflicts ORDER BY received_at DESC LIMIT 100`,[this.store()]);
   return rows.rows.map(x=>({...x,amount_vnd:Number(x.amount_vnd)}));
  }

@@ -46,3 +46,7 @@ SePay transaction IDs have a unique constraint; mismatched amount, direction, re
 ### WAN-offline delayed bank reference
 
 An authenticated SePay credit arriving before the corresponding Hub bank intent has synced remains `UNMATCHED_REFERENCE` and is **not** marked paid. Once the locally committed intent reaches Cloud, the SePay reconciliation service rechecks original destination, amount and still-unpaid order status and settles only if all checks match; otherwise it remains an Owner-visible exception. Covered by the SePay integration test.
+
+## WAN race: CASH collected while SePay bank transfer also clears
+
+If the cloud receives a verified bank transfer before it sees the local cashier's CASH payment, the mirror may temporarily classify it as a sale. Once CASH sync arrives, Cloud automatically marks the corresponding bank amount as **unallocated pending human reconciliation** instead of counting both tender streams toward sales. Owner finance page surfaces `CASH_AND_BANK_CAPTURE` and the amount separately. Do not delete transactions, automatically refund through a webhook or mark two payments as two sales. Validate signed bank records and the real drawer count, then use a documented refund/adjustment with accountable staff approval. The store remains cashier-led when WAN is down, so this is an eventual-consistency warning until its outbox reconnects.
