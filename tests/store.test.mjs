@@ -41,6 +41,25 @@ test('Store Hub: price snapshots, idempotency, exact change, shift and guards',(
   assert.equal(voided.status,'VOIDED');
   assert.throws(()=>s.cash(cashier,voidedOrder.order_id,{shift_id:sh.id,cash_tendered_vnd:50000,expected_order_version:2},'cash-voided-001'),e=>e.code==='ORDER_SETTLED');
   assert.equal(s.summary().pending_orders,0);
+  const bankOrder=s.createOrder(staff,{catalog_version:s.catalog().version,requested_payment_method:'BANK',items:[{product_id:bread.id,qty:1}]},'bank-order-create-001');
+  process.env.BANK_ACCOUNT_NUMBER='123456789';process.env.BANK_CODE='DEMO_BANK';process.env.BANK_BRIDGE_SECRET='0123456789abcdef0123456789abcdef';
+  const intent=s.bankIntent(cashier,bankOrder.order_id,'bank-intent-test-01');
+  assert.equal(intent.status,'PENDING');
+  const {createHmac}=require('node:crypto');const stamp=String(Date.now());
+  const event={provider_tx_id:'provider-transaction-0001',reference:intent.reference,bank_code:'DEMO_BANK',account_number:'123456789',amount_vnd:42000,direction:'CREDIT'};
+  const signed=(e)=>createHmac('sha256',process.env.BANK_BRIDGE_SECRET).update(stamp+'.'+JSON.stringify(e)).digest('hex');
+  assert.throws(()=>s.bankEvent(JSON.stringify(event),stamp,'bad'),e=>e.code==='INVALID_SIGNATURE');
+  const wrong=s.bankEvent(JSON.stringify(event),stamp,signed(event));assert.equal(wrong.state,'EXCEPTION');
+  assert.equal(s.order(staff,bankOrder.order_id).payment_status,'UNPAID');
+  const correct={...event,provider_tx_id:'provider-transaction-0002'};
+  const ok=s.bankEvent(JSON.stringify(correct),stamp,signed(correct));assert.equal(ok.state,'EXCEPTION'); // wrong amount remains held
+  assert.equal(s.bankExceptions().length,2);
+  const paid={...event,provider_tx_id:'provider-transaction-0003',amount_vnd:42000};
+  // Important: order total is 42,000 after owner price change; same payload is now valid.
+  const settled=s.bankEvent(JSON.stringify(paid),stamp,signed(paid));assert.equal(settled.state,'CONFIRMED');
+  assert.equal(s.order(staff,bankOrder.order_id).payment_status,'PAID');
+  assert.equal(s.bankEvent(JSON.stringify(paid),stamp,signed(paid)).duplicate,true);
+  assert.equal(s.receipts(cashier,bankOrder.order_id).length,2);
   const closed=s.closeShift(cashier,sh.id,{counted_cash_vnd:1030000,reason:'Thiếu 20k sau kiểm đếm'},'close-001');
   assert.equal(closed.variance_vnd,-20000);
   assert.throws(()=>s.movement(cashier,sh.id,{kind:'ADD',amount_vnd:20000,reason:'Sửa quỹ'},'after-close-001'),e=>e.code==='INVALID_SHIFT');

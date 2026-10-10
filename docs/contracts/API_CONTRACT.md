@@ -102,3 +102,6 @@ The shared TypeScript contract in `packages/contracts/src/index.ts` and HubClien
 - Bank: `POST /v1/orders/:id/payments/bank-intent` currently **returns 503** — no real payment intent or webhook in local pilot. Requested BANK still UNPAID.
 
 **Known contract follow-up:** OpenAPI was extended for route discoverability but generated clients and schema runtime validation remain to be hardened in M1. Do not label fully contract-frozen or production-ready.
+## Signed bank bridge internal contract
+
+A trusted bridge validates a real provider event before sending signed JSON to `POST /v1/internal/bank-events`; the Hub independently checks HMAC timestamp window, bank destination, transfer reference, exact amount and unique provider transaction ID in one SQLite transaction. Confirmed bank captures create exactly one BANK payment and two receipt intents. Exceptions are retained for owner review; mismatches never mark paid. This protocol is **not a SePay/payOS/MoMo implementation**; no bank provider may be marked connected until its signed callback adapter and controlled real transfer acceptance exist.
