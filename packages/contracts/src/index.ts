@@ -27,10 +27,22 @@ export class HubClient {
     const token=this.getToken(); if(token)headers.Authorization='Bearer '+token;
     const deviceToken=this.getDeviceToken();if(deviceToken)headers['x-device-token']=deviceToken;
     if(key)headers['Idempotency-Key']=key;
-    const res=await fetch(this.baseUrl.replace(/\/$/,'')+path,{...init,headers});
-    const body=await res.json().catch(()=>({}));
-    if(!res.ok)throw new ApiError(res.status,String(body.code||'HTTP_ERROR'),String(body.message||'Không thể thực hiện thao tác'));
-    return body as T;
+    // LAN disconnects must not leave cash/order screens spinning indefinitely.
+    // A timeout is an UNKNOWN write result: callers must retry their original idempotency key.
+    const controller=new AbortController();
+    const onAbort=()=>controller.abort();
+    if(init.signal?.aborted)controller.abort();
+    else init.signal?.addEventListener('abort',onAbort,{once:true});
+    const timeout=setTimeout(()=>controller.abort(),12000);
+    try{
+      const res=await fetch(this.baseUrl.replace(/\/$/,'')+path,{...init,headers,signal:controller.signal});
+      const body=await res.json().catch(()=>({}));
+      if(!res.ok)throw new ApiError(res.status,String(body.code||'HTTP_ERROR'),String(body.message||'Không thể thực hiện thao tác'));
+      return body as T;
+    }finally{
+      clearTimeout(timeout);
+      init.signal?.removeEventListener('abort',onAbort);
+    }
   }
   login(pin:string,user_id:string,pairing_code?:string){return this.request<Session>('/v1/auth/login',{method:'POST',body:JSON.stringify({user_id,pin,...pairing_code?{pairing_code}:{}})})}
   logout(){return this.request<{ok:boolean}>('/v1/auth/logout',{method:'POST',body:'{}'})}
