@@ -2,6 +2,7 @@ import React,{memo,useCallback,useEffect,useMemo,useRef,useState} from 'react';
 import {ActivityIndicator,FlatList,KeyboardAvoidingView,Platform,Pressable,ScrollView,StatusBar,StyleSheet,Text,TextInput,View,Alert,useWindowDimensions} from 'react-native';
 import {SafeAreaProvider,useSafeAreaInsets} from 'react-native-safe-area-context';
 import * as SecureStore from 'expo-secure-store';
+import {loadPending,stagePending,clearPending,type PendingOrder} from './src/pendingOrders';
 import {HubClient,formatVnd,type Product,type Catalog,type PaymentMethod,type Order,type Session} from '@bmc/contracts';
 const colors={bg:'#FAF9F6',paper:'#FFFFFF',ink:'#1E2420',sub:'#5D6760',line:'#D9DFD8',accent:'#A84F10',pale:'#FFF0E3',green:'#166534',bad:'#B42318'};
 const url=process.env.EXPO_PUBLIC_HUB_URL||'';
@@ -15,10 +16,11 @@ function Staff(){
  const insets=useSafeAreaInsets(),screen=useWindowDimensions();
  const [staffId,setStaffId]=useState('staff'),[pairingCode,setPairingCode]=useState(''),[credentialsReady,setCredentialsReady]=useState(false);
  useEffect(()=>{let active=true;SecureStore.getItemAsync(deviceKey).then(token=>{if(active)deviceRef.current=token}).catch(()=>{if(active)setError('Không đọc được bảo mật thiết bị. Vui lòng kiểm tra ứng dụng.')}).finally(()=>{if(active)setCredentialsReady(true)});return()=>{active=false}},[]);
- const [session,setSession]=useState<Session|null>(null),[pin,setPin]=useState(''),[screenName,setScreen]=useState<'menu'|'review'|'saved'|'history'>('menu'),[catalog,setCatalog]=useState<Catalog|null>(null);
+ const [session,setSession]=useState<Session|null>(null),[pin,setPin]=useState(''),[screenName,setScreen]=useState<'menu'|'review'|'saved'|'history'|'recovery'>('menu'),[catalog,setCatalog]=useState<Catalog|null>(null);
  const [cart,setCart]=useState<Record<string,CartRecord>>({}),[orderNote,setOrderNote]=useState(''),[method,setMethod]=useState<PaymentMethod>('CASH'),[search,setSearch]=useState('');
  const [busy,setBusy]=useState(false),[error,setError]=useState(''),[priceChanged,setPriceChanged]=useState(false),[confirmed,setConfirmed]=useState<Order|null>(null),[recent,setRecent]=useState<Order[]>([]),[unknown,setUnknown]=useState(false);
  const pendingKey=useRef<string|null>(null);
+ const [pending,setPending]=useState<PendingOrder|null>(null);
  const selected=useMemo(()=>catalog?.products.filter(p=>(cart[p.id]?.qty||0)>0)||[],[catalog,cart]);
  const count=useMemo(()=>selected.reduce((a,p)=>a+(cart[p.id]?.qty||0),0),[selected,cart]);
  const total=useMemo(()=>selected.reduce((a,p)=>a+p.price_vnd*(cart[p.id]?.qty||0),0),[selected,cart]);
@@ -28,26 +30,61 @@ function Staff(){
   if(!credentialsReady)return;
   setBusy(true);setError('');
   try{
-   const session=await api.login(pin,staffId.trim().toLowerCase(),pairingCode.trim().toUpperCase()||undefined);
-   if(session.device_token){
-    await SecureStore.setItemAsync(deviceKey,session.device_token);
-    deviceRef.current=session.device_token;
+   const s=await api.login(pin,staffId.trim().toLowerCase(),pairingCode.trim().toUpperCase()||undefined);
+   if(s.device_token){await SecureStore.setItemAsync(deviceKey,s.device_token);deviceRef.current=s.device_token}
+   tokenRef.current=s.token;
+   const unfinished=await loadPending();
+   if(unfinished&&unfinished.staff_id!==s.user.id){
+    await api.logout().catch(()=>{});tokenRef.current=null;
+    throw new Error('Máy còn đơn chưa xác nhận của nhân viên '+unfinished.staff_id+'. Người đó cần đăng nhập và kiểm tra đơn trước.');
    }
-   tokenRef.current=session.token;setSession(session);setPin('');setPairingCode('');
+   setSession(s);setPin('');setPairingCode('');
+   if(unfinished){setPending(unfinished);pendingKey.current=unfinished.key;setUnknown(true);setScreen('recovery')}
+   else {setPending(null);setUnknown(false);setScreen('menu')}
    await load();
-  }catch(e){setError((e as Error).message)}finally{setBusy(false)}
+  }catch(e){tokenRef.current=null;setError((e as Error).message)}
+  finally{setBusy(false)}
  }
  async function logout(){try{await api.logout()}catch{}finally{tokenRef.current=null;setSession(null);setCart({});setRecent([]);setConfirmed(null);setScreen('menu');setPin('');setError('')}}
  const adjust=useCallback((id:string,delta:number)=>{setCart(old=>({...old,[id]:{qty:Math.max(0,(old[id]?.qty||0)+delta),note:old[id]?.note||''}}))},[]);
- const save=async()=>{if(busy||count===0||!catalog||unknown||priceChanged)return;setBusy(true);setError('');const key=pendingKey.current||(pendingKey.current=newKey());
-  try{const o=await api.createOrder({catalog_version:catalog.version,requested_payment_method:method,items:selected.map(p=>({product_id:p.id,qty:cart[p.id].qty,note:cart[p.id].note})),note:orderNote},key);pendingKey.current=null;setUnknown(false);setConfirmed(o);setScreen('saved');setCart({});setOrderNote('');setMethod('CASH')}
-  catch(e){const message=(e as Error).message;setError(message);if((e as {status?:number}).status!==undefined){pendingKey.current=null;setUnknown(false);if((e as {status?:number}).status===409){await load();setPriceChanged(true)}}else{setUnknown(true)}}
-  finally{setBusy(false)}
+ async function commitPending(draft:PendingOrder){
+  if(busy)return;
+  setBusy(true);setError('');
+  try{
+   const o=await api.createOrder(draft.body,draft.key);
+   let cleanupWarning='';
+   try{await clearPending(draft.key)}catch{cleanupWarning='POS đã xác nhận đơn, nhưng điện thoại chưa xóa được yêu cầu lưu. Nếu hiện lại, hãy kiểm tra cùng mã yêu cầu.'}
+   setPending(null);pendingKey.current=null;setUnknown(false);setPriceChanged(false);
+   setConfirmed(o);setScreen('saved');setCart({});setOrderNote('');setMethod('CASH');
+   if(cleanupWarning)setError(cleanupWarning);
+  }catch(e){
+   const status=(e as {status?:number}).status;
+   if(status===400||status===404||status===409||status===422){
+    try{await clearPending(draft.key)}catch{setUnknown(true);setScreen('recovery');setError('Không thể xóa bản nháp chưa xác nhận. Không tạo đơn mới; hãy kiểm tra lại trên POS.');return}
+    setPending(null);pendingKey.current=null;setUnknown(false);
+    if(status===409){await load();setPriceChanged(true)}
+    setScreen('review');setError((e as Error).message);
+   }else{
+    setUnknown(true);setScreen('recovery');
+    setError('Chưa biết POS đã nhận đơn hay chưa. Giữ nguyên mã yêu cầu trên máy, kiểm tra lại khi kết nối phục hồi.');
+   }
+  }finally{setBusy(false)}
+ }
+ const save=async()=>{
+  if(busy||count===0||!catalog||!session||pending||unknown||priceChanged)return;
+  const draft:PendingOrder={
+   key:pendingKey.current||newKey(),
+   staff_id:session.user.id,
+   body:{catalog_version:catalog.version,requested_payment_method:method,items:selected.map(p=>({product_id:p.id,qty:cart[p.id].qty,note:cart[p.id].note})),note:orderNote},
+   created_at:Date.now()
+  };
+  try{
+   await stagePending(draft); // commit locally BEFORE any HTTP attempt
+   setPending(draft);pendingKey.current=draft.key;
+  }catch(e){setError('Không lưu được bản ghi an toàn trên điện thoại: '+(e as Error).message);return}
+  await commitPending(draft);
  };
- async function resolveUnknown(){if(!pendingKey.current||!catalog)return;setBusy(true);setError('');try{
-   const o=await api.createOrder({catalog_version:catalog.version,requested_payment_method:method,items:selected.map(p=>({product_id:p.id,qty:cart[p.id].qty,note:cart[p.id].note})),note:orderNote},pendingKey.current);
-   pendingKey.current=null;setUnknown(false);setConfirmed(o);setCart({});setOrderNote('');setMethod('CASH');setScreen('saved');
-  }catch(e){setError((e as Error).message)}finally{setBusy(false)}}
+ async function resolveUnknown(){if(pending)await commitPending(pending)}
  async function showHistory(){setScreen('history');try{setRecent(await api.orders())}catch(e){setError((e as Error).message)}}
  const changeNote=(id:string,note:string)=>setCart(c=>({...c,[id]:{qty:c[id]?.qty||0,note}}));
  const rootPadding=Math.max(insets.bottom,12);
@@ -56,7 +93,7 @@ function Staff(){
    return <View style={s.center}><Text style={s.heading}>Cần HTTPS để kết nối POS</Text><Text style={s.desc}>Liên hệ chủ tiệm để sử dụng địa chỉ Store Hub HTTPS có chứng chỉ được điện thoại tin cậy. HTTP chỉ dành cho development có bật cờ rõ ràng.</Text></View>;
  if(!session)return <KeyboardAvoidingView style={s.login} behavior={Platform.OS==='ios'?'padding':undefined}><StatusBar barStyle="dark-content"/><View style={s.logo}><Text style={s.logoText}>BMC</Text></View><Text style={s.kicker}>BÁNH MÌ CHỢ</Text><Text style={s.loginTitle}>Bắt đầu nhận đơn</Text><Text style={s.desc}>Nhập mã PIN do chủ tiệm cấp.</Text><Text style={s.label}>Mã nhân viên</Text><TextInput accessibilityLabel="Mã nhân viên" autoCapitalize="none" autoCorrect={false} value={staffId} onChangeText={setStaffId} style={s.input}/><Text style={s.label}>Mã PIN nhân viên</Text><TextInput accessibilityLabel="Mã PIN nhân viên" secureTextEntry value={pin} onChangeText={setPin} style={s.input} autoCorrect={false} keyboardType="numeric"/><Text style={s.label}>Mã ghép thiết bị (chỉ nhập lần đầu hoặc sau khi bị thu hồi)</Text><TextInput accessibilityLabel="Mã ghép thiết bị" autoCapitalize="characters" autoCorrect={false} value={pairingCode} onChangeText={setPairingCode} maxLength={16} style={s.input} placeholder="16 ký tự do chủ tiệm cung cấp"/><Pressable style={s.primary} disabled={busy||!credentialsReady||pin.length<6} onPress={()=>void login()}><Text style={s.primaryText}>Đăng nhập</Text></Pressable>{error&&<Text style={s.error}>{error}</Text>}</KeyboardAvoidingView>;
  const body=<View style={s.root}>
-  <View style={s.header}><View><Text style={s.kicker}>BÁNH MÌ CHỢ</Text><Text style={s.title}>{screenName==='menu'?'Nhận đơn mới':screenName==='review'?'Kiểm tra đơn':screenName==='saved'?'Đã lưu đơn':'Đơn của tôi'}</Text></View><Pressable accessibilityRole="button" onPress={()=>screenName==='menu'?void showHistory():setScreen('menu')} style={s.historyButton}><Text style={s.historyLabel}>{screenName==='menu'?'Đơn của tôi':'← Trở lại'}</Text></Pressable><Pressable accessibilityRole="button" accessibilityLabel="Đăng xuất" onPress={()=>void logout()} style={s.historyButton}><Text style={s.historyLabel}>Thoát</Text></Pressable></View>
+  <View style={s.header}><View><Text style={s.kicker}>BÁNH MÌ CHỢ</Text><Text style={s.title}>{screenName==='menu'?'Nhận đơn mới':screenName==='review'?'Kiểm tra đơn':screenName==='saved'?'Đã lưu đơn':screenName==='recovery'?'Kiểm tra đơn đang gửi':'Đơn của tôi'}</Text></View><Pressable accessibilityRole="button" onPress={()=>screenName==='menu'?void showHistory():setScreen('menu')} style={s.historyButton}><Text style={s.historyLabel}>{screenName==='menu'?'Đơn của tôi':'← Trở lại'}</Text></Pressable><Pressable accessibilityRole="button" accessibilityLabel="Đăng xuất" onPress={()=>void logout()} style={s.historyButton}><Text style={s.historyLabel}>Thoát</Text></Pressable></View>
   {screenName==='menu'&&<><View style={s.searchWrap}><TextInput placeholder="Tìm tên món…" placeholderTextColor="#849085" value={search} onChangeText={setSearch} style={s.searchInput}/></View>
     <FlatList data={products} keyExtractor={p=>p.id} keyboardShouldPersistTaps="handled" contentContainerStyle={{paddingHorizontal:16,paddingBottom:100}} ListEmptyComponent={<Text style={s.desc}>Chưa có món. Chủ tiệm cần thêm món vào danh mục.</Text>} renderItem={({item})=><ProductRow item={item} qty={cart[item.id]?.qty||0} adjust={adjust}/>}/>
     <View style={[s.footer,{paddingBottom:rootPadding}]}><View style={{flex:1,minWidth:0}}><Text style={s.footerLabel}>{count} món</Text><Text style={s.footerAmount}>{formatVnd(total)}</Text></View><Pressable accessibilityRole="button" disabled={count===0} onPress={()=>setScreen('review')} style={[s.footerAction,count===0&&{opacity:.45}]}><Text style={s.footerActionText}>Xem đơn →</Text></Pressable></View>
@@ -67,6 +104,7 @@ function Staff(){
     <Text style={[s.sectionLabel,{marginTop:24}]}>KHÁCH THANH TOÁN BẰNG</Text><View style={{gap:10}}>{([['CASH','Tiền mặt'],['BANK','Chuyển khoản ngân hàng']] as const).map(([m,title])=><Pressable key={m} style={[s.method,method===m&&s.methodActive]} onPress={()=>setMethod(m)} accessibilityRole="radio" accessibilityState={{checked:method===m}}><View style={[s.radio,method===m&&s.radioOn]}/><Text style={s.methodText}>{title}</Text></Pressable>)}</View>
    {error&&<Text style={s.error}>{error}</Text>}{priceChanged&&<View style={s.tip}><Text style={s.tipText}>Giá món đã thay đổi. Kiểm tra tổng tiền mới trước khi lưu.</Text><Pressable accessibilityRole="button" style={s.primary} onPress={()=>{pendingKey.current=null;setPriceChanged(false)}}><Text style={s.primaryText}>Đã xem giá mới</Text></Pressable></View>}{unknown&&<Text style={s.warning}>Chưa biết Store Hub đã nhận được đơn hay chưa. Kiểm tra lại với cùng mã yêu cầu, không tạo đơn mới.</Text>}
    </ScrollView><View style={[s.footer,{paddingBottom:rootPadding}]}><View style={{flex:1}}><Text style={s.footerLabel}>TỔNG TẠM TÍNH</Text><Text style={s.footerAmount}>{formatVnd(total)}</Text></View><Pressable style={[s.footerAction,busy&&{opacity:.5}]} disabled={busy||count===0||priceChanged} onPress={()=>void (unknown?resolveUnknown():save())}><Text style={s.footerActionText}>{busy?'Đang xử lý…':unknown?'Kiểm tra lại đơn':'LƯU ĐƠN'}</Text></Pressable></View></KeyboardAvoidingView>}
+  {screenName==='recovery'&&pending&&<View style={s.saved}><View style={s.savedIcon}><Text style={{fontSize:30,color:colors.accent}}>!</Text></View><Text style={s.kicker}>CẦN KIỂM TRA TRẠNG THÁI</Text><Text style={s.loginTitle}>Đơn đang chờ xác nhận</Text><Text style={s.desc}>Điện thoại đã lưu an toàn yêu cầu của nhân viên {pending.staff_id} gồm {pending.body.items.reduce((sum,item)=>sum+item.qty,0)} món. POS có thể đã nhận đơn trước khi kết nối bị gián đoạn.</Text><View style={s.tip}><Text style={s.tipText}>Không tạo đơn mới. Bấm kiểm tra lại để gửi lại CHÍNH XÁC yêu cầu trước đó bằng cùng mã chống trùng.</Text></View><Pressable style={[s.primary,busy&&{opacity:.5}]} disabled={busy} onPress={()=>void resolveUnknown()}><Text style={s.primaryText}>{busy?'Đang kiểm tra…':'Kiểm tra lại đơn với POS'}</Text></Pressable>{error&&<Text style={s.error}>{error}</Text>}</View>}
   {screenName==='saved'&&confirmed&&<View style={s.saved}><View style={s.savedIcon}><Text style={{fontSize:34,color:colors.green}}>✓</Text></View><Text style={s.kicker}>ĐÃ GHI NHẬN VÀO POS</Text><Text style={s.savedCode}>#{confirmed.display_code}</Text><Text style={s.savedAmount}>{formatVnd(confirmed.total_vnd)}</Text><Text style={s.desc}>Khách chọn: {confirmed.requested_payment_method==='BANK'?'Chuyển khoản':'Tiền mặt'} · Chưa xác nhận thu tiền</Text><View style={s.tip}><Text style={s.tipText}>Báo miệng đơn cho người chuẩn bị bánh bên trong.</Text></View><Pressable style={s.primary} onPress={()=>{setConfirmed(null);setScreen('menu')}}><Text style={s.primaryText}>Tạo đơn tiếp</Text></Pressable></View>}
   {screenName==='history'&&<FlatList data={recent} keyExtractor={o=>o.order_id} contentContainerStyle={{padding:16}} ListEmptyComponent={<Text style={s.desc}>Chưa có đơn gần đây.</Text>} renderItem={({item:o})=><View style={s.historyRow}><View><Text style={s.productName}>#{o.display_code}</Text><Text style={s.desc}>{new Date(o.created_at).toLocaleTimeString('vi-VN')}</Text></View><View style={{alignItems:'flex-end'}}><Text style={s.productPrice}>{formatVnd(o.total_vnd)}</Text><Text style={o.payment_status==='PAID'?s.paidText:s.pendingText}>{o.status==='VOIDED'?'Đã hủy':o.payment_status==='REFUNDED'?'Đã hoàn tiền':o.payment_status==='PAID'?'Đã thu tiền':'Chưa thu tiền'}</Text></View></View>}/>}
  </View>;
