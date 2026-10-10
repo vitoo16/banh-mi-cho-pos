@@ -1,7 +1,7 @@
 import {Injectable,OnModuleInit,OnModuleDestroy} from '@nestjs/common';
 import {createCanvas} from '@napi-rs/canvas';import {Socket} from 'node:net';
 import {StoreService} from './service';
-import {formatVnd} from '../../../packages/contracts/src/index';
+const formatVnd=(v:number)=>new Intl.NumberFormat('vi-VN').format(v)+'đ';
 /** Pilot ESC/POS over TCP: sends bitmapped Vietnamese text to configured 80mm printer.
  * SENT only means bytes were sent over socket, NOT physical paper acknowledged.
  * UNKNOWN after crash/connection loss is never auto-resubmitted.
