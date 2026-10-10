@@ -1,15 +1,36 @@
 import React,{memo,useCallback,useEffect,useMemo,useRef,useState} from 'react';
 import {ActivityIndicator,FlatList,KeyboardAvoidingView,Platform,Pressable,ScrollView,StatusBar,StyleSheet,Text,TextInput,View,Alert,useWindowDimensions} from 'react-native';
 import {SafeAreaProvider,useSafeAreaInsets} from 'react-native-safe-area-context';
+import * as SecureStore from 'expo-secure-store';
 import {HubClient,formatVnd,type Product,type Catalog,type PaymentMethod,type Order,type Session} from '@bmc/contracts';
 const colors={bg:'#FAF9F6',paper:'#FFFFFF',ink:'#1E2420',sub:'#5D6760',line:'#D9DFD8',accent:'#A84F10',pale:'#FFF0E3',green:'#166534',bad:'#B42318'};
 const url=process.env.EXPO_PUBLIC_HUB_URL||'';
-const api=new HubClient(url,()=>tokenRef.current||undefined);let tokenRef:{current:string|null}={current:null};
+let tokenRef:{current:string|null}={current:null};
+let deviceTokenRef:{current:string|null}={current:null};
+const api=new HubClient(url,()=>tokenRef.current||undefined,()=>deviceTokenRef.current||undefined);
 const newKey=()=>Math.random().toString(36).slice(2)+Date.now().toString(36);
 type CartRecord={qty:number;note:string};
 function Staff(){
  const insets=useSafeAreaInsets(),screen=useWindowDimensions();
  const [staffId,setStaffId]=useState('staff');
+ const [pairReady,setPairReady]=useState(false),[paired,setPaired]=useState(false);
+ const [pairCode,setPairCode]=useState(''),[deviceName,setDeviceName]=useState('Điện thoại nhận đơn'),[pairBusy,setPairBusy]=useState(false);
+ useEffect(()=>{let mounted=true;SecureStore.getItemAsync('bmc_device_token')
+  .then(token=>{if(mounted){deviceTokenRef.current=token;setPaired(Boolean(token));setPairReady(true)}})
+  .catch(()=>{if(mounted){setError('Không thể đọc khóa thiết bị. Kiểm tra quyền lưu trữ an toàn.');setPairReady(true)}});return()=>{mounted=false}},[]);
+ async function pair(){
+  if(pairBusy||pairCode.trim().length!==8)return;setPairBusy(true);setError('');
+  try{
+   const d=await api.pairDevice(pairCode.trim().toUpperCase(),deviceName.trim());
+   await SecureStore.setItemAsync('bmc_device_token',d.device_token);
+   deviceTokenRef.current=d.device_token;setPaired(true);setPairCode('');
+  }catch(e){setError((e as Error).message)}finally{setPairBusy(false)}
+ }
+ async function clearPairing(){
+  await SecureStore.deleteItemAsync('bmc_device_token');
+  deviceTokenRef.current=null;tokenRef.current=null;setSession(null);setPaired(false);setError('Thiết bị cần được ghép nối lại bởi chủ tiệm.');
+ }
+
  const [session,setSession]=useState<Session|null>(null),[pin,setPin]=useState(''),[screenName,setScreen]=useState<'menu'|'review'|'saved'|'history'>('menu'),[catalog,setCatalog]=useState<Catalog|null>(null);
  const [cart,setCart]=useState<Record<string,CartRecord>>({}),[orderNote,setOrderNote]=useState(''),[method,setMethod]=useState<PaymentMethod>('CASH'),[search,setSearch]=useState('');
  const [busy,setBusy]=useState(false),[error,setError]=useState(''),[priceChanged,setPriceChanged]=useState(false),[confirmed,setConfirmed]=useState<Order|null>(null),[recent,setRecent]=useState<Order[]>([]),[unknown,setUnknown]=useState(false);
@@ -34,7 +55,21 @@ function Staff(){
  const changeNote=(id:string,note:string)=>setCart(c=>({...c,[id]:{qty:c[id]?.qty||0,note}}));
  const rootPadding=Math.max(insets.bottom,12);
  if(!url)return <View style={s.center}><Text style={s.heading}>Thiếu địa chỉ máy POS</Text><Text style={s.desc}>Cấu hình EXPO_PUBLIC_HUB_URL trong file .env và build lại ứng dụng.</Text></View>;
- if(!session)return <KeyboardAvoidingView style={s.login} behavior={Platform.OS==='ios'?'padding':undefined}><StatusBar barStyle="dark-content"/><View style={s.logo}><Text style={s.logoText}>BMC</Text></View><Text style={s.kicker}>BÁNH MÌ CHỢ</Text><Text style={s.loginTitle}>Bắt đầu nhận đơn</Text><Text style={s.desc}>Nhập mã PIN do chủ tiệm cấp.</Text><Text style={s.label}>Mã nhân viên</Text><TextInput accessibilityLabel="Mã nhân viên" autoCapitalize="none" autoCorrect={false} value={staffId} onChangeText={setStaffId} style={s.input}/><Text style={s.label}>Mã PIN nhân viên</Text><TextInput accessibilityLabel="Mã PIN nhân viên" secureTextEntry value={pin} onChangeText={setPin} style={s.input} autoCorrect={false} keyboardType="numeric"/><Pressable style={s.primary} disabled={busy||pin.length<6} onPress={()=>void login()}><Text style={s.primaryText}>Đăng nhập</Text></Pressable>{error&&<Text style={s.error}>{error}</Text>}</KeyboardAvoidingView>;
+ if(!pairReady)return <View style={s.center}><ActivityIndicator color={colors.accent}/><Text style={s.desc}>Đang kiểm tra thiết bị…</Text></View>;
+ if(!paired)return <KeyboardAvoidingView style={s.login} behavior={Platform.OS==='ios'?'padding':undefined}>
+  <StatusBar barStyle="dark-content"/>
+  <View style={s.logo}><Text style={s.logoText}>BMC</Text></View>
+  <Text style={s.kicker}>THIẾT LẬP THIẾT BỊ</Text>
+  <Text style={s.loginTitle}>Kết nối với máy POS</Text>
+  <Text style={s.desc}>Nhờ chủ tiệm mở mục Nhân viên trên máy POS để cấp mã ghép nối dùng một lần (có hiệu lực 5 phút).</Text>
+  <Text style={s.label}>Tên điện thoại</Text><TextInput style={s.input} value={deviceName} onChangeText={setDeviceName} accessibilityLabel="Tên điện thoại" maxLength={80}/>
+  <Text style={s.label}>Mã ghép nối 8 ký tự</Text><TextInput style={s.input} value={pairCode} onChangeText={setPairCode} accessibilityLabel="Mã ghép nối" autoCapitalize="characters" autoCorrect={false} maxLength={8} placeholder="VD: K3MX7P2R"/>
+  <Pressable style={[s.primary,pairBusy&&{opacity:.5}]} disabled={pairBusy||pairCode.trim().length!==8||deviceName.trim().length<2} onPress={()=>void pair()}>
+   <Text style={s.primaryText}>{pairBusy?'Đang kết nối…':'Ghép thiết bị'}</Text>
+  </Pressable>{error&&<Text style={s.error}>{error}</Text>}
+  <Text style={[s.desc,{marginTop:20}]}>Đường dẫn HTTPS phải được điện thoại tin cậy. Không tắt kiểm tra chứng chỉ.</Text>
+ </KeyboardAvoidingView>;
+ if(!session)return <KeyboardAvoidingView style={s.login} behavior={Platform.OS==='ios'?'padding':undefined}><StatusBar barStyle="dark-content"/><View style={s.logo}><Text style={s.logoText}>BMC</Text></View><Text style={s.kicker}>BÁNH MÌ CHỢ</Text><Text style={s.loginTitle}>Bắt đầu nhận đơn</Text><Text style={s.desc}>Nhập mã PIN do chủ tiệm cấp.</Text><Text style={s.label}>Mã nhân viên</Text><TextInput accessibilityLabel="Mã nhân viên" autoCapitalize="none" autoCorrect={false} value={staffId} onChangeText={setStaffId} style={s.input}/><Text style={s.label}>Mã PIN nhân viên</Text><TextInput accessibilityLabel="Mã PIN nhân viên" secureTextEntry value={pin} onChangeText={setPin} style={s.input} autoCorrect={false} keyboardType="numeric"/><Pressable style={s.primary} disabled={busy||pin.length<6} onPress={()=>void login()}><Text style={s.primaryText}>Đăng nhập</Text></Pressable>{error&&<Text style={s.error}>{error}</Text>}<Pressable style={{paddingVertical:14,alignItems:'center'}} onPress={()=>void clearPairing()}><Text style={s.desc}>Thiết bị đã đổi chủ? Ghép nối lại</Text></Pressable></KeyboardAvoidingView>;
  const body=<View style={s.root}>
   <View style={s.header}><View><Text style={s.kicker}>BÁNH MÌ CHỢ</Text><Text style={s.title}>{screenName==='menu'?'Nhận đơn mới':screenName==='review'?'Kiểm tra đơn':screenName==='saved'?'Đã lưu đơn':'Đơn của tôi'}</Text></View><Pressable accessibilityRole="button" onPress={()=>screenName==='menu'?void showHistory():setScreen('menu')} style={s.historyButton}><Text style={s.historyLabel}>{screenName==='menu'?'Đơn của tôi':'← Trở lại'}</Text></Pressable></View>
   {screenName==='menu'&&<><View style={s.searchWrap}><TextInput placeholder="Tìm tên món…" placeholderTextColor="#849085" value={search} onChangeText={setSearch} style={s.searchInput}/></View>

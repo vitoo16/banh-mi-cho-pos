@@ -11,6 +11,9 @@ export interface PaymentReceipt {payment_id:string;cash_tendered_vnd:number;cash
 export interface ReceiptCopy {id:string;kind:'CUSTOMER'|'STORE';status:'QUEUED'|'SENT'|'UNKNOWN'|'FAILED'|'WAITING_FOR_PRINTER';attempts:number}
 export interface OrderPage {items:Order[];next_cursor:string|null}
 export interface Summary {paid_orders:number;net_revenue_vnd:number;cash_vnd:number;bank_vnd:number;pending_orders:number;bank_pending:number;last_synced_at:string;shift:Shift|null}
+export interface PairedDevice {id:string;label:string;role:'STAFF';created_at:string;last_seen_at:string|null;revoked_at:string|null}
+export interface PairingCode {code:string;expires_at:string}
+export interface PairingResult {device_id:string;device_token:string;name:string;role:'STAFF'}
 export interface Employee {id:string;name:string;role:Role;active:boolean}
 export interface User {id:string;name:string;role:Role}
 export interface Session {token:string;user:User}
@@ -19,10 +22,11 @@ export function formatVnd(value:number):string {return new Intl.NumberFormat('vi
 export const money = (x:unknown):number=>{if(typeof x!=='number'||!Number.isSafeInteger(x)||x<0||x>1_000_000_000)throw new Error('Số tiền không hợp lệ');return x};
 export class ApiError extends Error {constructor(public status:number,public code:string,message:string){super(message)}}
 export class HubClient {
-  constructor(public readonly baseUrl:string,private getToken:()=>string|undefined){}
+  constructor(public readonly baseUrl:string,private getToken:()=>string|undefined,private getDeviceToken?:()=>string|undefined){}
   async request<T>(path:string,init:RequestInit={},key?:string):Promise<T>{
     const headers:Record<string,string>={'Content-Type':'application/json',...(init.headers as Record<string,string>||{})};
     const token=this.getToken(); if(token)headers.Authorization='Bearer '+token;
+    const deviceToken=this.getDeviceToken?.();if(deviceToken)headers['X-Device-Token']=deviceToken;
     if(key)headers['Idempotency-Key']=key;
     const res=await fetch(this.baseUrl.replace(/\/$/,'')+path,{...init,headers});
     const body=await res.json().catch(()=>({}));
@@ -30,6 +34,10 @@ export class HubClient {
     return body as T;
   }
   login(pin:string,user_id:string){return this.request<Session>('/v1/auth/login',{method:'POST',body:JSON.stringify({user_id,pin})})}
+  pairDevice(code:string,device_name:string){return this.request<PairingResult>('/v1/auth/device/pair',{method:'POST',body:JSON.stringify({code,device_name})})}
+  issuePairCode(){return this.request<PairingCode>('/v1/owner/device-pairing-codes',{method:'POST',body:'{}'})}
+  devices(){return this.request<PairedDevice[]>('/v1/owner/devices')}
+  revokeDevice(id:string){return this.request<{id:string;revoked:boolean}>('/v1/owner/devices/'+encodeURIComponent(id)+'/revoke',{method:'POST',body:'{}'})}
   catalog(){return this.request<Catalog>('/v1/catalog')}
   orders(){return this.request<Order[]>('/v1/orders')}
   orderHistory(cursor?:string){return this.request<OrderPage>('/v1/orders/history?limit=100'+(cursor?'&cursor='+encodeURIComponent(cursor):''))}
