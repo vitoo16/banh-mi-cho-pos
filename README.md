@@ -51,3 +51,13 @@ docs/               Source-of-truth specs, plans, contracts, QA, operations
 ## GitHub publishing
 
 This delivered folder is a prepared local repository, **not automatically a live GitHub repository**. See [`docs/ops/GITHUB_SETUP.md`](docs/ops/GITHUB_SETUP.md) for a private-repo, GitHub CLI and Git bundle publication path. No application tests/builds are asserted from the planning-only docs CI.
+
+## Mobile-first UI execution plan
+
+- [`docs/ui/UI_IMPLEMENTATION_MASTER_PLAN.md`](docs/ui/UI_IMPLEMENTATION_MASTER_PLAN.md): RN Staff and touch POS P0, Owner P1, budgets and implementation waves.
+- [`docs/ui/SCREEN_SPECS.md`](docs/ui/SCREEN_SPECS.md): detailed screens, state machines and responsive layouts.
+- [`docs/ui/DESIGN_SYSTEM.md`](docs/ui/DESIGN_SYSTEM.md): proposed semantic tokens, typography, spacing, touch size, microcopy and Taste overrides.
+- [`docs/ui/UI_QA_MATRIX.md`](docs/ui/UI_QA_MATRIX.md): small-view testing, no-overflow gates, operational usability scenarios.
+- [`docs/ui/AGENT_UI_WORKFLOW.md`](docs/ui/AGENT_UI_WORKFLOW.md): task-to-skill mapping, Vercel + Taste sources, one-pass audit/PR workflow.
+
+All UI artifacts are plans only until code/devices are tested. They refine, and do not override, `docs/spec/MVP-v1.2.md`.

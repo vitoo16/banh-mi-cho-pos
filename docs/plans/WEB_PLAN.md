@@ -41,3 +41,7 @@
 - Reusable `MoneyDisplay`, `PaymentMethodSelector`, `OrderList`, `CashTenderPanel`, `ShiftReconciliation`, `ReceiptStatus`, `NetworkStatus`, `SyncAgeBadge`.
 - Design tokens aligned with RN typography/naming without forcing shared cross-platform UI primitives.
 - Screens must be usable by a nontechnical cashier after short instruction. No KDS, stock, prep status or bếp tabs.
+
+## Detailed UI execution overlay (P0 POS and P1 Owner, 2026-10-10)
+
+Before screen implementation read `docs/ui/UI_IMPLEMENTATION_MASTER_PLAN.md`, `docs/ui/SCREEN_SPECS.md` (POS-00..06 / OWNER-00..05), `docs/ui/DESIGN_SYSTEM.md`, `docs/ui/UI_QA_MATRIX.md`, and `docs/ui/AGENT_UI_WORKFLOW.md`. POS cashier is P0 and must be evaluated at 1024px/1366px with scaling, touch/keyboard, cash change and printer UNKNOWN. Owner mobile dashboard + price editor is P1 and must gracefully collapse tables to cards at 320–390px. Mandatory local skills are `vite-react-frontend`, `mobile-first-operational-ui`, and on review `ui-visual-audit`; complement with current Vercel Web Interface/React skill and Taste references. No fake paid on requested method and no stock/bếp pages.

@@ -10,6 +10,9 @@ const required = [
   'docs/plans/WEB_PLAN.md','docs/plans/MOBILE_PLAN.md',
   'docs/plans/PARALLEL_EXECUTION.md','docs/agents/AGENT_WORKFLOW.md',
   'docs/qa/ACCEPTANCE.md','docs/ops/RUNBOOK.md',
+  'docs/ui/UI_IMPLEMENTATION_MASTER_PLAN.md','docs/ui/SCREEN_SPECS.md',
+  'docs/ui/DESIGN_SYSTEM.md','docs/ui/UI_QA_MATRIX.md',
+  'docs/ui/AGENT_UI_WORKFLOW.md',
   '.github/workflows/docs-ci.yml'
 ];
 const skillRoot = join(root,'.agents/skills');

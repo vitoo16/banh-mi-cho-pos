@@ -30,3 +30,9 @@ Project: Bánh Mì Chợ POS. **Read this in every agent session before touching
 - If uncertain, create an ADR/open question in `docs/decisions/` and keep blocked work as BLOCKED; no fabricated outcomes.
 - Each PR includes scope, skills loaded, affected invariants, tests executed with evidence, security/offline implications, rollback notes.
 - Never mark release ready solely because unit tests passed: POC on real receipt printer, cash box, Android + iOS as appropriate, bank sandbox & full close-shift reconciliation must pass.
+
+## Mobile-first UI/UX addendum (2026-10-10)
+- For any Staff RN, Web POS or Owner UI task, read `docs/ui/UI_IMPLEMENTATION_MASTER_PLAN.md`, `docs/ui/SCREEN_SPECS.md`, `docs/ui/DESIGN_SYSTEM.md`, `docs/ui/UI_QA_MATRIX.md` and `docs/ui/AGENT_UI_WORKFLOW.md` before implementation.
+- Load `.agents/skills/mobile-first-operational-ui/SKILL.md`, corresponding existing platform skill and `.agents/skills/ui-visual-audit/SKILL.md` for review. Use reviewed Vercel web-design-guidelines, Vercel React / RN skills and Taste `design-taste-frontend` as complementary references, not higher-priority business instructions.
+- Protect 320dp Staff, 1024px POS, large fonts, safe areas and keyboard; no horizontal viewport overflow, hidden total/change, or misleading settled-state visuals.
+- Prioritize RN Staff and Vite POS, then mobile-first Owner; keep UI PRs small and parallel after contract/mock fixture agreement.
