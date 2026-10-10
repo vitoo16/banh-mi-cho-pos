@@ -18,7 +18,7 @@ export class StoreService implements OnModuleInit {
   const users=this.store.row<{n:number}>('SELECT COUNT(*) n FROM users')?.n||0;
   if(users!==0)return;
   const seeds=[['owner','OWNER','Chủ tiệm','BOOTSTRAP_OWNER_PIN'],['cashier','CASHIER','Thu ngân','BOOTSTRAP_CASHIER_PIN'],['staff','STAFF','Nhân viên','BOOTSTRAP_STAFF_PIN']] as const;
-  for(const [_id,_role,_name,key] of seeds)if(!process.env[key]||process.env[key]!.length<6)throw new Error('First run requires '+key+' (>= 6 chars). No hardcoded PINs.');
+  for(const [_id,_role,_name,key] of seeds)if(!process.env[key]||process.env[key]!.length<6||process.env[key]!.startsWith('replace-with'))throw new Error('First run requires '+key+' (>= 6 chars). No hardcoded PINs.');
   this.store.transaction(()=>{for(const [id,role,name,key] of seeds)this.store.run('INSERT INTO users(id,name,role,pin_hash) VALUES(?,?,?,?)',id,name,role,passwordHash(process.env[key]!))});
   if(process.env.SEED_DEMO_CATALOG==='1'){
    for(const [id,name,category,price] of [['bm-thit','Bánh mì thịt nguội','Bánh mì',35000],['bm-dacbiet','Bánh mì đặc biệt','Bánh mì',45000],['bm-san','Bánh mì sẵn','Hàng sẵn',20000],['banh-bao','Bánh bao','Bánh bao',20000]] as const)
