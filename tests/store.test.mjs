@@ -1,0 +1,48 @@
+import {test} from 'node:test';import assert from 'node:assert/strict';
+import {mkdtempSync,rmSync} from 'node:fs';import {tmpdir} from 'node:os';import {join} from 'node:path';import {createRequire} from 'node:module';
+const require=createRequire(import.meta.url);
+test('Store Hub: price snapshots, idempotency, exact change, shift and guards',()=>{
+ const dir=mkdtempSync(join(tmpdir(),'bmc-test-'));
+ try{
+  process.env.STORE_DB_PATH=join(dir,'shop.sqlite');process.env.BOOTSTRAP_OWNER_PIN='owner-secure-123';process.env.BOOTSTRAP_CASHIER_PIN='cashier-secure-456';process.env.BOOTSTRAP_STAFF_PIN='staff-secure-789';process.env.SEED_DEMO_CATALOG='1';
+  const {StoreService}=require('../apps/store-hub/dist/service.js'),s=new StoreService();s.onModuleInit();
+  const staff=s.actor('Bearer '+s.login('staff','staff-secure-789').token,['STAFF']);
+  const cashier=s.actor('Bearer '+s.login('cashier','cashier-secure-456').token,['CASHIER']);
+  const owner=s.actor('Bearer '+s.login('owner','owner-secure-123').token,['OWNER']);
+  assert.throws(()=>s.actor('Bearer '+s.login('staff','staff-secure-789').token,['OWNER']),e=>e.code==='FORBIDDEN');
+  const menu=s.catalog();assert.equal(menu.products.length,4);
+  const bread=menu.products.find(p=>p.id==='bm-thit');
+  const input={catalog_version:menu.version,requested_payment_method:'BANK',items:[{product_id:bread.id,qty:2,note:'Không hành'}]};
+  const order=s.createOrder(staff,input,'create-idempotency-test-001');
+  assert.equal(order.total_vnd,70000);assert.equal(order.payment_status,'UNPAID');
+  assert.deepEqual(s.createOrder(staff,input,'create-idempotency-test-001'),order);
+  assert.throws(()=>s.createOrder(staff,{...input,requested_payment_method:'MOMO'},'create-other-002'),e=>e.code==='METHOD_DISABLED');
+  const sh=s.openShift(cashier,{opening_float_vnd:1000000},'shift-open-001');
+  assert.equal(sh.expected_cash_vnd,1000000);
+  assert.throws(()=>s.cash(cashier,order.order_id,{shift_id:sh.id,cash_tendered_vnd:60000,expected_order_version:1},'cash-short-001'),/INSUFFICIENT_CASH/);
+  const capture=s.cash(cashier,order.order_id,{shift_id:sh.id,cash_tendered_vnd:100000,expected_order_version:1},'cash-pay-001');
+  assert.equal(capture.cash_change_vnd,30000);assert.equal(capture.cash_net_vnd,70000);
+  assert.deepEqual(s.cash(cashier,order.order_id,{shift_id:sh.id,cash_tendered_vnd:100000,expected_order_version:1},'cash-pay-001'),capture);
+  assert.equal(s.getShift(sh.id).expected_cash_vnd,1070000);
+  assert.equal(s.receipts(cashier,order.order_id).length,2);
+  assert.throws(()=>s.cash(cashier,order.order_id,{shift_id:sh.id,cash_tendered_vnd:100000,expected_order_version:1},'cash-pay-new-002'),e=>e.code==='ORDER_SETTLED');
+  assert.equal(s.summary().net_revenue_vnd,70000);
+  assert.equal(s.summary().bank_vnd,0);
+  const paidOrder=s.order(staff,order.order_id);assert.equal(paidOrder.payment_status,'PAID');
+  const amended=s.updateProduct(owner,bread.id,{name:'Bánh mì thịt nguội mới',price_vnd:42000,is_active:true},'price-edit-001');assert.equal(amended.price_vnd,42000);
+  assert.equal(s.order(staff,order.order_id).items[0].unit_price_vnd,35000);
+  assert.throws(()=>s.createOrder(staff,input,'stale-catalog-001'),e=>e.code==='CATALOG_CHANGED');
+  s.movement(cashier,sh.id,{kind:'WITHDRAW',amount_vnd:20000,reason:'Chủ rút tiền'},'withdraw-001');
+  assert.equal(s.getShift(sh.id).expected_cash_vnd,1050000);
+  assert.throws(()=>s.closeShift(cashier,sh.id,{counted_cash_vnd:1030000,reason:''},'close-no-reason-001'),e=>e.code==='REASON_REQUIRED');
+  const afterMenu=s.catalog();
+  const voidedOrder=s.createOrder(staff,{catalog_version:afterMenu.version,requested_payment_method:'CASH',items:[{product_id:bread.id,qty:1}]},'cancel-created-001');
+  const voided=s.voidOrder(cashier,voidedOrder.order_id,{reason:'Khách đổi ý'},'cancel-voided-001');
+  assert.equal(voided.status,'VOIDED');
+  assert.throws(()=>s.cash(cashier,voidedOrder.order_id,{shift_id:sh.id,cash_tendered_vnd:50000,expected_order_version:2},'cash-voided-001'),e=>e.code==='ORDER_SETTLED');
+  assert.equal(s.summary().pending_orders,0);
+  const closed=s.closeShift(cashier,sh.id,{counted_cash_vnd:1030000,reason:'Thiếu 20k sau kiểm đếm'},'close-001');
+  assert.equal(closed.variance_vnd,-20000);
+  assert.throws(()=>s.movement(cashier,sh.id,{kind:'ADD',amount_vnd:20000,reason:'Sửa quỹ'},'after-close-001'),e=>e.code==='INVALID_SHIFT');
+ }finally{rmSync(dir,{recursive:true,force:true})}
+});

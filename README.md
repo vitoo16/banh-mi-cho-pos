@@ -1,6 +1,6 @@
 # Bánh Mì Chợ POS — Product & Engineering Repository
 
-**Status: SPEC/PLAN BASELINE ONLY. No application code has been implemented, no production deployment and no completed payment integration.**
+**Status: pilot implementation in progress on feature branch. Store Hub + Web POS + Owner + React Native Staff are coded but NOT production-ready; bank provider/cloud sync, vetted LAN security, physical hardware acceptance remain BLOCKED.**
 
 Một cửa hàng, 4–8 nhân viên đồng thời, >300 đơn/ngày, một thu ngân, một két và **một máy in nhiệt in hai liên**. Nhân viên dùng React Native, POS và Owner dùng **React + Vite**, backend **NestJS + Fastify**, điểm bán có **Store Hub** qua LAN + SQLite, cloud dùng PostgreSQL.
 
@@ -61,3 +61,7 @@ This delivered folder is a prepared local repository, **not automatically a live
 - [`docs/ui/AGENT_UI_WORKFLOW.md`](docs/ui/AGENT_UI_WORKFLOW.md): task-to-skill mapping, Vercel + Taste sources, one-pass audit/PR workflow.
 
 All UI artifacts are plans only until code/devices are tested. They refine, and do not override, `docs/spec/MVP-v1.2.md`.
+
+## Pilot application implementation (feature branch)
+
+The initial implementation includes a NestJS/Fastify local Store Hub (SQLite WAL, auth roles, order snapshots, cash/change, shifts), Vite React POS & Owner and Expo RN staff. Read [Local Pilot Runbook](docs/ops/LOCAL_PILOT.md) before attempting to run. Bank transfer choice is **intent only** and bank settlement stays unavailable until the provider is verified. The receipt print driver supports ESC/POS raster over TCP but has not been tested on shop hardware. Cloud PostgreSQL synchronization and real bank callbacks are unfinished; do **not** use real customer transactions yet.

@@ -2,13 +2,175 @@ openapi: 3.1.0
 info:
   title: Banh Mi Cho POS - Hub API Contract Starter
   version: 0.1.0-draft
-  description: Planning-only subset, expand and freeze in milestone M1.
+  description: Local pilot implemented subset for Nest Store Hub. Bank 503 until verified merchant integration; further contract work remains.
 servers:
   - url: http://localhost:4400
     description: Hub localhost during POC only; real LAN trust and origin policy must be validated.
 security:
   - bearerAuth: []
 paths:
+
+  /v1/health:
+    get:
+      operationId: localHealth
+      security: []
+      responses:
+        '200': {description: Local pilot readiness (bank and printing remain flagged)}
+  /v1/auth/login:
+    post:
+      operationId: login
+      security: []
+      requestBody: {required: true, content: {application/json: {schema: {type: object, required: [user_id, pin], properties: {user_id: {type: string}, pin: {type: string}}}}}}
+      responses:
+        '201': {description: Actor-scoped session token}
+  /v1/orders/history:
+    get:
+      operationId: pagedOrderHistory
+      parameters:
+        - name: cursor
+          in: query
+          schema: {type: string}
+        - name: limit
+          in: query
+          schema: {type: integer, minimum: 1, maximum: 100}
+      responses:
+        '200': {description: Cursor page with items and next_cursor}
+  /v1/orders/{orderId}/void:
+    post:
+      operationId: voidUnpaidOrder
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - name: orderId
+          in: path
+          required: true
+          schema: {type: string, format: uuid}
+      requestBody: {required: true, content: {application/json: {schema: {type: object, required: [reason], properties: {reason: {type: string}}}}}}
+      responses:
+        '201': {description: Unpaid order canceled with audit event}
+  /v1/cash-shifts/current:
+    get:
+      operationId: currentShift
+      responses:
+        '200': {description: Open shift or null}
+  /v1/cash-shifts/open:
+    post:
+      operationId: openShift
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody: {required: true, content: {application/json: {schema: {type: object, required: [opening_float_vnd], properties: {opening_float_vnd: { $ref: '#/components/schemas/MoneyVnd'}}}}}}
+      responses:
+        '201': {description: Shift now opened by cashier}
+  /v1/cash-shifts/{shiftId}/movements:
+    post:
+      operationId: cashMovement
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - name: shiftId
+          in: path
+          required: true
+          schema: {type: string}
+      requestBody: {required: true, content: {application/json: {schema: {type: object, required: [kind, amount_vnd, reason], properties: {kind: {type: string, enum: [ADD, WITHDRAW, EXPENSE]}, amount_vnd: { $ref: '#/components/schemas/MoneyVnd'}, reason: {type: string}}}}}}
+      responses:
+        '201': {description: Updated expected shift cash}
+  /v1/cash-shifts/{shiftId}/close:
+    post:
+      operationId: closeShift
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - name: shiftId
+          in: path
+          required: true
+          schema: {type: string}
+      requestBody: {required: true, content: {application/json: {schema: {type: object, required: [counted_cash_vnd], properties: {counted_cash_vnd: { $ref: '#/components/schemas/MoneyVnd'}, reason: {type: string}}}}}}
+      responses:
+        '201': {description: Immutable shift closure with variance}
+  /v1/orders/{orderId}/receipts:
+    get:
+      operationId: listReceiptCopies
+      parameters:
+        - name: orderId
+          in: path
+          required: true
+          schema: {type: string, format: uuid}
+      responses:
+        '200': {description: Copies and physical print send status}
+  /v1/receipt-copies/{copyId}/reprint:
+    post:
+      operationId: requestReprint
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - name: copyId
+          in: path
+          required: true
+          schema: {type: string}
+      requestBody: {required: true, content: {application/json: {schema: {type: object, required: [reason], properties: {reason: {type: string}}}}}}
+      responses:
+        '201': {description: Audited reprint request, no second payment}
+  /v1/owner/dashboard:
+    get:
+      operationId: ownerDashboard
+      responses:
+        '200': {description: Verified local cash sales only, no bank provider attached}
+  /v1/owner/products:
+    get:
+      operationId: ownerProducts
+      responses:
+        '200': {description: Owner catalog and prices}
+    post:
+      operationId: ownerCreateProduct
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody: {required: true, content: {application/json: {schema: {type: object, required: [name, category, price_vnd], properties: {name: {type: string}, category: {type: string}, price_vnd: { $ref: '#/components/schemas/MoneyVnd'}}}}}}
+      responses:
+        '201': {description: Product created}
+  /v1/owner/products/{productId}:
+    patch:
+      operationId: ownerUpdateProduct
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - name: productId
+          in: path
+          required: true
+          schema: {type: string}
+      requestBody: {required: true, content: {application/json: {schema: {type: object, required: [name, price_vnd, is_active], properties: {name: {type: string}, price_vnd: { $ref: '#/components/schemas/MoneyVnd'}, is_active: {type: boolean}}}}}}
+      responses:
+        '200': {description: Updated product with price version increment}
+  /v1/owner/employees:
+    get:
+      operationId: ownerListEmployees
+      responses:
+        '200': {description: Employees including active status}
+    post:
+      operationId: ownerAddEmployee
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody: {required: true, content: {application/json: {schema: {type: object, required: [id, name, role, pin], properties: {id: {type: string}, name: {type: string}, role: {type: string, enum: [STAFF, CASHIER]}, pin: {type: string}}}}}}
+      responses:
+        '201': {description: Employee created with hashed PIN}
+  /v1/owner/employees/{employeeId}:
+    patch:
+      operationId: ownerSetEmployeeActive
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - name: employeeId
+          in: path
+          required: true
+          schema: {type: string}
+      requestBody: {required: true, content: {application/json: {schema: {type: object, required: [active], properties: {active: {type: boolean}}}}}}
+      responses:
+        '200': {description: Employee activated or revoked}
+  /v1/orders/{orderId}/payments/bank-intent:
+    post:
+      operationId: bankPaymentIntent
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - name: orderId
+          in: path
+          required: true
+          schema: {type: string, format: uuid}
+      responses:
+        '503': {description: Bank provider not connected; no captured money and no QR}
+
   /v1/catalog:
     get:
       operationId: listCatalog
