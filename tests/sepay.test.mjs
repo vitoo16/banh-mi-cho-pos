@@ -46,7 +46,7 @@ test('SePay raw HMAC to cloud settlement to verified local cash desk, no duplica
    description:'KHACH CHUYEN TIEN',transferAmount:order.total_vnd,accumulated:10500000,referenceCode:'FT-TEST-92704'};
   const sec=String(Math.floor(Date.now()/1000));
   const sign=(payload,stamp=sec)=>'sha256='+mac(process.env.SEPAY_WEBHOOK_SECRET,stamp+'.'+payload);
-  const body=' { "id": 92704, '+JSON.stringify(rawBase).slice(1); // preserve whitespace to prove raw-byte HMAC
+  const body='  '+JSON.stringify(rawBase)+'\n'; // preserve original whitespace in the HMAC test
   await assert.rejects(()=>sepay.receiveWebhook(Buffer.from(body),sec,sign(JSON.stringify(rawBase))),e=>e.status===401);
   await assert.rejects(()=>sepay.receiveWebhook(Buffer.from(body),String(Number(sec)-3600),sign(body,String(Number(sec)-3600))),e=>e.status===401);
   const wrong={...rawBase,id:92705,transferAmount:order.total_vnd-1000};
