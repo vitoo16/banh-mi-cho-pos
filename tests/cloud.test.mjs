@@ -27,9 +27,15 @@ test('signed cloud replication, deduplication, payment projection and remote Own
   const move=[{id:'ev4',entity:'shift',payload:{id:'shift1',cashier_id:'cashier',opening_float_vnd:1000000,status:'OPEN',opened_at:order.created_at,closed_at:null}},{id:'ev5',entity:'cash_movement',payload:{id:'mv1',shift_id:'shift1',order_id:order.id,kind:'CASH_RECEIVED',amount_vnd:100000,created_at:order.created_at}},{id:'ev6',entity:'cash_movement',payload:{id:'mv2',shift_id:'shift1',order_id:order.id,kind:'CHANGE_PAID',amount_vnd:-65000,created_at:order.created_at}}];
   await svc.ingest(move,stamp,sign(move),store);
   assert.equal((await svc.summary()).shift.expected_cash_vnd,1035000);
-  assert.throws(()=>svc.login('owner','wrong'));
-  const login=svc.login('owner',process.env.CLOUD_OWNER_LOGIN_SECRET);
-  svc.authorize('Bearer '+login.token);
+  await assert.rejects(()=>svc.login('owner','wrong','192.0.2.40'));
+  const login=await svc.login('owner',process.env.CLOUD_OWNER_LOGIN_SECRET,'192.0.2.40');
+  await svc.authorize('Bearer '+login.token);
+  const replica=new CloudService(db);
+  await replica.authorize('Bearer '+login.token);
+  await replica.logout('Bearer '+login.token);
+  await assert.rejects(()=>svc.authorize('Bearer '+login.token));
+  for(let i=0;i<5;i++)await assert.rejects(()=>svc.login('owner','wrong','192.0.2.65'));
+  await assert.rejects(()=>svc.login('owner',process.env.CLOUD_OWNER_LOGIN_SECRET,'192.0.2.65'),e=>e.status===429);
   assert.equal((await svc.orderHistory()).items.length,1);
  }finally{await db.onModuleDestroy()}
 });

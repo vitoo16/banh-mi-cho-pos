@@ -9,6 +9,9 @@ export class CloudDb implements OnModuleInit,OnModuleDestroy{
  }
  async onModuleInit(){
   await this.pool.query(`
+CREATE TABLE IF NOT EXISTS owner_sessions(token_hash text PRIMARY KEY,secret_fingerprint text NOT NULL,expires_at timestamptz NOT NULL,created_at timestamptz NOT NULL DEFAULT now());
+CREATE INDEX IF NOT EXISTS owner_sessions_expiry ON owner_sessions(expires_at);
+CREATE TABLE IF NOT EXISTS owner_login_attempts(bucket text PRIMARY KEY,attempts integer NOT NULL,window_started timestamptz NOT NULL,blocked_until timestamptz);
 CREATE TABLE IF NOT EXISTS synced_events(store_id text NOT NULL,event_id text NOT NULL,entity text NOT NULL,received_at timestamptz NOT NULL DEFAULT now(),PRIMARY KEY(store_id,event_id));
 CREATE TABLE IF NOT EXISTS mirror_orders(store_id text NOT NULL,id text NOT NULL,display_code text NOT NULL,created_at timestamptz NOT NULL,created_by text NOT NULL,status text NOT NULL,payment_status text NOT NULL,requested_method text NOT NULL,total_vnd bigint NOT NULL,version integer NOT NULL,lines_json jsonb NOT NULL,PRIMARY KEY(store_id,id));
 CREATE INDEX IF NOT EXISTS mirror_orders_created ON mirror_orders(store_id,created_at DESC,id DESC);
