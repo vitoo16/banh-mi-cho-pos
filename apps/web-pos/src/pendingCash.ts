@@ -12,11 +12,11 @@ export const pendingCashStorageKey='bmc_pos_cash_capture_pending_v1';
 type Reader=Pick<Storage,'getItem'>;
 type Writer=Reader&Pick<Storage,'setItem'>;
 type Cleaner=Reader&Pick<Storage,'removeItem'>;
-function safeString(v:unknown){return typeof v==='string'&&v.length>=8&&v.length<=180}
+function safeString(v:unknown,min=1){return typeof v==='string'&&v.length>=min&&v.length<=180}
 function validate(v:unknown):v is PendingCashCapture{
  if(!v||typeof v!=='object')return false;
  const x=v as Record<string,unknown>;
- return safeString(x.key)&&safeString(x.cashier_id)&&safeString(x.order_id)&&safeString(x.shift_id)
+ return safeString(x.key,8)&&safeString(x.cashier_id)&&safeString(x.order_id)&&safeString(x.shift_id)
   &&Number.isSafeInteger(x.cash_tendered_vnd)&&Number(x.cash_tendered_vnd)>0&&Number(x.cash_tendered_vnd)<=1_000_000_000
   &&Number.isSafeInteger(x.expected_order_version)&&Number(x.expected_order_version)>0
   &&Number.isSafeInteger(x.created_at)&&Number(x.created_at)>0;

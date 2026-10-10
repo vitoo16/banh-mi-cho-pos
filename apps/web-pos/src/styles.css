@@ -14,3 +14,14 @@
 .print-alert-list button:focus-visible{outline:3px solid #2563eb;outline-offset:2px}
 @media(max-width:1023px){.ops-line{padding:7px 14px}.print-alert{margin:6px 14px}}
 @media(max-width:700px){.ops-line{font-size:11px;gap:4px}.print-alert{padding:9px 11px}.print-alert-title span{font-size:12px}}
+
+/* A durable uncertain CASH capture must always stay legible and actionable. */
+.cash-recovery{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin:8px 26px;padding:13px 15px;background:#fff0e7;border:2px solid #b45309;border-radius:12px;color:#712f09}
+.cash-recovery>div{display:flex;align-items:flex-start;gap:10px;min-width:0;flex:1}
+.cash-recovery>div>div{min-width:0}
+.cash-recovery strong{display:block;margin-bottom:3px;font-weight:800}
+.cash-recovery p{margin:0 0 5px;line-height:1.5;font-size:13px}
+.cash-recovery small{display:block;overflow-wrap:anywhere;line-height:1.5;font-size:12px}
+.cash-recovery button{min-height:44px;max-width:100%;white-space:normal;text-align:center}
+@media(max-width:1023px){.cash-recovery{margin:6px 14px}}
+@media(max-width:700px){.cash-recovery{padding:11px;flex-direction:column;align-items:stretch}.cash-recovery button{width:100%}}
