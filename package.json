@@ -11,6 +11,8 @@
     "test:domain": "node --test tests/money.test.mjs",
     "test:integration": "node --test tests/store.test.mjs tests/concurrency.test.mjs",
     "docs:check": "node scripts/check-docs.mjs",
+    "backup:store": "node scripts/store-backup.mjs backup",
+    "verify:backup": "node scripts/store-backup.mjs verify",
     "dev:hub": "npm run dev -w @bmc/store-hub",
     "dev:pos": "npm run dev -w @bmc/web-pos",
     "dev:owner": "npm run dev -w @bmc/web-owner",
