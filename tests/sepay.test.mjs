@@ -8,7 +8,7 @@ test('SePay webhook must HMAC-sign timestamp.raw_body and reject replay',()=>{
  assert.equal(verifySepayWebhook(raw,sig,ts,secret),true);
  assert.equal(verifySepayWebhook(Buffer.from(raw.toString()+' '),sig,ts,secret),false);
  assert.equal(verifySepayWebhook(raw,sig,String(Number(ts)-600),secret),false);
- assert.equal(verifySepayWebhook(raw,sig.replace(/.$/,'0'),ts,secret),false);
+ assert.equal(verifySepayWebhook(raw,'sha256='+('f'.repeat(64)===sig.slice(7)?'e'.repeat(64):'f'.repeat(64)),ts,secret),false);
  assert.equal(verifySepayWebhook(raw,sig,ts,'short'),false);
 });
 test('reference match exact and transfer fields validated',()=>{

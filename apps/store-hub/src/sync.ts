@@ -22,7 +22,7 @@ export class HubCloudSync implements OnModuleInit,OnModuleDestroy {
  }
  async flush(){
   const db=this.s.store;
-  const events=db.all<{id:string;kind:string;payload:string}>("SELECT id,kind,payload FROM cloud_outbox WHERE acked=0 ORDER BY created_at,id LIMIT 50");
+  const events=db.all<{id:string;kind:string;payload:string}>("SELECT id,kind,payload FROM cloud_outbox WHERE acked=0 ORDER BY CASE kind WHEN 'ORDER' THEN 0 ELSE 1 END,created_at,id LIMIT 50");
   if(!events.length)return;
   await this.request('/v1/sync/events',{method:'POST',body:JSON.stringify({events:events.map(e=>({id:e.id,kind:e.kind,payload:JSON.parse(e.payload)}))})});
   db.transaction(()=>{for(const e of events){

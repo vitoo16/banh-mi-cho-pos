@@ -16,8 +16,9 @@ export class CloudService{
  async ingest(events:unknown){
   if(!Array.isArray(events)||events.length<1||events.length>100)throw new CloudError(400,'INVALID_EVENTS','Invalid batch');
   const cfg=this.config();
+  const ordered=[...(events as SyncEvent[])].sort((a,b)=>(a?.kind==='ORDER'?0:1)-(b?.kind==='ORDER'?0:1));
   return this.database.txn(async c=>{
-   for(const e of events as SyncEvent[]){
+   for(const e of ordered){
     if(!e||typeof e.id!=='string'||!/^[0-9a-f-]{36}$/i.test(e.id)||!['ORDER','BANK_INTENT'].includes(e.kind)||!e.payload||typeof e.payload!=='object')throw new CloudError(400,'INVALID_EVENT','Unsupported event');
     const saved=await c.query('INSERT INTO sync_events(event_id,kind,payload) VALUES($1,$2,$3) ON CONFLICT DO NOTHING RETURNING event_id',[e.id,e.kind,e.payload]);if(saved.rowCount===0)continue;
     if(e.kind==='ORDER'){
