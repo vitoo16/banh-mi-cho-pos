@@ -32,5 +32,6 @@ jobs:
           node-version: '24'
       - run: npm install --no-audit --no-fund
       - run: npm run build -w @bmc/contracts
+      - run: npm run build -w @bmc/store-hub
       - run: npm run build -w @bmc/cloud-api
-      - run: node --test tests/cloud.test.mjs
+      - run: node --test --test-concurrency=1 tests/cloud.test.mjs tests/sepay.test.mjs

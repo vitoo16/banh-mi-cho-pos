@@ -16,6 +16,48 @@ paths:
       security: []
       responses:
         '200': {description: Local pilot readiness (bank and printing remain flagged)}
+  /v1/providers/sepay/webhook:
+    post:
+      operationId: verifiedSePayWebhook
+      summary: Raw HMAC-SHA256 webhook endpoint, merchant setup required
+      security: []
+      parameters:
+        - name: x-sepay-signature
+          in: header
+          required: true
+          schema: {type: string}
+        - name: x-sepay-timestamp
+          in: header
+          required: true
+          schema: {type: string}
+      responses:
+        '201': {description: Webhook durably classified as verified or exception}
+        '401': {description: Invalid signature or timestamp}
+  /v1/sync/settlements:
+    get:
+      operationId: pullVerifiedBankSettlements
+      summary: Signed authenticated cloud-to-Store Hub bank settlement inbox
+      security: []
+      parameters:
+        - name: after
+          in: query
+          required: true
+          schema: {type: string}
+        - name: x-bmc-store
+          in: header
+          required: true
+          schema: {type: string}
+        - name: x-bmc-timestamp
+          in: header
+          required: true
+          schema: {type: string}
+        - name: x-bmc-signature
+          in: header
+          required: true
+          schema: {type: string}
+      responses:
+        '200': {description: Signed cloud settlement envelope}
+        '401': {description: Invalid store, signature or time}
   /v1/auth/logout:
     post:
       operationId: remoteOwnerLogout
