@@ -17,6 +17,7 @@ export class StoreController {
  @Post('cash-shifts/:id/movements')movement(@Req()r:any,@Param('id')id:string,@Body()b:any,@Headers('idempotency-key')key:string){return this.call(()=>this.s.movement(this.s.actor(r.headers.authorization,['CASHIER']),id,b,key))}
  @Post('cash-shifts/:id/close')close(@Req()r:any,@Param('id')id:string,@Body()b:any,@Headers('idempotency-key')key:string){return this.call(()=>this.s.closeShift(this.s.actor(r.headers.authorization,['CASHIER']),id,b,key))}
  @Post('orders/:id/payments/cash')cash(@Req()r:any,@Param('id')id:string,@Body()b:any,@Headers('idempotency-key')key:string){return this.call(()=>this.s.cash(this.s.actor(r.headers.authorization,['CASHIER']),id,b,key))}
+ @Post('orders/:id/refunds/cash')refundCash(@Req()r:any,@Param('id')id:string,@Body()b:any,@Headers('idempotency-key')key:string){return this.call(()=>this.s.refundCash(this.s.actor(r.headers.authorization,['CASHIER']),id,b,key))}
  @Post('orders/:id/payments/bank-intent')bank(@Req()r:any,@Param('id')id:string,@Headers('idempotency-key')key:string){return this.call(()=>this.s.bankIntent(this.s.actor(r.headers.authorization,['CASHIER']),id,key))}
  @Post('internal/bank-events')bankEvent(@Body()body:any,@Headers('x-bmc-timestamp')ts:string,@Headers('x-bmc-signature')sig:string){return this.call(()=>this.s.bankEvent(JSON.stringify(body),ts,sig))}
  @Get('owner/bank-exceptions')bankExceptions(@Req()r:any){return this.call(()=>{this.s.actor(r.headers.authorization,['OWNER']);return this.s.bankExceptions()})}

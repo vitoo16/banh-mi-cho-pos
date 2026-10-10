@@ -39,6 +39,7 @@ export class HubClient {
   shift(){return this.request<Shift|null>('/v1/cash-shifts/current')}
   openShift(opening_float_vnd:number,key:string){return this.request<Shift>('/v1/cash-shifts/open',{method:'POST',body:JSON.stringify({opening_float_vnd})},key)}
   captureCash(id:string,shift_id:string,cash_tendered_vnd:number,expected_order_version:number,key:string){return this.request<PaymentReceipt>('/v1/orders/'+id+'/payments/cash',{method:'POST',body:JSON.stringify({shift_id,cash_tendered_vnd,expected_order_version})},key)}
+  refundCash(id:string,shift_id:string,reason:string,key:string){return this.request<{refund_id:string;amount_vnd:number;payment_status:'REFUNDED'}>('/v1/orders/'+id+'/refunds/cash',{method:'POST',body:JSON.stringify({shift_id,reason})},key)}
   receipts(id:string){return this.request<ReceiptCopy[]>('/v1/orders/'+id+'/receipts')}
   reprint(id:string,reason:string,key:string){return this.request<ReceiptCopy>('/v1/receipt-copies/'+id+'/reprint',{method:'POST',body:JSON.stringify({reason})},key)}
   movement(shift_id:string,kind:'ADD'|'WITHDRAW'|'EXPENSE',amount_vnd:number,reason:string,key:string){return this.request<Shift>('/v1/cash-shifts/'+shift_id+'/movements',{method:'POST',body:JSON.stringify({kind,amount_vnd,reason})},key)}
