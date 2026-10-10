@@ -9,6 +9,25 @@ permissions:
 jobs:
   checks:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: bmc_test
+          POSTGRES_PASSWORD: bmc_test_password
+          POSTGRES_DB: bmc_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U bmc_test -d bmc_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql://bmc_test:bmc_test_password@localhost:5432/bmc_test
+      BANK_ACCOUNT_NUMBER: '123456789'
+      BANK_BIN: '970415'
+      CLOUD_SYNC_TOKEN: test-cloud-token-is-at-least-32-characters-long
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4

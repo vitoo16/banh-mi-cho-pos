@@ -116,7 +116,7 @@ export class StoreService implements OnModuleInit {
    if(row.status!=='COMMITTED'||row.payment_status!=='UNPAID')throw new StoreError(409,'CANNOT_VOID','Chỉ được hủy đơn chưa thanh toán');
    const reason=ensureText(body?.reason,250);if(reason.length<3)throw new StoreError(400,'REASON_REQUIRED','Cần ghi lý do hủy đơn');
    this.store.run("UPDATE orders SET status='VOIDED',version=version+1 WHERE id=?",id);
-   audit(this.store,a.id,'ORDER_VOID',id,{reason});return this.order(a,id);
+   audit(this.store,a.id,'ORDER_VOID',id,{reason});this.store.run('INSERT INTO cloud_outbox(id,kind,payload,created_at) VALUES(?,?,?,?)',randomUUID(),'ORDER_VOID',JSON.stringify({order_id:id}),now());return this.order(a,id);
   });
  }
 

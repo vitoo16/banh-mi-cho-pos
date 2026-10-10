@@ -1,6 +1,6 @@
 import {Injectable} from '@nestjs/common';import {CloudDb} from './db';import {SepayTransfer,findExactMemoReference} from './sepay';
 export class CloudError extends Error {constructor(public readonly status:number,public readonly code:string,message:string){super(message)}}
-type SyncEvent={id:string;kind:'ORDER'|'BANK_INTENT';payload:any};
+type SyncEvent={id:string;kind:'ORDER'|'ORDER_VOID'|'BANK_INTENT';payload:any};
 @Injectable()
 export class CloudService{
  constructor(readonly database:CloudDb){}
@@ -19,11 +19,14 @@ export class CloudService{
   const ordered=[...(events as SyncEvent[])].sort((a,b)=>(a?.kind==='ORDER'?0:1)-(b?.kind==='ORDER'?0:1));
   return this.database.txn(async c=>{
    for(const e of ordered){
-    if(!e||typeof e.id!=='string'||!/^[0-9a-f-]{36}$/i.test(e.id)||!['ORDER','BANK_INTENT'].includes(e.kind)||!e.payload||typeof e.payload!=='object')throw new CloudError(400,'INVALID_EVENT','Unsupported event');
+    if(!e||typeof e.id!=='string'||!/^[0-9a-f-]{36}$/i.test(e.id)||!['ORDER','ORDER_VOID','BANK_INTENT'].includes(e.kind)||!e.payload||typeof e.payload!=='object')throw new CloudError(400,'INVALID_EVENT','Unsupported event');
     const saved=await c.query('INSERT INTO sync_events(event_id,kind,payload) VALUES($1,$2,$3) ON CONFLICT DO NOTHING RETURNING event_id',[e.id,e.kind,e.payload]);if(saved.rowCount===0)continue;
     if(e.kind==='ORDER'){
      const p=e.payload;if(typeof p.order_id!=='string'||typeof p.display_code!=='string'||!Number.isSafeInteger(p.total_vnd)||p.total_vnd<=0||p.status!=='COMMITTED'||typeof p.created_at!=='string')throw new CloudError(400,'INVALID_ORDER','Bad synced order');
      await c.query('INSERT INTO cloud_orders(order_id,display_code,total_vnd,status,created_at) VALUES($1,$2,$3,$4,$5) ON CONFLICT(order_id) DO NOTHING',[p.order_id,p.display_code,p.total_vnd,p.status,p.created_at]);
+    }else if(e.kind==='ORDER_VOID'){
+     const p=e.payload;if(typeof p.order_id!=='string')throw new CloudError(400,'INVALID_VOID','Order id missing');
+     await c.query("UPDATE cloud_orders SET status='VOIDED' WHERE order_id=$1 AND status='COMMITTED'",[p.order_id]);
     }else{
      const p=e.payload;if(typeof p.order_id!=='string'||typeof p.reference!=='string'||!/^BMC[A-F0-9]{16}$/.test(p.reference)||!Number.isSafeInteger(p.amount_vnd)||p.amount_vnd<=0||p.account_number!==cfg.account||p.bank_bin!==cfg.bin)throw new CloudError(400,'INVALID_INTENT','Bad intent');
      const order=await c.query('SELECT * FROM cloud_orders WHERE order_id=$1',[p.order_id]);if(order.rowCount===0)throw new CloudError(409,'ORDER_NOT_SYNCED','Order not in cloud');
