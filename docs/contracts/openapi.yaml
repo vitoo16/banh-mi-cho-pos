@@ -16,6 +16,13 @@ paths:
       security: []
       responses:
         '200': {description: Local pilot readiness (bank and printing remain flagged)}
+  /v1/auth/logout:
+    post:
+      operationId: remoteOwnerLogout
+      summary: Cloud Owner revokes the current remote session
+      responses:
+        '201': {description: Token revoked}
+        '401': {description: Missing, expired or revoked token}
   /v1/auth/login:
     post:
       operationId: login

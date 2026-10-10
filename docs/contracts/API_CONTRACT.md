@@ -112,3 +112,9 @@ A trusted bridge validates a real provider event before sending signed JSON to `
 - `POST /v1/orders/:orderId/payments/bank-intent`: cashier-scoped, generates unique transfer reference and exact destination when BANK_* environment is configured, **not** proof of payment or QR-provider integration.
 - `POST /v1/internal/bank-events`: *trusted bank bridge only*, `x-bmc-timestamp` Unix milliseconds within ±5 min, HMAC-SHA256(secret, timestamp + '.' + compact JSON body), `x-bmc-signature` hex. Events must contain `provider_tx_id`, `reference`, `bank_code`, `account_number`, `amount_vnd`, `direction: CREDIT`. Server validates exact reference/destination/amount and paid state transactionally before posting BANK capture and two receipt intents. Duplicate provider tx id returns original classification. This is **not** a direct bank-provider adapter.
 - `GET /v1/owner/bank-exceptions`: owner-scoped unmatched and mismatched transfers for human reconciliation.
+
+## Cloud history/backfill and privileged authentication
+
+Store Hub `prepareCloudBackfill(storeId)` is invoked when an outbound HTTPS sync config is enabled. The first run atomically queues a complete snapshot of local orders, payment captures, refunds, products, shifts, cash drawer movements and bank events and writes a store-bound marker in SQLite. Cloud entity IDs and versions prevent logical duplicates. This is a one-way mirror, **not** a cloud-authorized cashier/order mutation path.
+
+Cloud Owner `POST /v1/auth/login` is server-rate-limited per remote address and returns an opaque session token; only its SHA-256 hash, secret fingerprint and expiry are stored in PostgreSQL. `POST /v1/auth/logout` revokes the session. All cloud Owner endpoints authorize the token asynchronously against PostgreSQL, so sessions survive API restarts and are invalidated by password rotation. Owner cloud never accepts a staff cashier capture command.

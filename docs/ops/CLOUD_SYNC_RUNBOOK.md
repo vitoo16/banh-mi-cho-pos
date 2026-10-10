@@ -5,7 +5,7 @@ Status: code is implemented; NOT validated for production hardware, remote secur
 Architecture: Store Hub retains the authoritative SQLite WAL order/cash/receipt ledger. SQLite triggers write a transactional outbox. An outbound-only Hub worker signs JSON event batches with CLOUD_SYNC_SECRET and posts them over HTTPS to the NestJS Cloud API. PostgreSQL deduplicates by (store_id,event_id), mirrors orders/payments/products/shifts/refunds/cash movement/bank exceptions and drives read-only Owner remote reporting.
 
 Configuration:
-- Cloud: DATABASE_URL, CLOUD_STORE_ID, CLOUD_SYNC_SECRET (32+ random chars), CLOUD_OWNER_LOGIN_SECRET (12+ random chars), CLOUD_ALLOWED_ORIGIN (specific HTTPS Owner frontend origin), CLOUD_TLS_TERMINATED=1 only behind a trusted HTTPS ingress.
+- Cloud: DATABASE_URL, CLOUD_STORE_ID, CLOUD_SYNC_SECRET (32+ random chars), CLOUD_OWNER_LOGIN_SECRET (16+ random chars), CLOUD_ALLOWED_ORIGIN (specific HTTPS Owner frontend origin), CLOUD_TLS_TERMINATED=1 only behind a trusted HTTPS ingress.
 - Local Store Hub: CLOUD_SYNC_URL=https://your-cloud-host, CLOUD_STORE_ID and exactly the same CLOUD_SYNC_SECRET. Keep all secrets server-side.
 - Web Owner: VITE_CLOUD_API_URL=https://your-cloud-host. The remote Owner UI is READ ONLY; price/employees remain editable using local Owner UI.
 
@@ -14,3 +14,15 @@ Commands: npm install; npm run build; npm run dev:cloud (with a cloud .env confi
 Security: NEVER expose DB password, bank-bridge key, cloud sync key or Owner password in Vite/Expo bundles. Public bind must have configured reverse proxy TLS, strong secrets, rate limiting, monitoring and revocation before launch.
 
 Acceptance still required: 30-minute WAN outage, initial backfill for an established shop, Postgres restore, signed cloud command inbox for remote edits, real printer/cash drawer, bank provider merchant/webhook evidence and end-to-end device-pairing TLS.
+
+## Upgrading an existing local store
+
+With `CLOUD_SYNC_URL`, `CLOUD_STORE_ID` and `CLOUD_SYNC_SECRET` configured, Store Hub performs one transactional history snapshot per store ID before starting outbound synchronization. Existing orders, payment records, refunds, products, shifts, drawer movements and bank-event exceptions are queued even if originally written before cloud sync existed. Backfill marker and events commit atomically; restart is safe. Never change `CLOUD_STORE_ID` on an already paired store without a separately audited migration.
+
+## Remote Owner sessions
+
+Owner login requires a strong 16+ character cloud password, per-origin-address PostgreSQL login attempt lockout (5 failures within 15 minutes), persistent hashed/revocable 8-hour sessions, and logout that invalidates the server session. Restarting Cloud API does not invalidate valid sessions. Rotating `CLOUD_OWNER_LOGIN_SECRET` invalidates previous session tokens. Use a trusted proxy configuration for accurate client IPs and enforce edge rate limits as defense in depth. Remote Owner remains read-only.
+
+## Operational remaining acceptance
+
+Automated backfill and auth tests do **not** certify restored database, performance across 8 phones, actual thermal printing, or bank settlement provider. Test those on deployment infrastructure. Confirm remote report freshness before accounting decisions.
