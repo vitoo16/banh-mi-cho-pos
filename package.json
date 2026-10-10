@@ -6,8 +6,8 @@
   "engines": {"node": ">=24"},
   "workspaces": ["apps/*", "packages/*"],
   "scripts": {
-    "build": "npm run build -w @bmc/contracts && npm run build -w @bmc/store-hub && npm run build -w @bmc/web-pos && npm run build -w @bmc/web-owner",
-    "check": "npm run build -w @bmc/contracts && npm run typecheck -w @bmc/contracts && npm run typecheck -w @bmc/store-hub && npm run typecheck -w @bmc/web-pos && npm run typecheck -w @bmc/web-owner",
+    "build": "npm run build -w @bmc/contracts && npm run build -w @bmc/store-hub && npm run build -w @bmc/web-pos && npm run build -w @bmc/web-owner && npm run build -w @bmc/cloud-api",
+    "check": "npm run build -w @bmc/contracts && npm run typecheck -w @bmc/contracts && npm run typecheck -w @bmc/store-hub && npm run typecheck -w @bmc/web-pos && npm run typecheck -w @bmc/web-owner && npm run typecheck -w @bmc/mobile-staff && npm run typecheck -w @bmc/cloud-api",
     "test:domain": "node --test tests/money.test.mjs",
     "test:integration": "node --test tests/store.test.mjs tests/concurrency.test.mjs",
     "docs:check": "node scripts/check-docs.mjs",
@@ -16,7 +16,8 @@
     "dev:hub": "npm run dev -w @bmc/store-hub",
     "dev:pos": "npm run dev -w @bmc/web-pos",
     "dev:owner": "npm run dev -w @bmc/web-owner",
-    "dev:mobile": "npm run start -w @bmc/mobile-staff"
+    "dev:mobile": "npm run start -w @bmc/mobile-staff",
+    "dev:cloud": "npm run dev -w @bmc/cloud-api"
   },
   "devDependencies": {"typescript": "^5.9.3", "@types/node": "^24.0.0"}
 }
