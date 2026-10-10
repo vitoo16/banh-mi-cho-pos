@@ -125,3 +125,11 @@ Cloud Owner `POST /v1/auth/login` is server-rate-limited per remote address and 
 - `GET /v1/sync/settlements?after=<seq>` — Store Hub only: `x-bmc-store`, `x-bmc-timestamp` (milliseconds), and HMAC-SHA256 hex over `timestamp+'.GET:'+storeId+':'+after`. Returns `{timestamp,payload:{store_id,settlements},signature}` signed on `timestamp+'.'+JSON.stringify(payload)`.
 - Hub validates signed response, submits `provider_tx_id='sepay:'+id`, reference, receiver, exact amount through the existing HMAC-protected bankEvent local transaction, then persists the cursor. Client/UI is not allowed to set PAID.
 - `bank_intent` cloud outbox entity has `order_id`, `reference`, `account_number`, `bank_code`, `amount_vnd`, `status`. Existing intents are backfilled under a separate migration marker. Provider payload ingestion must only happen on Cloud, never from the staff app.
+
+## Protected Store LAN staff devices
+
+- Owner at the **local POS** calls `POST /v1/owner/device-pairing-codes` with Owner session (8-character code, 5-minute expiry, hashed in SQLite and single-use).
+- Staff native RN calls `POST /v1/auth/device/pair` with `{code,device_name}` **over trusted LAN HTTPS** to obtain an opaque 256-bit `device_token`, stored in Expo SecureStore. Subsequent mobile calls include `X-Device-Token`.
+- Hub's direct TLS Fastify onRequest gateway checks socket IP, non-revoked device token and authenticated **STAFF** role on all remote order/catalog endpoints. Only `GET /v1/health`, `POST /v1/auth/device/pair` and a *paired* `POST /v1/auth/login` are pre-login exceptions. LAN phones cannot call cashier, Owner, bank, print, shift or refund routes even if they know credentials.
+- Local Owner can query `GET /v1/owner/devices` and revoke by `POST /v1/owner/devices/:deviceId/revoke`; revoked tokens stop working immediately. Signed-in staff must authenticate individually with PIN after device pairing.
+- TLS must be terminated **directly at the Store Hub** to keep socket peer IP authoritative. Only loopback routes bypass device gateway; do not deploy a reverse proxy that causes remote devices to appear as loopback. The temporary insecure LAN development flag is **not production safe**. Mobile devices must trust the LAN server certificate matching its IP/DNS SAN.

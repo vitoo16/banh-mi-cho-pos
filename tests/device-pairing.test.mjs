@@ -1,0 +1,40 @@
+import {test} from 'node:test';
+import assert from 'node:assert/strict';
+import {mkdtempSync,rmSync} from 'node:fs';
+import {join} from 'node:path';
+import {tmpdir} from 'node:os';
+import {createRequire} from 'node:module';
+const require=createRequire(import.meta.url);
+test('owner pairs exactly one staff phone, revokes instantly, rejects nonstaff credentials',()=>{
+ const dir=mkdtempSync(join(tmpdir(),'bmc-pair-'));
+ try{
+  process.env.STORE_DB_PATH=join(dir,'shop.sqlite');
+  process.env.BOOTSTRAP_OWNER_PIN='owner-pairing-test-strong';
+  process.env.BOOTSTRAP_CASHIER_PIN='cashier-pairing-test-strong';
+  process.env.BOOTSTRAP_STAFF_PIN='staff-pairing-test-strong';
+  process.env.SEED_DEMO_CATALOG='0';
+  const {StoreService}=require('../apps/store-hub/dist/service.js');
+  const service=new StoreService();service.onModuleInit();
+  const owner=service.actor('Bearer '+service.login('owner',process.env.BOOTSTRAP_OWNER_PIN).token,['OWNER']);
+  const staff=service.actor('Bearer '+service.login('staff',process.env.BOOTSTRAP_STAFF_PIN).token,['STAFF']);
+  assert.throws(()=>service.createDevicePairCode(staff),e=>e.code==='FORBIDDEN');
+  const code=service.createDevicePairCode(owner);
+  assert.match(code.code,/^[A-HJ-NP-Z2-9]{8}$/);
+  assert.ok(Date.parse(code.expires_at)-Date.now()<=300000);
+  assert.throws(()=>service.pairDevice({code:'ABCDEFGH',device_name:'Test phone'},'192.0.2.1'),e=>e.code==='INVALID_PAIR_CODE');
+  const paired=service.pairDevice({code:code.code,device_name:'Android A'},'192.0.2.1');
+  assert.equal(paired.role,'STAFF');
+  assert.equal(paired.device_token.length,43);
+  assert.equal(service.validateDevice(paired.device_token).label,'Android A');
+  assert.throws(()=>service.pairDevice({code:code.code,device_name:'Android B'},'192.0.2.2'),e=>e.code==='INVALID_PAIR_CODE');
+  assert.equal(service.devices(owner).length,1);
+  assert.throws(()=>service.login('cashier',process.env.BOOTSTRAP_CASHIER_PIN,true),e=>e.code==='STAFF_DEVICE_ONLY');
+  assert.throws(()=>service.login('owner',process.env.BOOTSTRAP_OWNER_PIN,true),e=>e.code==='STAFF_DEVICE_ONLY');
+  assert.equal(service.login('staff',process.env.BOOTSTRAP_STAFF_PIN,true).user.role,'STAFF');
+  assert.deepEqual(service.revokeDevice(owner,paired.device_id),{id:paired.device_id,revoked:true});
+  assert.throws(()=>service.validateDevice(paired.device_token),e=>e.code==='DEVICE_REVOKED');
+  const fresh=service.createDevicePairCode(owner);
+  service.store.run('UPDATE device_pair_codes SET expires_at=? WHERE code_hash=?',Date.now()-1000,require('node:crypto').createHash('sha256').update(fresh.code).digest('hex'));
+  assert.throws(()=>service.pairDevice({code:fresh.code,device_name:'Expired'},'192.0.2.3'),e=>e.code==='INVALID_PAIR_CODE');
+ }finally{rmSync(dir,{recursive:true,force:true})}
+});
