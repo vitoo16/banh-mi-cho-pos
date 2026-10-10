@@ -326,12 +326,27 @@ export class StoreService implements OnModuleInit {
    return this.getShift(id)!;
   });
  }
+ operationalStatus(a:Actor){
+  if(a.role!=='CASHIER'&&a.role!=='OWNER')throw new StoreError(403,'FORBIDDEN','Chỉ thu ngân/chủ tiệm được xem trạng thái vận hành');
+  const rows=this.store.all<{status:string;n:number}>("SELECT status,COUNT(*) n FROM receipts WHERE status IN ('UNKNOWN','WAITING_FOR_PRINTER') GROUP BY status");
+  const statusCounts=Object.fromEntries(rows.map(r=>[r.status,r.n]));
+  const unknown=this.store.all<{id:string;order_id:string;display_code:string;kind:string;attempts:number;created_at:string}>(
+   "SELECT r.id,r.order_id,o.display_code,r.kind,r.attempts,r.created_at FROM receipts r JOIN orders o ON o.id=r.order_id WHERE r.status='UNKNOWN' ORDER BY r.created_at DESC,r.id DESC LIMIT 8"
+  );
+  const backlog=this.store.row<{n:number}>('SELECT COUNT(*) n FROM sync_outbox WHERE delivered_at IS NULL')?.n||0;
+  const last=this.store.row<{at:string|null}>('SELECT MAX(delivered_at) at FROM sync_outbox WHERE delivered_at IS NOT NULL')?.at||null;
+  return {
+   checked_at:now(),
+   printer:{driver_configured:Boolean(process.env.PRINTER_HOST),waiting_copies:statusCounts.WAITING_FOR_PRINTER||0,unknown_copies:statusCounts.UNKNOWN||0,unknown_receipts:unknown},
+   cloud_sync:{configured:Boolean(process.env.CLOUD_SYNC_URL),pending_events:backlog,last_delivered_at:process.env.CLOUD_SYNC_URL?last:null}
+  };
+ }
  summary(){
   const p=this.store.row<any>("SELECT COUNT(*) paid_orders,COALESCE(SUM(total_vnd),0) net_revenue_vnd FROM orders WHERE payment_status='PAID'");
   const cash=(this.store.row<any>("SELECT COALESCE(SUM(amount_vnd),0) val FROM payments WHERE method='CASH'")?.val||0)-(this.store.row<any>("SELECT COALESCE(SUM(amount_vnd),0) val FROM cash_refunds")?.val||0);
   const unpaid=this.store.row<any>("SELECT COUNT(*) n FROM orders WHERE status='COMMITTED' AND payment_status='UNPAID'")?.n||0;
   const bank=this.store.row<any>("SELECT COUNT(*) n FROM orders WHERE status='COMMITTED' AND payment_status='UNPAID' AND requested_method='BANK'")?.n||0;
-  return {paid_orders:p.paid_orders,net_revenue_vnd:p.net_revenue_vnd,cash_vnd:cash,bank_vnd:this.store.row<any>("SELECT COALESCE(SUM(amount_vnd),0) total FROM payments WHERE method='BANK'")?.total||0,pending_orders:unpaid,bank_pending:bank,last_synced_at:now(),shift:this.currentShift()};
+  return {paid_orders:p.paid_orders,net_revenue_vnd:p.net_revenue_vnd,cash_vnd:cash,bank_vnd:this.store.row<any>("SELECT COALESCE(SUM(amount_vnd),0) total FROM payments WHERE method='BANK'")?.total||0,pending_orders:unpaid,bank_pending:bank,last_synced_at:process.env.CLOUD_SYNC_URL?(this.store.row<{at:string|null}>('SELECT MAX(delivered_at) at FROM sync_outbox WHERE delivered_at IS NOT NULL')?.at||null):null,shift:this.currentShift()};
  }
  bankIntent(a:Actor,id:string,key:unknown){
   return this.idem('bank.intent:'+id,key,()=>{

@@ -10,6 +10,11 @@ export interface Shift {id:string;cashier_id:string;opening_float_vnd:number;sta
 export interface PaymentReceipt {payment_id:string;cash_tendered_vnd:number;cash_change_vnd:number;cash_net_vnd:number;payment_status:PaymentStatus;receipt_batch_id:string}
 export interface ReceiptCopy {id:string;kind:'CUSTOMER'|'STORE';status:'QUEUED'|'SENT'|'UNKNOWN'|'FAILED'|'WAITING_FOR_PRINTER';attempts:number}
 export interface OrderPage {items:Order[];next_cursor:string|null}
+export interface OperationalStatus {
+ checked_at:string;
+ printer:{driver_configured:boolean;waiting_copies:number;unknown_copies:number;unknown_receipts:Array<{id:string;order_id:string;display_code:string;kind:'CUSTOMER'|'STORE';attempts:number;created_at:string}>};
+ cloud_sync:{configured:boolean;pending_events:number;last_delivered_at:string|null};
+}
 export interface Summary {paid_orders:number;net_revenue_vnd:number;cash_vnd:number;bank_vnd:number;/** Cloud only: verified bank funds held outside sales until a cash/bank conflict is resolved. */unallocated_bank_vnd?:number;/** Cloud only: orders with both cash and verified bank funds. */bank_conflict_orders?:number;pending_orders:number;bank_pending:number;last_synced_at:string|null;shift:Shift|null}
 export interface Employee {id:string;name:string;role:Role;active:boolean}
 export interface User {id:string;name:string;role:Role}
@@ -53,6 +58,7 @@ export class HubClient {
   createOrder(body:CreateOrderInput,key:string){return this.request<Order>('/v1/orders',{method:'POST',body:JSON.stringify(body)},key)}
   voidOrder(id:string,reason:string,key:string){return this.request<Order>('/v1/orders/'+id+'/void',{method:'POST',body:JSON.stringify({reason})},key)}
   shift(){return this.request<Shift|null>('/v1/cash-shifts/current')}
+  operationalStatus(){return this.request<OperationalStatus>('/v1/cashier/operational-status')}
   openShift(opening_float_vnd:number,key:string){return this.request<Shift>('/v1/cash-shifts/open',{method:'POST',body:JSON.stringify({opening_float_vnd})},key)}
   captureCash(id:string,shift_id:string,cash_tendered_vnd:number,expected_order_version:number,key:string){return this.request<PaymentReceipt>('/v1/orders/'+id+'/payments/cash',{method:'POST',body:JSON.stringify({shift_id,cash_tendered_vnd,expected_order_version})},key)}
   refundCash(id:string,shift_id:string,reason:string,key:string){return this.request<{refund_id:string;amount_vnd:number;payment_status:'REFUNDED'}>('/v1/orders/'+id+'/refunds/cash',{method:'POST',body:JSON.stringify({shift_id,reason})},key)}

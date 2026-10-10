@@ -30,6 +30,7 @@ CREATE TABLE IF NOT EXISTS audit(id TEXT PRIMARY KEY,actor_id TEXT NOT NULL,kind
 CREATE INDEX IF NOT EXISTS idx_orders_created ON orders(created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_movements_shift ON cash_movements(shift_id);
 CREATE INDEX IF NOT EXISTS idx_receipts_order ON receipts(order_id);
+CREATE INDEX IF NOT EXISTS idx_receipts_operational ON receipts(status,created_at,id);
 CREATE TABLE IF NOT EXISTS sync_outbox(seq INTEGER PRIMARY KEY AUTOINCREMENT,id TEXT NOT NULL UNIQUE DEFAULT (lower(hex(randomblob(16)))),entity TEXT NOT NULL,payload_json TEXT NOT NULL,created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,delivered_at TEXT);
 CREATE INDEX IF NOT EXISTS idx_sync_outbox_pending ON sync_outbox(delivered_at,seq);
 CREATE TRIGGER IF NOT EXISTS sync_order_created AFTER INSERT ON orders BEGIN
