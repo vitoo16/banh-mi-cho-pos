@@ -1,0 +1,81 @@
+import {test} from 'node:test';
+import assert from 'node:assert/strict';
+import {mkdtempSync,rmSync} from 'node:fs';
+import {join} from 'node:path';
+import {tmpdir} from 'node:os';
+import {createRequire} from 'node:module';
+import {createHmac} from 'node:crypto';
+const require=createRequire(import.meta.url);
+const mac=(key,data)=>createHmac('sha256',key).update(data).digest('hex');
+
+test('SePay raw HMAC to cloud settlement to verified local cash desk, no duplicates',async()=>{
+ const dir=mkdtempSync(join(tmpdir(),'bmc-sepay-'));
+ process.env.CLOUD_STORE_ID='test-sepay-store';
+ process.env.CLOUD_SYNC_SECRET='test-cloud-sync-32-random-characters-abcd';
+ process.env.BANK_BRIDGE_SECRET='test-internal-bank-bridge-32-secret-abc';
+ process.env.BANK_ACCOUNT_NUMBER='1017588888';
+ process.env.BANK_CODE='Vietcombank';
+ process.env.SEPAY_ACCOUNT_NUMBER='1017588888';
+ process.env.SEPAY_BANK_GATEWAY='Vietcombank';
+ process.env.SEPAY_WEBHOOK_SECRET='test-sepay-whsec-32-random-characters';
+ process.env.STORE_DB_PATH=join(dir,'shop.sqlite');
+ process.env.BOOTSTRAP_OWNER_PIN='owner-test-sepay-strong';
+ process.env.BOOTSTRAP_CASHIER_PIN='cashier-test-sepay-strong';
+ process.env.BOOTSTRAP_STAFF_PIN='staff-test-sepay-strong';
+ process.env.SEED_DEMO_CATALOG='1';
+ const {CloudDb}=require('../apps/cloud-api/dist/db.js');
+ const {CloudService}=require('../apps/cloud-api/dist/service.js');
+ const {SePayService}=require('../apps/cloud-api/dist/sepay.js');
+ const {StoreService}=require('../apps/store-hub/dist/service.js');
+ const db=new CloudDb();await db.onModuleInit();
+ try{
+  const cloud=new CloudService(db),sepay=new SePayService(db);
+  const local=new StoreService();local.onModuleInit();
+  const staff=local.actor('Bearer '+local.login('staff',process.env.BOOTSTRAP_STAFF_PIN).token,['STAFF']);
+  const cashier=local.actor('Bearer '+local.login('cashier',process.env.BOOTSTRAP_CASHIER_PIN).token,['CASHIER']);
+  const catalog=local.catalog();
+  const order=local.createOrder(staff,{catalog_version:catalog.version,requested_payment_method:'BANK',items:[{product_id:catalog.products[0].id,qty:1}]},'sepay-order-0001');
+  const intent=local.bankIntent(cashier,order.order_id,'sepay-intent-0001');
+  assert.equal(intent.status,'PENDING');
+  const selected=local.store.all("SELECT id,entity,payload_json FROM sync_outbox WHERE entity IN ('order','bank_intent') ORDER BY seq");
+  const events=selected.map(x=>({id:x.id,entity:x.entity,payload:JSON.parse(x.payload_json)}));
+  const ms=String(Date.now()),csig=mac(process.env.CLOUD_SYNC_SECRET,ms+'.'+JSON.stringify({events}));
+  assert.deepEqual((await cloud.ingest(events,ms,csig,process.env.CLOUD_STORE_ID)).received,events.map(x=>x.id));
+  const rawBase={id:92704,gateway:'Vietcombank',transactionDate:'2026-10-11 10:00:00',accountNumber:'1017588888',
+   subAccount:'',code:intent.reference,content:intent.reference+' chuyen tien',transferType:'in',
+   description:'KHACH CHUYEN TIEN',transferAmount:order.total_vnd,accumulated:10500000,referenceCode:'FT-TEST-92704'};
+  const sec=String(Math.floor(Date.now()/1000));
+  const sign=(payload,stamp=sec)=>'sha256='+mac(process.env.SEPAY_WEBHOOK_SECRET,stamp+'.'+payload);
+  const body=' { "id": 92704, '+JSON.stringify(rawBase).slice(1); // preserve whitespace to prove raw-byte HMAC
+  await assert.rejects(()=>sepay.receiveWebhook(Buffer.from(body),sec,sign(JSON.stringify(rawBase))),e=>e.status===401);
+  await assert.rejects(()=>sepay.receiveWebhook(Buffer.from(body),String(Number(sec)-3600),sign(body,String(Number(sec)-3600))),e=>e.status===401);
+  const wrong={...rawBase,id:92705,transferAmount:order.total_vnd-1000};
+  await sepay.receiveWebhook(Buffer.from(JSON.stringify(wrong)),sec,sign(JSON.stringify(wrong)));
+  const wrongReceiver={...rawBase,id:92706,accountNumber:'0000000000'};
+  await sepay.receiveWebhook(Buffer.from(JSON.stringify(wrongReceiver)),sec,sign(JSON.stringify(wrongReceiver)));
+  const count=await db.pool.query("SELECT COUNT(*) n FROM cloud_bank_settlements WHERE store_id=$1",[process.env.CLOUD_STORE_ID]);
+  assert.equal(Number(count.rows[0].n),0);
+  assert.equal((await cloud.summary()).bank_vnd,0);
+  assert.deepEqual(await sepay.receiveWebhook(Buffer.from(body),sec,sign(body)),{success:true});
+  assert.deepEqual(await sepay.receiveWebhook(Buffer.from(body),sec,sign(body)),{success:true});
+  const settled=await db.pool.query("SELECT COUNT(*) n FROM cloud_bank_settlements WHERE store_id=$1",[process.env.CLOUD_STORE_ID]);
+  assert.equal(Number(settled.rows[0].n),1);
+  assert.equal((await cloud.summary()).bank_vnd,order.total_vnd);
+  const reqStamp=String(Date.now()),reqSig=mac(process.env.CLOUD_SYNC_SECRET,reqStamp+'.GET:'+process.env.CLOUD_STORE_ID+':0');
+  await assert.rejects(()=>sepay.signedSettlements('0',process.env.CLOUD_STORE_ID,reqStamp,'broken'),e=>e.status===401);
+  const env=await sepay.signedSettlements('0',process.env.CLOUD_STORE_ID,reqStamp,reqSig);
+  assert.equal(env.payload.settlements.length,1);
+  assert.equal(env.signature,mac(process.env.CLOUD_SYNC_SECRET,env.timestamp+'.'+JSON.stringify(env.payload)));
+  const command=env.payload.settlements[0];
+  const event={provider_tx_id:command.provider_tx_id,reference:command.reference,account_number:command.account_number,
+   bank_code:command.bank_code,amount_vnd:command.amount_vnd,direction:'CREDIT'};
+  const eventText=JSON.stringify(event),bridgeStamp=String(Date.now()),bridgeSig=mac(process.env.BANK_BRIDGE_SECRET,bridgeStamp+'.'+eventText);
+  assert.equal(local.bankEvent(eventText,bridgeStamp,bridgeSig).state,'CONFIRMED');
+  assert.equal(local.bankEvent(eventText,bridgeStamp,bridgeSig).duplicate,true);
+  assert.equal(local.order(staff,order.order_id).payment_status,'PAID');
+  assert.equal(local.receipts(cashier,order.order_id).length,2);
+  assert.equal(local.summary().bank_vnd,order.total_vnd);
+  const exceptions=await db.pool.query("SELECT reason FROM sepay_events WHERE store_id=$1 AND state='EXCEPTION'",[process.env.CLOUD_STORE_ID]);
+  assert.deepEqual(exceptions.rows.map(x=>x.reason).sort(),['AMOUNT_MISMATCH','WRONG_RECEIVER'].sort());
+ }finally{await db.onModuleDestroy();rmSync(dir,{recursive:true,force:true})}
+});

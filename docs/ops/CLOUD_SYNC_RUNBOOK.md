@@ -32,3 +32,13 @@ Automated backfill and auth tests do **not** certify restored database, performa
 When the SePay cloud adapter and merchant-linked bank account have passed testing, set `ENABLE_VERIFIED_BANK_INBOX=1` on Store Hub, alongside HTTPS `CLOUD_SYNC_URL`, `CLOUD_SYNC_SECRET`, `BANK_BRIDGE_SECRET`, and identical `CLOUD_STORE_ID`. The outbound worker polls signed settlement envelopes, validates signature/store ID/cursor/amount/reference and submits each event through the Hub's idempotent bank-verification transaction. Cursor moves forward only after local processing, so retries do not create second captures.
 
 Hub never trusts a screenshot or an unauthenticated cloud response, and it never needs an inbound public webhook port. Bank provider verification stays cloud-authoritative. Confirmed-but-late transfers after a cashier CASH capture become explicit exception events, not a second local receipt batch.
+
+## SePay HMAC webhook adapter (provider-specific)
+
+Official reference: https://developer.sepay.vn/vi/sepay-webhooks/xac-thuc and https://developer.sepay.vn/vi/sepay-webhooks/tich-hop-webhook
+
+The cloud endpoint `POST /v1/providers/sepay/webhook` requires HMAC-SHA256 with `X-SePay-Signature: sha256=<hex>` over the **original raw body** and `X-SePay-Timestamp` (Unix seconds, ±5 min). It cannot be tested by stringifying a parsed JSON body and expecting the same signature. Enable Nest Fastify `rawBody:true` and configure `SEPAY_WEBHOOK_SECRET` (32+ chars), `SEPAY_ACCOUNT_NUMBER` and `SEPAY_BANK_GATEWAY`. The Store Hub `BANK_CODE` must match the SePay webhook `gateway` identifier; `BANK_ACCOUNT_NUMBER` must match merchant receiving account. `BANK_BRIDGE_SECRET` must be configured independently from the cloud sync signing key.
+
+SePay transaction IDs have a unique constraint; mismatched amount, direction, receiver, missing reference and duplicate order capture remain exceptions. Only exact verified credits produce a durable cloud settlement. `GET /v1/sync/settlements?after=...` requires HMAC-authenticated Hub polling and returns a signed envelope. Store Hub validates it again, applies its existing idempotent bankEvent transaction and commits its cursor AFTER each recorded provider transaction; a replay cannot duplicate receipts/revenue. Keep `ENABLE_VERIFIED_BANK_INBOX` disabled until a real sandbox and controlled test transfer pass.
+
+**Bank-provider sandbox and account registration are external acceptance requirements.** Cloud HMAC + CI simulated transfer tests do not substitute for verification that SePay can observe the shop's actual linked bank account. No MoMo merchant integration is claimed.
