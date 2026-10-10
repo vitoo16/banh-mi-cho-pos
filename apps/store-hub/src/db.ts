@@ -27,6 +27,7 @@ CREATE INDEX IF NOT EXISTS idx_outbox_unacked ON cloud_outbox(acked,created_at);
 CREATE TABLE IF NOT EXISTS audit(id TEXT PRIMARY KEY,actor_id TEXT NOT NULL,kind TEXT NOT NULL,entity_id TEXT NOT NULL,created_at TEXT NOT NULL,details_json TEXT NOT NULL);
 CREATE INDEX IF NOT EXISTS idx_orders_created ON orders(created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_movements_shift ON cash_movements(shift_id);
+CREATE INDEX IF NOT EXISTS idx_payments_order ON payments(order_id);
 CREATE INDEX IF NOT EXISTS idx_receipts_order ON receipts(order_id);
 CREATE UNIQUE INDEX IF NOT EXISTS idx_one_payment_per_order ON payments(order_id) WHERE method IN ('CASH','BANK');
 `);

@@ -5,7 +5,7 @@ export type Role='OWNER'|'CASHIER'|'STAFF';
 export interface Product {id:string; name:string; category:string; price_vnd:number; is_active:boolean}
 export interface Catalog {version:number;products:Product[];enabled_payment_methods:PaymentMethod[]}
 export interface OrderItem {product_id:string;name_snapshot:string;qty:number;unit_price_vnd:number;line_total_vnd:number;note:string}
-export interface Order {order_id:string;display_code:string;created_at:string;created_by:string;status:'COMMITTED'|'VOIDED';payment_status:PaymentStatus;requested_payment_method:PaymentMethod;total_vnd:number;version:number;items:OrderItem[];note:string}
+export interface Order {order_id:string;display_code:string;created_at:string;created_by:string;status:'COMMITTED'|'VOIDED';payment_status:PaymentStatus;requested_payment_method:PaymentMethod;actual_payment_method?:PaymentMethod|null;total_vnd:number;version:number;items:OrderItem[];note:string}
 export interface Shift {id:string;cashier_id:string;opening_float_vnd:number;status:'OPEN'|'CLOSED';opened_at:string;closed_at?:string;expected_cash_vnd:number;counted_cash_vnd?:number;variance_vnd?:number}
 export interface PaymentReceipt {payment_id:string;cash_tendered_vnd:number;cash_change_vnd:number;cash_net_vnd:number;payment_status:PaymentStatus;receipt_batch_id:string}
 export interface CashRefund {refund_id:string;amount_vnd:number;payment_status:'REFUNDED'}

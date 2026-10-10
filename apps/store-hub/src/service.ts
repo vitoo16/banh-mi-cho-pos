@@ -141,7 +141,7 @@ export class StoreService implements OnModuleInit {
   const last=items[items.length-1];
   return {items:items.map(x=>this.asOrder(x)),next_cursor:hasMore&&last?Buffer.from(JSON.stringify({t:last.created_at,id:last.id})).toString('base64url'):null};
  }
- private asOrder(r:any){return {order_id:r.id,display_code:r.display_code,created_at:r.created_at,created_by:r.created_by,status:r.status,payment_status:r.payment_status,requested_payment_method:r.requested_method,total_vnd:r.total_vnd,version:r.version,note:r.note,items:JSON.parse(r.lines_json)}}
+ private asOrder(r:any){return {order_id:r.id,display_code:r.display_code,created_at:r.created_at,created_by:r.created_by,status:r.status,payment_status:r.payment_status,requested_payment_method:r.requested_method,total_vnd:r.total_vnd,version:r.version,note:r.note,actual_payment_method:(this.store.row<{method:string}>('SELECT method FROM payments WHERE order_id=?',r.id)?.method||null),items:JSON.parse(r.lines_json)}}
  createOrder(a:Actor,body:any,key:unknown){
   return this.idem('order.create:'+a.id,key,body,()=>{
    const version=this.catalog().version;if(body?.catalog_version!==version)throw new StoreError(409,'CATALOG_CHANGED','Giá bán đã cập nhật, vui lòng tải lại');
