@@ -7,6 +7,9 @@ export class StoreDb {
   this.db=new DatabaseSync(path);this.db.exec('PRAGMA journal_mode=WAL; PRAGMA foreign_keys=ON; PRAGMA busy_timeout=5000;');
   this.db.exec(`
 CREATE TABLE IF NOT EXISTS users(id TEXT PRIMARY KEY,name TEXT NOT NULL,role TEXT NOT NULL,pin_hash TEXT NOT NULL,active INTEGER DEFAULT 1);
+CREATE TABLE IF NOT EXISTS staff_devices(id TEXT PRIMARY KEY,label TEXT NOT NULL,token_hash TEXT UNIQUE NOT NULL,role TEXT NOT NULL DEFAULT 'STAFF',created_at TEXT NOT NULL,last_seen_at TEXT,revoked_at TEXT);
+CREATE TABLE IF NOT EXISTS device_pair_codes(code_hash TEXT PRIMARY KEY,created_at TEXT NOT NULL,expires_at INTEGER NOT NULL,used_at TEXT,created_by TEXT NOT NULL);
+CREATE INDEX IF NOT EXISTS idx_staff_devices_token ON staff_devices(token_hash,revoked_at);
 CREATE TABLE IF NOT EXISTS sessions(token_hash TEXT PRIMARY KEY,user_id TEXT NOT NULL,expires_at INTEGER NOT NULL);
 CREATE TABLE IF NOT EXISTS products(id TEXT PRIMARY KEY,name TEXT NOT NULL,category TEXT NOT NULL DEFAULT 'Bánh mì',price_vnd INTEGER NOT NULL CHECK(price_vnd>=0),is_active INTEGER NOT NULL DEFAULT 1);
 CREATE TABLE IF NOT EXISTS settings(key TEXT PRIMARY KEY,value TEXT NOT NULL);

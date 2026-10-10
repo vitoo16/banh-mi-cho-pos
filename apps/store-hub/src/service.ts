@@ -14,6 +14,7 @@ function audit(db:StoreDb,actor:string,kind:string,entity:string,detail:object={
 export class StoreService implements OnModuleInit {
  readonly store=new StoreDb();
  private attempts=new Map<string,{times:number;until:number}>();
+ private pairingFailures=new Map<string,{count:number;until:number}>();
  onModuleInit(){
   const users=this.store.row<{n:number}>('SELECT COUNT(*) n FROM users')?.n||0;
   if(users!==0)return;
@@ -47,12 +48,73 @@ export class StoreService implements OnModuleInit {
    return {...employee,active:body.active};
   });
  }
- login(user_id:unknown,pin:unknown){
+ createDevicePairCode(a:Actor){
+  if(a.role!=='OWNER')throw new StoreError(403,'FORBIDDEN','Chỉ chủ tiệm được cấp mã ghép thiết bị');
+  const alphabet='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  const bytes=randomBytes(8),code=[...bytes].map(b=>alphabet[b%alphabet.length]).join('');
+  const hash=createHash('sha256').update(code).digest('hex'),expires_at=Date.now()+5*60000;
+  this.store.transaction(()=>{
+   this.store.run('INSERT INTO device_pair_codes(code_hash,created_at,expires_at,created_by) VALUES(?,?,?,?)',hash,now(),expires_at,a.id);
+   audit(this.store,a.id,'DEVICE_PAIR_CODE_ISSUED',hash.slice(0,12),{expires_at});
+  });
+  return {code,expires_at:new Date(expires_at).toISOString()};
+ }
+ pairDevice(input:any,sourceIp:string){
+  const ip=typeof sourceIp==='string'?sourceIp.slice(0,120):'unknown';
+  const hit=this.pairingFailures.get(ip);
+  if(hit&&hit.until>Date.now())throw new StoreError(429,'PAIRING_THROTTLED','Nhập mã quá nhiều lần, thử lại sau');
+  const code=typeof input?.code==='string'?input.code.trim().toUpperCase():'';
+  const label=ensureText(input?.device_name||'',80);
+  if(!/^[A-HJ-NP-Z2-9]{8}$/.test(code)||label.length<2)throw new StoreError(400,'INVALID_PAIR_REQUEST','Mã hoặc tên thiết bị không hợp lệ');
+  try{
+   const result=this.store.transaction(()=>{
+    const hash=createHash('sha256').update(code).digest('hex');
+    const row=this.store.row<any>('SELECT * FROM device_pair_codes WHERE code_hash=?',hash);
+    if(!row||row.used_at||row.expires_at<=Date.now())throw new StoreError(401,'INVALID_PAIR_CODE','Mã ghép nối không đúng, hết hạn hoặc đã sử dụng');
+    const token=randomBytes(32).toString('base64url'),tokenHash=createHash('sha256').update(token).digest('hex'),id=randomUUID();
+    this.store.run('UPDATE device_pair_codes SET used_at=? WHERE code_hash=? AND used_at IS NULL',now(),hash);
+    this.store.run('INSERT INTO staff_devices(id,label,token_hash,role,created_at) VALUES(?,?,?,?,?)',id,label,tokenHash,'STAFF',now());
+    audit(this.store,row.created_by,'DEVICE_PAIRED',id,{label,ip});
+    return {device_id:id,device_token:token,name:label,role:'STAFF' as const};
+   });
+   this.pairingFailures.delete(ip);return result;
+  }catch(e){
+   const count=(hit?.count||0)+1;
+   this.pairingFailures.set(ip,{count,until:count>=5?Date.now()+600000:0});
+   throw e;
+  }
+ }
+ validateDevice(value:unknown){
+  if(typeof value!=='string'||!/^[A-Za-z0-9_-]{32,128}$/.test(value))
+   throw new StoreError(401,'DEVICE_NOT_PAIRED','Thiết bị chưa được ghép nối');
+  const hash=createHash('sha256').update(value).digest('hex');
+  const row=this.store.row<any>('SELECT id,label,role,last_seen_at FROM staff_devices WHERE token_hash=? AND revoked_at IS NULL',hash);
+  if(!row)throw new StoreError(401,'DEVICE_REVOKED','Thiết bị không hợp lệ hoặc đã bị thu hồi');
+  if(!row.last_seen_at||Date.now()-Date.parse(row.last_seen_at)>60000)
+   this.store.run('UPDATE staff_devices SET last_seen_at=? WHERE id=?',now(),row.id);
+  return {id:row.id,label:row.label,role:row.role};
+ }
+ devices(a:Actor){
+  if(a.role!=='OWNER')throw new StoreError(403,'FORBIDDEN','Không có quyền');
+  return this.store.all<any>('SELECT id,label,role,created_at,last_seen_at,revoked_at FROM staff_devices ORDER BY created_at DESC LIMIT 200');
+ }
+ revokeDevice(a:Actor,id:string){
+  if(a.role!=='OWNER')throw new StoreError(403,'FORBIDDEN','Không có quyền');
+  return this.store.transaction(()=>{
+   const d=this.store.row<any>('SELECT id,label,revoked_at FROM staff_devices WHERE id=?',id);
+   if(!d)throw new StoreError(404,'NOT_FOUND','Không thấy thiết bị');
+   if(!d.revoked_at){this.store.run('UPDATE staff_devices SET revoked_at=? WHERE id=?',now(),id);
+    audit(this.store,a.id,'DEVICE_REVOKED',id,{label:d.label});}
+   return {id,revoked:true};
+  });
+ }
+ login(user_id:unknown,pin:unknown,staffDeviceOnly=false){
   const uid=ensureText(user_id,80);if(typeof pin!=='string'||pin.length>128)throw new StoreError(401,'AUTH_FAILED','Thông tin đăng nhập không đúng');
   const k=uid.toLowerCase(),a=this.attempts.get(k);
   if(a&&a.until>Date.now())throw new StoreError(429,'TOO_MANY_ATTEMPTS','Thử lại sau ít phút');
   const u=this.store.row<any>('SELECT * FROM users WHERE id=? AND active=1',uid);
   if(!u||!verify(pin,u.pin_hash)){const tries=(a?.times||0)+1;this.attempts.set(k,{times:tries,until:tries>=5?Date.now()+60000:0});throw new StoreError(401,'AUTH_FAILED','Thông tin đăng nhập không đúng')}
+  if(staffDeviceOnly&&u.role!=='STAFF')throw new StoreError(403,'STAFF_DEVICE_ONLY','Thiết bị nhân viên không được đăng nhập quyền thu ngân/chủ tiệm');
   this.attempts.delete(k);
   const token=randomBytes(32).toString('base64url'),hash=createHash('sha256').update(token).digest('hex');
   this.store.run('INSERT INTO sessions(token_hash,user_id,expires_at) VALUES(?,?,?)',hash,uid,Date.now()+12*3600_000);
