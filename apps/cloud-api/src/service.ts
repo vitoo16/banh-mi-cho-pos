@@ -39,7 +39,7 @@ export class CloudService{
   return this.db.transaction(async c=>{
    const received:string[]=[];
    for(const event of events as Event[]){
-    if(!event||typeof event!=='object'||!['order','payment','refund','product','shift'].includes(event.entity))throw new BadRequestException('Unknown event');
+    if(!event||typeof event!=='object'||!['order','payment','refund','product','shift','cash_movement'].includes(event.entity))throw new BadRequestException('Unknown event');
     const id=str(event.id,80),p=event.payload;
     if(!p||typeof p!=='object')throw new BadRequestException('Invalid event body');
     const inserted=await c.query('INSERT INTO synced_events(store_id,event_id,entity) VALUES($1,$2,$3) ON CONFLICT DO NOTHING RETURNING event_id',[storeId,id,event.entity]);
@@ -48,6 +48,10 @@ export class CloudService{
      const items=JSON.parse(str(p.lines_json,100000));if(!Array.isArray(items))throw new BadRequestException('Invalid order lines');
      await c.query(`INSERT INTO mirror_orders(store_id,id,display_code,created_at,created_by,status,payment_status,requested_method,total_vnd,version,lines_json) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
  ON CONFLICT(store_id,id) DO UPDATE SET status=EXCLUDED.status,payment_status=EXCLUDED.payment_status,total_vnd=EXCLUDED.total_vnd,version=EXCLUDED.version WHERE mirror_orders.version<EXCLUDED.version`,[storeId,str(p.id),str(p.display_code),str(p.created_at),str(p.created_by),str(p.status),str(p.payment_status),str(p.requested_method),vnd(p.total_vnd),p.version,JSON.stringify(items)]);
+     }else if(event.entity==='cash_movement'){
+      const amount=Number(p.amount_vnd);
+      if(!Number.isSafeInteger(amount)||Math.abs(amount)>1_000_000_000)throw new BadRequestException('Invalid cash movement');
+      await c.query('INSERT INTO mirror_cash_movements(store_id,id,shift_id,order_id,kind,amount_vnd,created_at) VALUES($1,$2,$3,$4,$5,$6,$7) ON CONFLICT DO NOTHING',[storeId,str(p.id),str(p.shift_id),p.order_id||null,str(p.kind),amount,str(p.created_at)]);
     }else if(event.entity==='payment'||event.entity==='refund'){
      const table=event.entity==='payment'?'mirror_payments':'mirror_refunds';
      const fields=event.entity==='payment'?'store_id,id,order_id,method,amount_vnd,created_at':'store_id,id,order_id,amount_vnd,created_at';
@@ -73,6 +77,11 @@ SELECT (SELECT COUNT(*) FROM mirror_orders WHERE store_id=$1 AND payment_status=
 (SELECT COUNT(*) FROM mirror_orders WHERE store_id=$1 AND payment_status='UNPAID' AND status='COMMITTED') AS pending_orders,
 (SELECT COUNT(*) FROM mirror_orders WHERE store_id=$1 AND payment_status='UNPAID' AND requested_method='BANK' AND status='COMMITTED') AS bank_pending`,[store]);
   const r=rows.rows[0],shift=await this.db.pool.query("SELECT * FROM mirror_shifts WHERE store_id=$1 AND status='OPEN' ORDER BY opened_at DESC LIMIT 1",[store]);
+  if(shift.rows[0]){
+   const movements=await this.db.pool.query('SELECT COALESCE(SUM(amount_vnd),0) total FROM mirror_cash_movements WHERE store_id=$1 AND shift_id=$2',[store,shift.rows[0].id]);
+   shift.rows[0].expected_cash_vnd=Number(shift.rows[0].opening_float_vnd)+Number(movements.rows[0].total);
+   shift.rows[0].opening_float_vnd=Number(shift.rows[0].opening_float_vnd);
+  }
   const last=await this.db.pool.query('SELECT MAX(received_at) latest FROM synced_events WHERE store_id=$1',[store]);
   return {paid_orders:Number(r.paid_orders),net_revenue_vnd:Number(r.net_revenue_vnd),cash_vnd:Number(r.cash_vnd),bank_vnd:Number(r.bank_vnd),pending_orders:Number(r.pending_orders),bank_pending:Number(r.bank_pending),last_synced_at:last.rows[0].latest||null,shift:shift.rows[0]||null};
  }

@@ -35,6 +35,9 @@ END;
 CREATE TRIGGER IF NOT EXISTS sync_payment_created AFTER INSERT ON payments BEGIN
  INSERT INTO sync_outbox(entity,payload_json) VALUES('payment',json_object('id',NEW.id,'order_id',NEW.order_id,'method',NEW.method,'amount_vnd',NEW.amount_vnd,'created_at',NEW.created_at));
 END;
+CREATE TRIGGER IF NOT EXISTS sync_cash_movement AFTER INSERT ON cash_movements BEGIN
+ INSERT INTO sync_outbox(entity,payload_json) VALUES('cash_movement',json_object('id',NEW.id,'shift_id',NEW.shift_id,'order_id',NEW.order_id,'kind',NEW.kind,'amount_vnd',NEW.amount_vnd,'created_at',NEW.created_at));
+END;
 CREATE TRIGGER IF NOT EXISTS sync_refund_created AFTER INSERT ON cash_refunds BEGIN
  INSERT INTO sync_outbox(entity,payload_json) VALUES('refund',json_object('id',NEW.id,'order_id',NEW.order_id,'amount_vnd',NEW.amount_vnd,'created_at',NEW.created_at));
 END;
