@@ -115,8 +115,8 @@ export class StoreService implements OnModuleInit {
   this.store.run('INSERT INTO sessions(token_hash,user_id,expires_at,device_id) VALUES(?,?,?,?)',hash,uid,Date.now()+12*3600_000,deviceId);
   return {...newDeviceToken?{device_token:newDeviceToken}:{},token,user:{id:u.id,name:u.name,role:u.role}};
  }
- logout(auth:unknown){
-  this.actor(auth);
+ logout(auth:unknown,deviceToken?:unknown){
+  this.actor(auth,undefined,deviceToken);
   const token=(auth as string).slice(7);
   const hash=createHash('sha256').update(token).digest('hex');
   this.store.run('DELETE FROM sessions WHERE token_hash=?',hash);

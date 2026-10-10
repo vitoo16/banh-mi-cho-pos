@@ -7,7 +7,7 @@ export class StoreController {
  @Get('health') health(){return {status:'ok',mode:'PILOT_LOCAL',bank_integration:process.env.BANK_BRIDGE_SECRET?'BRIDGE_CONFIGURED_PROVIDER_UNVERIFIED':'DISABLED',printing:'UNVERIFIED'}}
  @Get('cashier/operational-status')operations(@Req()r:any){return this.call(()=>this.s.operationalStatus(this.s.actor(r.headers.authorization,['CASHIER','OWNER'],r.headers['x-device-token'])))}
  @Post('auth/login')login(@Req()r:any,@Body()b:any){return this.call(()=>this.s.login(b?.user_id,b?.pin,b?.pairing_code,r?.headers?.['x-device-token']))}
- @Post('auth/logout')logout(@Req()r:any){return this.call(()=>this.s.logout(r.headers.authorization))}
+ @Post('auth/logout')logout(@Req()r:any){return this.call(()=>this.s.logout(r.headers.authorization,r.headers['x-device-token']))}
  @Get('catalog')catalog(@Req()r:any){return this.call(()=>{this.s.actor(r.headers.authorization,undefined,r.headers['x-device-token']);return this.s.catalog()})}
  @Get('orders')orders(@Req()r:any){return this.call(()=>this.s.orders(this.s.actor(r.headers.authorization,undefined,r.headers['x-device-token'])))}
  @Get('orders/history')history(@Req()r:any,@Query('cursor')cursor?:string,@Query('limit')limit?:string){return this.call(()=>this.s.history(this.s.actor(r.headers.authorization,undefined,r.headers['x-device-token']),cursor,limit?Number(limit):100))}
