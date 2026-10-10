@@ -1,26 +1,30 @@
 import React,{memo,useCallback,useEffect,useMemo,useRef,useState} from 'react';
 import {ActivityIndicator,FlatList,KeyboardAvoidingView,Platform,Pressable,ScrollView,StatusBar,StyleSheet,Text,TextInput,View,Alert,useWindowDimensions} from 'react-native';
 import {SafeAreaProvider,useSafeAreaInsets} from 'react-native-safe-area-context';
-import {randomUUID} from 'expo-crypto';
+import {randomUUID} from 'expo-crypto';import * as SecureStore from 'expo-secure-store';
 import {HubClient,formatVnd,type Product,type Catalog,type PaymentMethod,type Order,type Session,type CreateOrderInput} from '@bmc/contracts';
 const colors={bg:'#FAF9F6',paper:'#FFFFFF',ink:'#1E2420',sub:'#5D6760',line:'#D9DFD8',accent:'#A84F10',pale:'#FFF0E3',green:'#166534',bad:'#B42318'};
 const url=process.env.EXPO_PUBLIC_HUB_URL||'';
-const api=new HubClient(url,()=>tokenRef.current||undefined);let tokenRef:{current:string|null}={current:null};
+let tokenRef:{current:string|null}={current:null},deviceTokenRef:{current:string|null}={current:null};
+const api=new HubClient(url,()=>tokenRef.current||undefined,()=>deviceTokenRef.current||undefined);
 const newKey=()=>randomUUID();
 type CartRecord={qty:number;note:string};
 function Staff(){
  const insets=useSafeAreaInsets(),screen=useWindowDimensions();
  const [staffId,setStaffId]=useState('staff');
+ const [paired,setPaired]=useState<boolean|null>(null),[pairCode,setPairCode]=useState(''),[deviceName,setDeviceName]=useState('Điện thoại nhân viên');
  const [session,setSession]=useState<Session|null>(null),[pin,setPin]=useState(''),[screenName,setScreen]=useState<'menu'|'review'|'saved'|'history'>('menu'),[catalog,setCatalog]=useState<Catalog|null>(null);
  const [cart,setCart]=useState<Record<string,CartRecord>>({}),[orderNote,setOrderNote]=useState(''),[method,setMethod]=useState<PaymentMethod>('CASH'),[search,setSearch]=useState('');
  const [busy,setBusy]=useState(false),[error,setError]=useState(''),[priceChanged,setPriceChanged]=useState(false),[confirmed,setConfirmed]=useState<Order|null>(null),[recent,setRecent]=useState<Order[]>([]),[unknown,setUnknown]=useState(false);
  const pendingKey=useRef<string|null>(null),pendingRequest=useRef<CreateOrderInput|null>(null);
+ useEffect(()=>{let mounted=true;void SecureStore.getItemAsync('bmc_device_token').then(t=>{deviceTokenRef.current=t;if(mounted)setPaired(!!t)}).catch(()=>{if(mounted)setPaired(false)});return()=>{mounted=false}},[]);
+ async function pair(){setBusy(true);setError('');try{const p=await api.pairDevice(pairCode.trim(),deviceName.trim());await SecureStore.setItemAsync('bmc_device_token',p.device_token);deviceTokenRef.current=p.device_token;setPaired(true);setPairCode('')}catch(e){setError((e as Error).message)}finally{setBusy(false)}}
  const selected=useMemo(()=>catalog?.products.filter(p=>(cart[p.id]?.qty||0)>0)||[],[catalog,cart]);
  const count=useMemo(()=>selected.reduce((a,p)=>a+(cart[p.id]?.qty||0),0),[selected,cart]);
  const total=useMemo(()=>selected.reduce((a,p)=>a+p.price_vnd*(cart[p.id]?.qty||0),0),[selected,cart]);
  const products=useMemo(()=>catalog?.products.filter(p=>p.name.toLocaleLowerCase('vi-VN').includes(search.toLocaleLowerCase('vi-VN')))||[],[catalog,search]);
  const load=async()=>{try{setCatalog(await api.catalog());setError('')}catch(e){setError((e as Error).message)}};
- async function login(){setBusy(true);try{const s=await api.login(pin,staffId.trim().toLowerCase());tokenRef.current=s.token;setSession(s);setPin('');await load()}catch(e){setError((e as Error).message)}finally{setBusy(false)}}
+ async function login(){setBusy(true);try{const s=await api.login(pin,staffId.trim().toLowerCase());tokenRef.current=s.token;setSession(s);setPin('');await load()}catch(e){const msg=(e as Error).message;setError(msg);if(msg.includes('ghép')||msg.includes('khóa')){deviceTokenRef.current=null;setPaired(false);void SecureStore.deleteItemAsync('bmc_device_token')}}finally{setBusy(false)}}
  const adjust=useCallback((id:string,delta:number)=>{setCart(old=>({...old,[id]:{qty:Math.max(0,(old[id]?.qty||0)+delta),note:old[id]?.note||''}}))},[]);
  const save=async()=>{if(busy||count===0||!catalog||unknown||priceChanged)return;setBusy(true);setError('');const key=pendingKey.current||(pendingKey.current=newKey());
   const payload=pendingRequest.current||(pendingRequest.current={catalog_version:catalog.version,requested_payment_method:method,items:selected.map(p=>({product_id:p.id,qty:cart[p.id].qty,note:cart[p.id].note})),note:orderNote});
@@ -36,6 +40,8 @@ function Staff(){
  const changeNote=(id:string,note:string)=>setCart(c=>({...c,[id]:{qty:c[id]?.qty||0,note}}));
  const rootPadding=Math.max(insets.bottom,12);
  if(!url)return <View style={s.center}><Text style={s.heading}>Thiếu địa chỉ máy POS</Text><Text style={s.desc}>Cấu hình EXPO_PUBLIC_HUB_URL trong file .env và build lại ứng dụng.</Text></View>;
+ if(paired===null)return <View style={s.center}><ActivityIndicator color={colors.accent}/><Text style={s.desc}>Đang kiểm tra thiết bị...</Text></View>;
+ if(!paired)return <KeyboardAvoidingView style={s.login} behavior={Platform.OS==='ios'?'padding':undefined}><View style={s.logo}><Text style={s.logoText}>BMC</Text></View><Text style={s.kicker}>ĐĂNG KÝ THIẾT BỊ</Text><Text style={s.loginTitle}>Ghép điện thoại</Text><Text style={s.desc}>Nhờ chủ tiệm mở Quản lý nhân viên → Ghép thiết bị để lấy mã dùng một lần, hiệu lực 5 phút.</Text><Text style={s.label}>Tên điện thoại</Text><TextInput style={s.input} value={deviceName} onChangeText={setDeviceName} accessibilityLabel="Tên điện thoại"/><Text style={s.label}>Mã 8 chữ số</Text><TextInput style={s.input} value={pairCode} onChangeText={setPairCode} maxLength={8} keyboardType="number-pad" accessibilityLabel="Mã ghép thiết bị"/><Pressable disabled={pairCode.length!==8||busy} style={s.primary} onPress={()=>void pair()}><Text style={s.primaryText}>{busy?'Đang ghép…':'Ghép thiết bị'}</Text></Pressable>{error&&<Text style={s.error}>{error}</Text>}</KeyboardAvoidingView>;
  if(!session)return <KeyboardAvoidingView style={s.login} behavior={Platform.OS==='ios'?'padding':undefined}><StatusBar barStyle="dark-content"/><View style={s.logo}><Text style={s.logoText}>BMC</Text></View><Text style={s.kicker}>BÁNH MÌ CHỢ</Text><Text style={s.loginTitle}>Bắt đầu nhận đơn</Text><Text style={s.desc}>Nhập mã PIN do chủ tiệm cấp.</Text><Text style={s.label}>Mã nhân viên</Text><TextInput accessibilityLabel="Mã nhân viên" autoCapitalize="none" autoCorrect={false} value={staffId} onChangeText={setStaffId} style={s.input}/><Text style={s.label}>Mã PIN nhân viên</Text><TextInput accessibilityLabel="Mã PIN nhân viên" secureTextEntry value={pin} onChangeText={setPin} style={s.input} autoCorrect={false} keyboardType="numeric"/><Pressable style={s.primary} disabled={busy||pin.length<6} onPress={()=>void login()}><Text style={s.primaryText}>Đăng nhập</Text></Pressable>{error&&<Text style={s.error}>{error}</Text>}</KeyboardAvoidingView>;
  const body=<View style={s.root}>
   <View style={s.header}><View><Text style={s.kicker}>BÁNH MÌ CHỢ</Text><Text style={s.title}>{screenName==='menu'?'Nhận đơn mới':screenName==='review'?'Kiểm tra đơn':screenName==='saved'?'Đã lưu đơn':'Đơn của tôi'}</Text></View><Pressable accessibilityRole="button" onPress={()=>unknown?Alert.alert('Đơn chưa được xác nhận','Kiểm tra lại đơn trước khi tiếp tục tạo đơn mới.'):screenName==='menu'?void showHistory():setScreen('menu')} style={s.historyButton}><Text style={s.historyLabel}>{screenName==='menu'?'Đơn của tôi':'← Trở lại'}</Text></Pressable></View>
