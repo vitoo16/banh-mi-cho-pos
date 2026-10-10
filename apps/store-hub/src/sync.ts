@@ -11,6 +11,8 @@ export class CloudSyncWorker implements OnModuleInit,OnModuleDestroy {
   const url=new URL(process.env.CLOUD_SYNC_URL);
   if(url.protocol!=='https:'&&url.hostname!=='127.0.0.1'&&url.hostname!=='localhost')throw Error('Cloud sync requires HTTPS');
   if(!process.env.CLOUD_SYNC_SECRET||process.env.CLOUD_SYNC_SECRET.length<32||!process.env.CLOUD_STORE_ID)throw Error('Cloud sync credentials missing');
+  // Seed the mirror for databases that predate outbox/sync deployment.
+  this.service.store.prepareCloudBackfill(process.env.CLOUD_STORE_ID);
   this.timer=setInterval(()=>void this.flush().catch(e=>console.error('Sync batch error:',String(e))),6000);
   this.timer.unref();
  }

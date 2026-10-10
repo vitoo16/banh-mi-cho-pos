@@ -1,4 +1,4 @@
-import {Injectable,UnauthorizedException,BadRequestException} from '@nestjs/common';
+import {Injectable,UnauthorizedException,BadRequestException,HttpException} from '@nestjs/common';
 import {createHash,createHmac,timingSafeEqual,randomBytes} from 'node:crypto';
 import {CloudDb} from './db';
 type Event={id:string;entity:string;payload:Record<string,unknown>};
@@ -9,7 +9,6 @@ function vnd(x:unknown){if(typeof x!=='number'||!Number.isSafeInteger(x)||x<0||x
 function str(x:unknown,max=180){if(typeof x!=='string'||x.length>max||!x.length)throw new BadRequestException('Invalid field');return x}
 @Injectable()
 export class CloudService{
- readonly sessions=new Map<string,number>();
  constructor(private readonly db:CloudDb){}
  private store(){const id=process.env.CLOUD_STORE_ID;if(!id)throw new Error('CLOUD_STORE_ID required');return id}
  private verifyBridge(payload:string,stamp:string,sig:string,store:string){
@@ -18,18 +17,48 @@ export class CloudService{
   const mac=createHmac('sha256',secret).update(stamp+'.'+payload).digest();
   if(!/^[a-f0-9]{64}$/i.test(sig||'')||!same(mac,Buffer.from(sig,'hex')))throw new UnauthorizedException('Invalid sync signature');
  }
- login(uid:unknown,pin:unknown){
+ async login(uid:unknown,pin:unknown,remoteIp='unknown'){
   const secret=process.env.CLOUD_OWNER_LOGIN_SECRET;
-  if(!secret||secret.length<12)throw new UnauthorizedException('Owner cloud login not configured');
-  if(uid!=='owner'||typeof pin!=='string'||pin.length>128||!secretMatch(pin,secret))throw new UnauthorizedException('Incorrect credentials');
+  if(!secret||secret.length<16)throw new UnauthorizedException('Owner cloud login not configured');
+  const address=typeof remoteIp==='string'?remoteIp.slice(0,100):'unknown';
+  // Per-address, single privileged account: guessing a different user id cannot evade limits.
+  const bucket=createHash('sha256').update(address+'|owner').digest('hex');
+  const r=await this.db.pool.query(`INSERT INTO owner_login_attempts(bucket,attempts,window_started,blocked_until)
+VALUES($1,1,now(),NULL)
+ON CONFLICT(bucket) DO UPDATE SET
+ attempts=CASE WHEN owner_login_attempts.blocked_until>now() THEN owner_login_attempts.attempts
+ WHEN owner_login_attempts.window_started<now()-interval '15 minutes' THEN 1 ELSE owner_login_attempts.attempts+1 END,
+ window_started=CASE WHEN owner_login_attempts.window_started<now()-interval '15 minutes' THEN now() ELSE owner_login_attempts.window_started END,
+ blocked_until=CASE WHEN owner_login_attempts.blocked_until>now() THEN owner_login_attempts.blocked_until
+ WHEN owner_login_attempts.window_started<now()-interval '15 minutes' THEN NULL
+ WHEN owner_login_attempts.attempts>=4 THEN now()+interval '15 minutes' ELSE NULL END
+RETURNING blocked_until`,[bucket]);
+  if(r.rows[0]?.blocked_until&&new Date(r.rows[0].blocked_until).getTime()>Date.now())
+   throw new HttpException('Too many sign-in attempts',429);
+  if(uid!=='owner'||typeof pin!=='string'||pin.length>128||!secretMatch(pin,secret))
+   throw new UnauthorizedException('Incorrect credentials');
+  await this.db.pool.query('DELETE FROM owner_login_attempts WHERE bucket=$1',[bucket]);
   const token=randomBytes(32).toString('base64url');
-  this.sessions.set(createHash('sha256').update(token).digest('hex'),Date.now()+8*3600_000);
+  const hash=createHash('sha256').update(token).digest('hex');
+  const fingerprint=createHash('sha256').update(secret).digest('hex');
+  await this.db.pool.query("INSERT INTO owner_sessions(token_hash,secret_fingerprint,expires_at) VALUES($1,$2,now()+interval '8 hours')",[hash,fingerprint]);
   return {token,user:{id:'owner',name:'Chủ tiệm',role:'OWNER'}};
  }
- authorize(header:unknown){
-  if(typeof header!=='string'||!header.startsWith('Bearer '))throw new UnauthorizedException('Authentication required');
-  const key=createHash('sha256').update(header.slice(7)).digest('hex');
-  if((this.sessions.get(key)||0)<=Date.now())throw new UnauthorizedException('Session expired');
+ async authorize(header:unknown){
+  if(typeof header!=='string'||!/^Bearer [A-Za-z0-9_-]{30,200}$/.test(header))
+   throw new UnauthorizedException('Authentication required');
+  const secret=process.env.CLOUD_OWNER_LOGIN_SECRET;
+  if(!secret)throw new UnauthorizedException('Owner cloud login disabled');
+  const hash=createHash('sha256').update(header.slice(7)).digest('hex');
+  const fingerprint=createHash('sha256').update(secret).digest('hex');
+  const r=await this.db.pool.query('SELECT 1 FROM owner_sessions WHERE token_hash=$1 AND secret_fingerprint=$2 AND expires_at>now() LIMIT 1',[hash,fingerprint]);
+  if(r.rowCount!==1)throw new UnauthorizedException('Session expired or revoked');
+ }
+ async logout(header:unknown){
+  await this.authorize(header);
+  const hash=createHash('sha256').update((header as string).slice(7)).digest('hex');
+  await this.db.pool.query('DELETE FROM owner_sessions WHERE token_hash=$1',[hash]);
+  return {ok:true};
  }
  async ingest(events:unknown,stamp:string,sig:string,store:string){
   if(!Array.isArray(events)||events.length>100||events.length===0)throw new BadRequestException('Invalid sync batch');
