@@ -17,6 +17,12 @@ CREATE TABLE IF NOT EXISTS cash_movements(id TEXT PRIMARY KEY,shift_id TEXT NOT 
 CREATE TABLE IF NOT EXISTS payments(id TEXT PRIMARY KEY,order_id TEXT NOT NULL,method TEXT NOT NULL,amount_vnd INTEGER NOT NULL,tendered_vnd INTEGER,change_vnd INTEGER,created_at TEXT NOT NULL,actor_id TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS receipts(id TEXT PRIMARY KEY,batch_id TEXT NOT NULL,order_id TEXT NOT NULL,kind TEXT NOT NULL,status TEXT NOT NULL DEFAULT 'QUEUED',attempts INTEGER NOT NULL DEFAULT 0,created_at TEXT NOT NULL,UNIQUE(batch_id,kind));
 CREATE TABLE IF NOT EXISTS idempotency(scope TEXT NOT NULL,key TEXT NOT NULL,result_json TEXT NOT NULL,request_hash TEXT NOT NULL DEFAULT '',PRIMARY KEY(scope,key));
+CREATE TABLE IF NOT EXISTS cloud_outbox(id TEXT PRIMARY KEY,kind TEXT NOT NULL,payload TEXT NOT NULL,acked INTEGER DEFAULT 0,created_at TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS cloud_checkpoint(id INTEGER PRIMARY KEY CHECK(id=1),seq INTEGER NOT NULL);
+INSERT OR IGNORE INTO cloud_checkpoint(id,seq) VALUES(1,0);
+CREATE TABLE IF NOT EXISTS bank_intents(order_id TEXT PRIMARY KEY,reference TEXT UNIQUE NOT NULL,amount_vnd INTEGER NOT NULL,created_at TEXT NOT NULL,cloud_acked INTEGER DEFAULT 0);
+CREATE TABLE IF NOT EXISTS bank_receipts(seq INTEGER PRIMARY KEY,order_id TEXT NOT NULL,reference TEXT NOT NULL,provider_tx_id TEXT NOT NULL UNIQUE,status TEXT NOT NULL,reason TEXT);
+CREATE INDEX IF NOT EXISTS idx_outbox_unacked ON cloud_outbox(acked,created_at);
 CREATE TABLE IF NOT EXISTS audit(id TEXT PRIMARY KEY,actor_id TEXT NOT NULL,kind TEXT NOT NULL,entity_id TEXT NOT NULL,created_at TEXT NOT NULL,details_json TEXT NOT NULL);
 CREATE INDEX IF NOT EXISTS idx_orders_created ON orders(created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_movements_shift ON cash_movements(shift_id);

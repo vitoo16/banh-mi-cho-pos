@@ -1,8 +1,8 @@
 import {Controller,Get,Post,Patch,Body,Param,Req,Headers,Query,HttpException} from '@nestjs/common';
-import {StoreService,StoreError} from './service';
+import {HubCloudSync} from './sync';import {StoreService,StoreError} from './service';
 @Controller('v1')
 export class StoreController {
- constructor(private readonly s:StoreService){}
+ constructor(private readonly s:StoreService,private readonly cloud:HubCloudSync){}
  private call<T>(fn:()=>T):T{try{return fn()}catch(e:any){if(e instanceof StoreError)throw new HttpException({code:e.code,message:e.message},e.status);if(e?.message&&['INVALID_MONEY','INVALID_QUANTITY','INSUFFICIENT_CASH'].includes(e.message))throw new HttpException({code:e.message,message:e.message},422);throw e}}
  @Get('health') health(){return {status:'ok',mode:'PILOT_LOCAL',bank_integration:'DISABLED',printing:'UNVERIFIED'}}
  @Post('auth/login')login(@Body()b:any){return this.call(()=>this.s.login(b?.user_id,b?.pin))}
@@ -18,7 +18,14 @@ export class StoreController {
  @Post('cash-shifts/:id/movements')movement(@Req()r:any,@Param('id')id:string,@Body()b:any,@Headers('idempotency-key')key:string){return this.call(()=>this.s.movement(this.s.actor(r.headers.authorization,['CASHIER']),id,b,key))}
  @Post('cash-shifts/:id/close')close(@Req()r:any,@Param('id')id:string,@Body()b:any,@Headers('idempotency-key')key:string){return this.call(()=>this.s.closeShift(this.s.actor(r.headers.authorization,['CASHIER']),id,b,key))}
  @Post('orders/:id/payments/cash')cash(@Req()r:any,@Param('id')id:string,@Body()b:any,@Headers('idempotency-key')key:string){return this.call(()=>this.s.cash(this.s.actor(r.headers.authorization,['CASHIER']),id,b,key))}
- @Post('orders/:id/payments/bank-intent')bank(@Req()r:any){return this.call(()=>{this.s.actor(r.headers.authorization,['CASHIER']);return this.s.bankIntent()})}
+ @Post('orders/:id/payments/bank-intent')async bank(@Req()r:any,@Param('id')id:string,@Headers('idempotency-key')key:string){
+  const actor=this.s.actor(r.headers.authorization,['CASHIER']),reference=this.call(()=>this.s.createBankIntent(actor,id,key));
+  try{await this.cloud.flush()}catch{throw new HttpException({code:'CLOUD_UNREACHABLE',message:'Chưa đồng bộ được mã chuyển khoản, không hiển thị QR'},503)}
+  const intent=this.s.store.row<{cloud_acked:number;amount_vnd:number}>('SELECT cloud_acked,amount_vnd FROM bank_intents WHERE order_id=?',id);
+  if(!intent?.cloud_acked)throw new HttpException({code:'BANK_INTENT_PENDING',message:'Cloud chưa xác nhận mã chuyển khoản'},503);
+  const bank=process.env.BANK_BIN!,acct=process.env.BANK_ACCOUNT_NUMBER!,name=process.env.BANK_ACCOUNT_NAME||'';
+  return {status:'PENDING',reference,amount_vnd:intent.amount_vnd,qr_url:'https://img.vietqr.io/image/'+encodeURIComponent(bank)+'-'+encodeURIComponent(acct)+'-compact2.png?amount='+intent.amount_vnd+'&addInfo='+encodeURIComponent(reference)+'&accountName='+encodeURIComponent(name),account_number:acct,bank_bin:bank};
+ }
  @Get('orders/:id/receipts')receipts(@Req()r:any,@Param('id')id:string){return this.call(()=>this.s.receipts(this.s.actor(r.headers.authorization,['OWNER','CASHIER']),id))}
  @Post('receipt-copies/:id/reprint')reprint(@Req()r:any,@Param('id')id:string,@Body()b:any,@Headers('idempotency-key')key:string){return this.call(()=>this.s.reprint(this.s.actor(r.headers.authorization,['CASHIER']),id,b,key))}
  @Get('owner/employees')employees(@Req()r:any){return this.call(()=>{this.s.actor(r.headers.authorization,['OWNER']);return this.s.employees()})}

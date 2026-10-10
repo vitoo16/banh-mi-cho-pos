@@ -163,6 +163,7 @@ export class StoreService implements OnModuleInit {
    const code='B'+String(seq).padStart(5,'0');
    this.store.run('INSERT INTO orders(id,display_code,created_at,created_by,requested_method,total_vnd,note,lines_json) VALUES(?,?,?,?,?,?,?,?)',id,code,now(),a.id,method,total,note,JSON.stringify(lines));
    audit(this.store,a.id,'ORDER_COMMIT',id,{total_vnd:total,requested_method:method});
+   this.store.run('INSERT INTO cloud_outbox(id,kind,payload,created_at) VALUES(?,?,?,?)',randomUUID(),'ORDER',JSON.stringify({order_id:id,display_code:code,total_vnd:total,status:'COMMITTED',created_at:now()}),now());
    return this.order(a,id);
   });
  }
@@ -243,7 +244,19 @@ export class StoreService implements OnModuleInit {
   const cash=this.store.row<any>("SELECT COALESCE(SUM(amount_vnd),0) val FROM payments WHERE method='CASH'")?.val||0;
   const unpaid=this.store.row<any>("SELECT COUNT(*) n FROM orders WHERE status='COMMITTED' AND payment_status='UNPAID'")?.n||0;
   const bank=this.store.row<any>("SELECT COUNT(*) n FROM orders WHERE status='COMMITTED' AND payment_status='UNPAID' AND requested_method='BANK'")?.n||0;
-  return {paid_orders:p.paid_orders,net_revenue_vnd:p.net_revenue_vnd,cash_vnd:cash,bank_vnd:0,pending_orders:unpaid,bank_pending:bank,last_synced_at:now(),shift:this.currentShift()};
+  return {paid_orders:p.paid_orders,net_revenue_vnd:p.net_revenue_vnd,cash_vnd:cash,bank_vnd:(this.store.row<{v:number}>("SELECT COALESCE(SUM(amount_vnd),0) v FROM payments WHERE method='BANK'")?.v||0),pending_orders:unpaid,bank_pending:bank,last_synced_at:now(),shift:this.currentShift()};
  }
- bankIntent(){throw new StoreError(503,'BANK_PROVIDER_NOT_CONNECTED','Chưa kết nối ngân hàng. Đơn vẫn chưa được thanh toán.')}
+ createBankIntent(a:Actor,orderId:string,key:unknown){
+  if(!process.env.CLOUD_SYNC_URL||!process.env.BANK_BIN||!process.env.BANK_ACCOUNT_NUMBER)throw new StoreError(503,'BANK_NOT_CONFIGURED','Chưa cấu hình tài khoản ngân hàng/Cloud');
+  return this.idem('bank.intent:'+orderId,key,{orderId},()=>{
+   const o=this.store.row<any>('SELECT * FROM orders WHERE id=?',orderId);
+   if(!o)throw new StoreError(404,'NOT_FOUND','Không tìm thấy đơn');
+   if(o.status!=='COMMITTED'||o.payment_status!=='UNPAID')throw new StoreError(409,'INVALID_ORDER','Đơn đã hủy hoặc thanh toán');
+   const old=this.store.row<{reference:string}>('SELECT reference FROM bank_intents WHERE order_id=?',orderId);if(old)return old.reference;
+   const ref='BMC'+randomBytes(8).toString('hex').toUpperCase();
+   this.store.run('INSERT INTO bank_intents(order_id,reference,amount_vnd,created_at) VALUES(?,?,?,?)',orderId,ref,o.total_vnd,now());
+   this.store.run('INSERT INTO cloud_outbox(id,kind,payload,created_at) VALUES(?,?,?,?)',randomUUID(),'BANK_INTENT',JSON.stringify({order_id:orderId,reference:ref,amount_vnd:o.total_vnd,account_number:process.env.BANK_ACCOUNT_NUMBER,bank_bin:process.env.BANK_BIN}),now());
+   audit(this.store,a.id,'BANK_INTENT_CREATE',orderId,{reference:ref});return ref;
+  });
+ }
 }

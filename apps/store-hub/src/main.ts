@@ -3,8 +3,8 @@ import 'dotenv/config';
 import {NestFactory} from '@nestjs/core';
 import {Module} from '@nestjs/common';
 import {FastifyAdapter,NestFastifyApplication} from '@nestjs/platform-fastify';
-import {ReceiptPrinter} from './printer';import {StoreService} from './service';import {StoreController} from './controller';
-@Module({controllers:[StoreController],providers:[StoreService,ReceiptPrinter]})
+import {HubCloudSync} from './sync';import {ReceiptPrinter} from './printer';import {StoreService} from './service';import {StoreController} from './controller';
+@Module({controllers:[StoreController],providers:[StoreService,ReceiptPrinter,HubCloudSync]})
 class AppModule{}
 async function main(){
  const app=await NestFactory.create<NestFastifyApplication>(AppModule,new FastifyAdapter({logger:true,bodyLimit:64*1024}));

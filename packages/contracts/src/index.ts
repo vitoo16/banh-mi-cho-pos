@@ -10,6 +10,7 @@ export interface Shift {id:string;cashier_id:string;opening_float_vnd:number;sta
 export interface PaymentReceipt {payment_id:string;cash_tendered_vnd:number;cash_change_vnd:number;cash_net_vnd:number;payment_status:PaymentStatus;receipt_batch_id:string}
 export interface ReceiptCopy {id:string;kind:'CUSTOMER'|'STORE';status:'QUEUED'|'SENT'|'UNKNOWN'|'FAILED'|'WAITING_FOR_PRINTER';attempts:number}
 export interface OrderPage {items:Order[];next_cursor:string|null}
+export interface BankIntent {status:'PENDING';reference:string;amount_vnd:number;qr_url:string;account_number:string;bank_bin:string}
 export interface Summary {paid_orders:number;net_revenue_vnd:number;cash_vnd:number;bank_vnd:number;pending_orders:number;bank_pending:number;last_synced_at:string;shift:Shift|null}
 export interface Employee {id:string;name:string;role:Role;active:boolean}
 export interface User {id:string;name:string;role:Role}
@@ -50,5 +51,5 @@ export class HubClient {
   employees(){return this.request<Employee[]>('/v1/owner/employees')}
   addEmployee(body:{id:string;name:string;role:'STAFF'|'CASHIER';pin:string},key:string){return this.request<Employee>('/v1/owner/employees',{method:'POST',body:JSON.stringify(body)},key)}
   setEmployeeActive(id:string,active:boolean,key:string){return this.request<Employee>('/v1/owner/employees/'+encodeURIComponent(id),{method:'PATCH',body:JSON.stringify({active})},key)}
-  bankIntent(id:string,key:string){return this.request<{status:string;message:string}>('/v1/orders/'+id+'/payments/bank-intent',{method:'POST',body:'{}'},key)}
+  bankIntent(id:string,key:string){return this.request<BankIntent>('/v1/orders/'+id+'/payments/bank-intent',{method:'POST',body:'{}'},key)}
 }
