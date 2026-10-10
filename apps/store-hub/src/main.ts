@@ -40,6 +40,6 @@ async function main(){
  const origins=(process.env.CORS_ORIGINS||'http://localhost:5173,http://localhost:5174').split(',').filter(Boolean);
  app.enableCors({origin:origins,methods:['GET','POST','PATCH'],allowedHeaders:['Authorization','Content-Type','Idempotency-Key','X-Device-Token']});
  await app.listen({host:bind,port});
- console.log('BMC PILOT HUB '+host+':'+port+'; bank and physical printing not validated.');
+ console.log('BMC HUB '+bind+':'+port+'; bank and physical printing not validated.');
 }
 main().catch(err=>{console.error(err);process.exitCode=1});
