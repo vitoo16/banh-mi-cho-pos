@@ -35,6 +35,12 @@ test('Store Hub: price snapshots, idempotency, exact change, shift and guards',(
   s.movement(cashier,sh.id,{kind:'WITHDRAW',amount_vnd:20000,reason:'Chủ rút tiền'},'withdraw-001');
   assert.equal(s.getShift(sh.id).expected_cash_vnd,1050000);
   assert.throws(()=>s.closeShift(cashier,sh.id,{counted_cash_vnd:1030000,reason:''},'close-no-reason-001'),e=>e.code==='REASON_REQUIRED');
+  const afterMenu=s.catalog();
+  const voidedOrder=s.createOrder(staff,{catalog_version:afterMenu.version,requested_payment_method:'CASH',items:[{product_id:bread.id,qty:1}]},'cancel-created-001');
+  const voided=s.voidOrder(cashier,voidedOrder.order_id,{reason:'Khách đổi ý'},'cancel-voided-001');
+  assert.equal(voided.status,'VOIDED');
+  assert.throws(()=>s.cash(cashier,voidedOrder.order_id,{shift_id:sh.id,cash_tendered_vnd:50000,expected_order_version:2},'cash-voided-001'),e=>e.code==='ORDER_SETTLED');
+  assert.equal(s.summary().pending_orders,0);
   const closed=s.closeShift(cashier,sh.id,{counted_cash_vnd:1030000,reason:'Thiếu 20k sau kiểm đếm'},'close-001');
   assert.equal(closed.variance_vnd,-20000);
   assert.throws(()=>s.movement(cashier,sh.id,{kind:'ADD',amount_vnd:20000,reason:'Sửa quỹ'},'after-close-001'),e=>e.code==='INVALID_SHIFT');

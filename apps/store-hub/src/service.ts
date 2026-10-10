@@ -17,11 +17,9 @@ export class StoreService implements OnModuleInit {
  onModuleInit(){
   const users=this.store.row<{n:number}>('SELECT COUNT(*) n FROM users')?.n||0;
   if(users!==0)return;
-  for(const [id,role,name,key] of [['owner','OWNER','Chủ tiệm','BOOTSTRAP_OWNER_PIN'],['cashier','CASHIER','Thu ngân','BOOTSTRAP_CASHIER_PIN'],['staff','STAFF','Nhân viên','BOOTSTRAP_STAFF_PIN']]){
-   const pin=process.env[key];
-   if(!pin||pin.length<6)throw new Error('First run requires '+key+' (>= 6 chars). No hardcoded PINs.');
-   this.store.run('INSERT INTO users(id,name,role,pin_hash) VALUES(?,?,?,?)',id,name,role,passwordHash(pin));
-  }
+  const seeds=[['owner','OWNER','Chủ tiệm','BOOTSTRAP_OWNER_PIN'],['cashier','CASHIER','Thu ngân','BOOTSTRAP_CASHIER_PIN'],['staff','STAFF','Nhân viên','BOOTSTRAP_STAFF_PIN']] as const;
+  for(const [_id,_role,_name,key] of seeds)if(!process.env[key]||process.env[key]!.length<6)throw new Error('First run requires '+key+' (>= 6 chars). No hardcoded PINs.');
+  this.store.transaction(()=>{for(const [id,role,name,key] of seeds)this.store.run('INSERT INTO users(id,name,role,pin_hash) VALUES(?,?,?,?)',id,name,role,passwordHash(process.env[key]!))});
   if(process.env.SEED_DEMO_CATALOG==='1'){
    for(const [id,name,category,price] of [['bm-thit','Bánh mì thịt nguội','Bánh mì',35000],['bm-dacbiet','Bánh mì đặc biệt','Bánh mì',45000],['bm-san','Bánh mì sẵn','Hàng sẵn',20000],['banh-bao','Bánh bao','Bánh bao',20000]] as const)
     this.store.run('INSERT INTO products(id,name,category,price_vnd) VALUES(?,?,?,?)',id,name,category,price);
@@ -106,7 +104,17 @@ export class StoreService implements OnModuleInit {
   if(!row||a.role==='STAFF'&&row.created_by!==a.id)throw new StoreError(404,'NOT_FOUND','Không tìm thấy đơn');
   return this.asOrder(row);
  }
- orders(a:Actor){
+ voidOrder(a:Actor,id:string,body:any,key:unknown){
+  return this.idem('order.void:'+id,key,()=>{
+   const row=this.store.row<any>('SELECT * FROM orders WHERE id=?',id);
+   if(!row)throw new StoreError(404,'NOT_FOUND','Không tìm thấy đơn');
+   if(row.status!=='COMMITTED'||row.payment_status!=='UNPAID')throw new StoreError(409,'CANNOT_VOID','Chỉ được hủy đơn chưa thanh toán');
+   const reason=ensureText(body?.reason,250);if(reason.length<3)throw new StoreError(400,'REASON_REQUIRED','Cần ghi lý do hủy đơn');
+   this.store.run("UPDATE orders SET status='VOIDED',version=version+1 WHERE id=?",id);
+   audit(this.store,a.id,'ORDER_VOID',id,{reason});return this.order(a,id);
+  });
+ }
+
   const rows=a.role==='STAFF'?
    this.store.all<any>('SELECT * FROM orders WHERE created_by=? ORDER BY created_at DESC LIMIT 100',a.id):
    this.store.all<any>('SELECT * FROM orders ORDER BY created_at DESC LIMIT 200');
@@ -212,8 +220,8 @@ export class StoreService implements OnModuleInit {
  summary(){
   const p=this.store.row<any>("SELECT COUNT(*) paid_orders,COALESCE(SUM(total_vnd),0) net_revenue_vnd FROM orders WHERE payment_status='PAID'");
   const cash=this.store.row<any>("SELECT COALESCE(SUM(amount_vnd),0) val FROM payments WHERE method='CASH'")?.val||0;
-  const unpaid=this.store.row<any>("SELECT COUNT(*) n FROM orders WHERE payment_status='UNPAID'")?.n||0;
-  const bank=this.store.row<any>("SELECT COUNT(*) n FROM orders WHERE payment_status='UNPAID' AND requested_method='BANK'")?.n||0;
+  const unpaid=this.store.row<any>("SELECT COUNT(*) n FROM orders WHERE status='COMMITTED' AND payment_status='UNPAID'")?.n||0;
+  const bank=this.store.row<any>("SELECT COUNT(*) n FROM orders WHERE status='COMMITTED' AND payment_status='UNPAID' AND requested_method='BANK'")?.n||0;
   return {paid_orders:p.paid_orders,net_revenue_vnd:p.net_revenue_vnd,cash_vnd:cash,bank_vnd:0,pending_orders:unpaid,bank_pending:bank,last_synced_at:now(),shift:this.currentShift()};
  }
  bankIntent(){throw new StoreError(503,'BANK_PROVIDER_NOT_CONNECTED','Chưa kết nối ngân hàng. Đơn vẫn chưa được thanh toán.')}

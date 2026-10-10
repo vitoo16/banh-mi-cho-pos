@@ -10,6 +10,7 @@ export class StoreController {
  @Get('orders')orders(@Req()r:any){return this.call(()=>this.s.orders(this.s.actor(r.headers.authorization)))}
  @Get('orders/:id')order(@Req()r:any,@Param('id')id:string){return this.call(()=>this.s.order(this.s.actor(r.headers.authorization),id))}
  @Post('orders')create(@Req()r:any,@Body()b:any,@Headers('idempotency-key')key:string){return this.call(()=>this.s.createOrder(this.s.actor(r.headers.authorization),b,key))}
+ @Post('orders/:id/void')voidOrder(@Req()r:any,@Param('id')id:string,@Body()b:any,@Headers('idempotency-key')key:string){return this.call(()=>this.s.voidOrder(this.s.actor(r.headers.authorization,['OWNER','CASHIER']),id,b,key))}
  @Get('cash-shifts/current')shift(@Req()r:any){return this.call(()=>{this.s.actor(r.headers.authorization,['OWNER','CASHIER']);return this.s.currentShift()})}
  @Post('cash-shifts/open')open(@Req()r:any,@Body()b:any,@Headers('idempotency-key')key:string){return this.call(()=>this.s.openShift(this.s.actor(r.headers.authorization,['CASHIER']),b,key))}
  @Post('cash-shifts/:id/movements')movement(@Req()r:any,@Param('id')id:string,@Body()b:any,@Headers('idempotency-key')key:string){return this.call(()=>this.s.movement(this.s.actor(r.headers.authorization,['CASHIER']),id,b,key))}

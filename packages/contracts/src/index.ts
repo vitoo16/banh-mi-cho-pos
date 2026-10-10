@@ -33,6 +33,7 @@ export class HubClient {
   orders(){return this.request<Order[]>('/v1/orders')}
   order(id:string){return this.request<Order>('/v1/orders/'+encodeURIComponent(id))}
   createOrder(body:CreateOrderInput,key:string){return this.request<Order>('/v1/orders',{method:'POST',body:JSON.stringify(body)},key)}
+  voidOrder(id:string,reason:string,key:string){return this.request<Order>('/v1/orders/'+id+'/void',{method:'POST',body:JSON.stringify({reason})},key)}
   shift(){return this.request<Shift|null>('/v1/cash-shifts/current')}
   openShift(opening_float_vnd:number,key:string){return this.request<Shift>('/v1/cash-shifts/open',{method:'POST',body:JSON.stringify({opening_float_vnd})},key)}
   captureCash(id:string,shift_id:string,cash_tendered_vnd:number,expected_order_version:number,key:string){return this.request<PaymentReceipt>('/v1/orders/'+id+'/payments/cash',{method:'POST',body:JSON.stringify({shift_id,cash_tendered_vnd,expected_order_version})},key)}

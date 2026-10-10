@@ -23,6 +23,18 @@ paths:
       requestBody: {required: true, content: {application/json: {schema: {type: object, required: [user_id, pin], properties: {user_id: {type: string}, pin: {type: string}}}}}}
       responses:
         '201': {description: Actor-scoped session token}
+  /v1/orders/{orderId}/void:
+    post:
+      operationId: voidUnpaidOrder
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - name: orderId
+          in: path
+          required: true
+          schema: {type: string, format: uuid}
+      requestBody: {required: true, content: {application/json: {schema: {type: object, required: [reason], properties: {reason: {type: string}}}}}}
+      responses:
+        '201': {description: Unpaid order canceled with audit event}
   /v1/cash-shifts/current:
     get:
       operationId: currentShift
