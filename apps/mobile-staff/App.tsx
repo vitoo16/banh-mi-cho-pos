@@ -21,6 +21,7 @@ function Staff(){
  const [busy,setBusy]=useState(false),[error,setError]=useState(''),[priceChanged,setPriceChanged]=useState(false),[confirmed,setConfirmed]=useState<Order|null>(null),[recent,setRecent]=useState<Order[]>([]),[unknown,setUnknown]=useState(false);
  const pendingKey=useRef<string|null>(null);
  const [pending,setPending]=useState<PendingOrder|null>(null);
+ const requestLock=useRef(false);
  const selected=useMemo(()=>catalog?.products.filter(p=>(cart[p.id]?.qty||0)>0)||[],[catalog,cart]);
  const count=useMemo(()=>selected.reduce((a,p)=>a+(cart[p.id]?.qty||0),0),[selected,cart]);
  const total=useMemo(()=>selected.reduce((a,p)=>a+p.price_vnd*(cart[p.id]?.qty||0),0),[selected,cart]);
@@ -47,8 +48,8 @@ function Staff(){
  }
  async function logout(){try{await api.logout()}catch{}finally{tokenRef.current=null;setSession(null);setCart({});setRecent([]);setConfirmed(null);setScreen('menu');setPin('');setError('')}}
  const adjust=useCallback((id:string,delta:number)=>{setCart(old=>({...old,[id]:{qty:Math.max(0,(old[id]?.qty||0)+delta),note:old[id]?.note||''}}))},[]);
- async function commitPending(draft:PendingOrder){
-  if(busy)return;
+ async function commitPending(draft:PendingOrder,lockHeld=false){
+  if(!lockHeld){if(requestLock.current)return;requestLock.current=true}
   setBusy(true);setError('');
   try{
    const o=await api.createOrder(draft.body,draft.key);
@@ -68,10 +69,11 @@ function Staff(){
     setUnknown(true);setScreen('recovery');
     setError('Chưa biết POS đã nhận đơn hay chưa. Giữ nguyên mã yêu cầu trên máy, kiểm tra lại khi kết nối phục hồi.');
    }
-  }finally{setBusy(false)}
+  }finally{requestLock.current=false;setBusy(false)}
  }
  const save=async()=>{
-  if(busy||count===0||!catalog||!session||pending||unknown||priceChanged)return;
+  if(busy||requestLock.current||count===0||!catalog||!session||pending||unknown||priceChanged)return;
+  requestLock.current=true;setBusy(true);
   const draft:PendingOrder={
    key:pendingKey.current||newKey(),
    staff_id:session.user.id,
@@ -81,8 +83,8 @@ function Staff(){
   try{
    await stagePending(draft); // commit locally BEFORE any HTTP attempt
    setPending(draft);pendingKey.current=draft.key;
-  }catch(e){setError('Không lưu được bản ghi an toàn trên điện thoại: '+(e as Error).message);return}
-  await commitPending(draft);
+  }catch(e){setError('Không lưu được bản ghi an toàn trên điện thoại: '+(e as Error).message);requestLock.current=false;setBusy(false);return}
+  await commitPending(draft,true);
  };
  async function resolveUnknown(){if(pending)await commitPending(pending)}
  async function showHistory(){setScreen('history');try{setRecent(await api.orders())}catch(e){setError((e as Error).message)}}
