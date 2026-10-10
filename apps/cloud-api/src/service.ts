@@ -1,6 +1,6 @@
 import {Injectable} from '@nestjs/common';import {CloudDb} from './db';import {SepayTransfer,findExactMemoReference} from './sepay';
 export class CloudError extends Error {constructor(public readonly status:number,public readonly code:string,message:string){super(message)}}
-type SyncEvent={id:string;kind:'ORDER'|'ORDER_VOID'|'BANK_INTENT';payload:any};
+type SyncEvent={id:string;kind:'ORDER'|'ORDER_VOID'|'CASH_CAPTURE'|'CASH_REFUND'|'BANK_INTENT';payload:any};
 @Injectable()
 export class CloudService{
  constructor(readonly database:CloudDb){}
@@ -19,11 +19,21 @@ export class CloudService{
   const ordered=[...(events as SyncEvent[])].sort((a,b)=>(a?.kind==='ORDER'?0:1)-(b?.kind==='ORDER'?0:1));
   return this.database.txn(async c=>{
    for(const e of ordered){
-    if(!e||typeof e.id!=='string'||!/^[0-9a-f-]{36}$/i.test(e.id)||!['ORDER','ORDER_VOID','BANK_INTENT'].includes(e.kind)||!e.payload||typeof e.payload!=='object')throw new CloudError(400,'INVALID_EVENT','Unsupported event');
+    if(!e||typeof e.id!=='string'||!/^[0-9a-f-]{36}$/i.test(e.id)||!['ORDER','ORDER_VOID','CASH_CAPTURE','CASH_REFUND','BANK_INTENT'].includes(e.kind)||!e.payload||typeof e.payload!=='object')throw new CloudError(400,'INVALID_EVENT','Unsupported event');
     const saved=await c.query('INSERT INTO sync_events(event_id,kind,payload) VALUES($1,$2,$3) ON CONFLICT DO NOTHING RETURNING event_id',[e.id,e.kind,e.payload]);if(saved.rowCount===0)continue;
     if(e.kind==='ORDER'){
      const p=e.payload;if(typeof p.order_id!=='string'||typeof p.display_code!=='string'||!Number.isSafeInteger(p.total_vnd)||p.total_vnd<=0||p.status!=='COMMITTED'||typeof p.created_at!=='string')throw new CloudError(400,'INVALID_ORDER','Bad synced order');
      await c.query('INSERT INTO cloud_orders(order_id,display_code,total_vnd,status,created_at) VALUES($1,$2,$3,$4,$5) ON CONFLICT(order_id) DO NOTHING',[p.order_id,p.display_code,p.total_vnd,p.status,p.created_at]);
+    }else if(e.kind==='CASH_CAPTURE'){
+     const p=e.payload;if(typeof p.order_id!=='string'||typeof p.payment_id!=='string'||!Number.isSafeInteger(p.amount_vnd)||p.amount_vnd<=0)throw new CloudError(400,'INVALID_CASH_CAPTURE','Bad cash capture');
+     const result=await c.query("UPDATE cloud_orders SET status='PAID_CASH' WHERE order_id=$1 AND total_vnd=$2 AND status='COMMITTED' RETURNING order_id",[p.order_id,p.amount_vnd]);
+     if(result.rowCount===0){const prev=await c.query('SELECT status,total_vnd FROM cloud_orders WHERE order_id=$1',[p.order_id]);if(prev.rowCount===0||!['PAID_CASH','REFUNDED_CASH'].includes(prev.rows[0].status))throw new CloudError(409,'CASH_ORDER_CONFLICT','Cash order missing or already settled externally')}
+     await c.query('INSERT INTO cloud_cash_events(event_id,order_id,kind,amount_vnd) VALUES($1,$2,$3,$4) ON CONFLICT DO NOTHING',[e.id,p.order_id,'CAPTURE',p.amount_vnd]);
+    }else if(e.kind==='CASH_REFUND'){
+     const p=e.payload;if(typeof p.order_id!=='string'||typeof p.refund_id!=='string'||!Number.isSafeInteger(p.amount_vnd)||p.amount_vnd<=0)throw new CloudError(400,'INVALID_CASH_REFUND','Bad refund');
+     const result=await c.query("UPDATE cloud_orders SET status='REFUNDED_CASH' WHERE order_id=$1 AND total_vnd=$2 AND status='PAID_CASH' RETURNING order_id",[p.order_id,p.amount_vnd]);
+     if(result.rowCount===0){const prev=await c.query('SELECT status FROM cloud_orders WHERE order_id=$1',[p.order_id]);if(prev.rows[0]?.status!=='REFUNDED_CASH')throw new CloudError(409,'REFUND_ORDER_CONFLICT','Cash refund without matching captured order')}
+     await c.query('INSERT INTO cloud_cash_events(event_id,order_id,kind,amount_vnd) VALUES($1,$2,$3,$4) ON CONFLICT DO NOTHING',[e.id,p.order_id,'REFUND',p.amount_vnd]);
     }else if(e.kind==='ORDER_VOID'){
      const p=e.payload;if(typeof p.order_id!=='string')throw new CloudError(400,'INVALID_VOID','Order id missing');
      await c.query("UPDATE cloud_orders SET status='VOIDED' WHERE order_id=$1 AND status='COMMITTED'",[p.order_id]);

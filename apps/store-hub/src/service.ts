@@ -200,6 +200,7 @@ export class StoreService implements OnModuleInit {
    for(const kind of ['CUSTOMER','STORE'])
     this.store.run("INSERT INTO receipts(id,batch_id,order_id,kind,status,created_at) VALUES(?,?,?,?,?,?)",randomUUID(),batch,orderId,kind,'WAITING_FOR_PRINTER',t);
    audit(this.store,a.id,'CASH_CAPTURE',orderId,{payment_id:paymentId,amount:m.net,tendered:m.tendered,change:m.change,batch_id:batch});
+   this.store.run('INSERT INTO cloud_outbox(id,kind,payload,created_at) VALUES(?,?,?,?)',randomUUID(),'CASH_CAPTURE',JSON.stringify({order_id:orderId,amount_vnd:m.net,payment_id:paymentId}),now());
    return {payment_id:paymentId,cash_tendered_vnd:m.tendered,cash_change_vnd:m.change,cash_net_vnd:m.net,payment_status:'PAID',receipt_batch_id:batch};
   });
  }
@@ -220,6 +221,7 @@ export class StoreService implements OnModuleInit {
    this.store.run('INSERT INTO cash_movements(id,shift_id,order_id,kind,amount_vnd,created_at,reason,actor_id) VALUES(?,?,?,?,?,?,?,?)',randomUUID(),shift.id,orderId,'REFUND',-p.amount_vnd,t,reason,a.id);
    this.store.run("UPDATE orders SET payment_status='REFUNDED',version=version+1 WHERE id=?",orderId);
    audit(this.store,a.id,'CASH_REFUND',orderId,{refund_id:ref,payment_id:p.id,amount_vnd:p.amount_vnd,reason});
+   this.store.run('INSERT INTO cloud_outbox(id,kind,payload,created_at) VALUES(?,?,?,?)',randomUUID(),'CASH_REFUND',JSON.stringify({order_id:orderId,refund_id:ref,payment_id:p.id,amount_vnd:p.amount_vnd}),now());
    return {refund_id:ref,amount_vnd:p.amount_vnd,payment_status:'REFUNDED'};
   });
  }

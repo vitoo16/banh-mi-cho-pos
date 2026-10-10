@@ -23,5 +23,9 @@ test('PostgreSQL reconciliation: early callback, exact match, replay and wrong a
   assert.equal((await s.settlements('0')).items.length,1);
   const ex=await s.exceptions();assert.ok(ex.some(x=>String(x.provider_tx_id)==='100002'));
   const next=await s.settlements(String(first.next_seq));assert.deepEqual(next.items,[]);
+  const cashOrder=randomUUID(),cashEvent={id:randomUUID(),kind:'ORDER',payload:{order_id:cashOrder,display_code:'B00201',total_vnd:42000,status:'COMMITTED',created_at:new Date().toISOString()}};
+  await s.ingest([cashOrder&&cashEvent,{id:randomUUID(),kind:'CASH_CAPTURE',payload:{order_id:cashOrder,payment_id:randomUUID(),amount_vnd:42000}}]);
+  await s.ingest([{id:randomUUID(),kind:'CASH_REFUND',payload:{order_id:cashOrder,refund_id:randomUUID(),amount_vnd:42000}}]);
+  const row=await db.pool.query('SELECT status FROM cloud_orders WHERE order_id=$1',[cashOrder]);assert.equal(row.rows[0].status,'REFUNDED_CASH');
  }finally{await db.onModuleDestroy()}
 });
