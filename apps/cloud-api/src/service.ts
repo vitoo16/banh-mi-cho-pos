@@ -117,7 +117,10 @@ RETURNING blocked_until`,[bucket]);
 SELECT (SELECT COUNT(*) FROM mirror_orders WHERE store_id=$1 AND payment_status='PAID') AS paid_orders,
 (SELECT COALESCE(SUM(total_vnd),0) FROM mirror_orders WHERE store_id=$1 AND payment_status='PAID') AS net_revenue_vnd,
 (SELECT COALESCE(SUM(amount_vnd),0) FROM mirror_payments WHERE store_id=$1 AND method='CASH')-(SELECT COALESCE(SUM(amount_vnd),0) FROM mirror_refunds WHERE store_id=$1) AS cash_vnd,
-(SELECT COALESCE(SUM(amount_vnd),0) FROM cloud_bank_settlements WHERE store_id=$1) AS bank_vnd,
+(SELECT COALESCE(SUM(amount_vnd),0) FROM cloud_bank_settlements WHERE store_id=$1)
++(SELECT COALESCE(SUM(p.amount_vnd),0) FROM mirror_payments p WHERE p.store_id=$1 AND p.method='BANK'
+  AND NOT EXISTS (SELECT 1 FROM cloud_bank_settlements s WHERE s.store_id=p.store_id AND s.order_id=p.order_id))
+ AS bank_vnd,
 (SELECT COUNT(*) FROM mirror_orders WHERE store_id=$1 AND payment_status='UNPAID' AND status='COMMITTED') AS pending_orders,
 (SELECT COUNT(*) FROM mirror_orders WHERE store_id=$1 AND payment_status='UNPAID' AND requested_method='BANK' AND status='COMMITTED') AS bank_pending`,[store]);
   const r=rows.rows[0],shift=await this.db.pool.query("SELECT * FROM mirror_shifts WHERE store_id=$1 AND status='OPEN' ORDER BY opened_at DESC LIMIT 1",[store]);

@@ -88,6 +88,18 @@ test('SePay raw HMAC to cloud settlement to verified local cash desk, no duplica
   assert.equal(local.order(staff,order.order_id).payment_status,'PAID');
   assert.equal(local.receipts(cashier,order.order_id).length,2);
   assert.equal(local.summary().bank_vnd,order.total_vnd);
+  // The Hub later mirrors its local BANK payment to Cloud. It must not count
+  // the same SePay credit a second time in Owner revenue-by-tender.
+  const reconciledRows=local.store.all("SELECT id,entity,payload_json FROM sync_outbox WHERE entity IN ('order','payment') ORDER BY seq")
+   .filter(x=>{const p=JSON.parse(x.payload_json);
+    return (x.entity==='order'&&p.id===order.order_id&&p.version===2)||
+      (x.entity==='payment'&&p.order_id===order.order_id)});
+  const confirmedEvents=reconciledRows.map(x=>({id:x.id,entity:x.entity,payload:JSON.parse(x.payload_json)}));
+  const committedAt=String(Date.now());
+  await cloud.ingest(confirmedEvents,committedAt,
+   mac(process.env.CLOUD_SYNC_SECRET,committedAt+'.'+JSON.stringify({events:confirmedEvents})),process.env.CLOUD_STORE_ID);
+  assert.equal((await cloud.summary()).bank_vnd,order.total_vnd,'cloud must not double-count one bank transfer');
+
 
   // SePay receives an authenticated transfer before the Hub intent has synced.
   const lateOrder=local.createOrder(staff,{catalog_version:catalog.version,requested_payment_method:'BANK',items:[{product_id:catalog.products[0].id,qty:1}]},'sepay-late-order-0002');
