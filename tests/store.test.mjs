@@ -42,7 +42,14 @@ test('Store Hub: price snapshots, idempotency, exact change, shift and guards',(
   assert.equal(voided.status,'VOIDED');
   assert.throws(()=>s.cash(cashier,voidedOrder.order_id,{shift_id:sh.id,cash_tendered_vnd:50000,expected_order_version:2},'cash-voided-001'),e=>e.code==='ORDER_SETTLED');
   assert.equal(s.summary().pending_orders,0);
-  const closed=s.closeShift(cashier,sh.id,{counted_cash_vnd:1030000,reason:'Thiếu 20k sau kiểm đếm'},'close-001');
+  const refund=s.refundCash(cashier,order.order_id,{shift_id:sh.id,expected_order_version:2,reason:'Khách yêu cầu hoàn đơn'},'refund-idem-001');
+  assert.equal(refund.amount_vnd,70000);
+  assert.equal(s.getShift(sh.id).expected_cash_vnd,980000);
+  assert.equal(s.summary().net_revenue_vnd,0);
+  assert.equal(s.summary().cash_vnd,0);
+  assert.deepEqual(s.refundCash(cashier,order.order_id,{shift_id:sh.id,expected_order_version:2,reason:'Khách yêu cầu hoàn đơn'},'refund-idem-001'),refund);
+  assert.throws(()=>s.refundCash(cashier,order.order_id,{shift_id:sh.id,expected_order_version:3,reason:'lặp lại'},'refund-second-002'),e=>e.code==='CANNOT_REFUND');
+  const closed=s.closeShift(cashier,sh.id,{counted_cash_vnd:960000,reason:'Thiếu 20k sau kiểm đếm'},'close-001');
   assert.equal(closed.variance_vnd,-20000);
   assert.throws(()=>s.movement(cashier,sh.id,{kind:'ADD',amount_vnd:20000,reason:'Sửa quỹ'},'after-close-001'),e=>e.code==='INVALID_SHIFT');
  }finally{rmSync(dir,{recursive:true,force:true})}

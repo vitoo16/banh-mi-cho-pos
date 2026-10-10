@@ -204,6 +204,25 @@ export class StoreService implements OnModuleInit {
   });
  }
  receipts(a:Actor,orderId:string){this.order(a,orderId);return this.store.all<any>('SELECT id,kind,status,attempts FROM receipts WHERE order_id=? ORDER BY kind',orderId)}
+ refundCash(a:Actor,orderId:string,body:any,key:unknown){
+  return this.idem('cash.refund:'+orderId,key,body,()=>{
+   const shift=this.store.row<any>("SELECT * FROM shifts WHERE id=? AND status='OPEN'",body?.shift_id);
+   if(!shift||shift.cashier_id!==a.id)throw new StoreError(409,'INVALID_SHIFT','Ca thu ngân không hợp lệ');
+   const order=this.store.row<any>('SELECT * FROM orders WHERE id=?',orderId);
+   if(!order||order.status!=='COMMITTED'||order.payment_status!=='PAID')throw new StoreError(409,'CANNOT_REFUND','Đơn không đủ điều kiện hoàn tiền');
+   if(order.version!==body?.expected_order_version)throw new StoreError(409,'ORDER_CHANGED','Đơn đã thay đổi');
+   const p=this.store.row<any>("SELECT id,amount_vnd FROM payments WHERE order_id=? AND method='CASH'",orderId);
+   if(!p)throw new StoreError(409,'BANK_REFUND_UNSUPPORTED','Hoàn tiền ngân hàng phải xử lý qua dịch vụ ngân hàng');
+   const reason=ensureText(body?.reason,300);if(reason.length<3)throw new StoreError(400,'REASON_REQUIRED','Cần lý do hoàn tiền');
+   if(this.getShift(shift.id)!.expected_cash_vnd<p.amount_vnd)throw new StoreError(409,'INSUFFICIENT_DRAWER','Quỹ không đủ hoàn tiền');
+   const t=now(),ref=randomUUID();
+   this.store.run('INSERT INTO refunds(id,order_id,payment_id,shift_id,amount_vnd,created_at,reason,actor_id) VALUES(?,?,?,?,?,?,?,?)',ref,orderId,p.id,shift.id,p.amount_vnd,t,reason,a.id);
+   this.store.run('INSERT INTO cash_movements(id,shift_id,order_id,kind,amount_vnd,created_at,reason,actor_id) VALUES(?,?,?,?,?,?,?,?)',randomUUID(),shift.id,orderId,'REFUND',-p.amount_vnd,t,reason,a.id);
+   this.store.run("UPDATE orders SET payment_status='REFUNDED',version=version+1 WHERE id=?",orderId);
+   audit(this.store,a.id,'CASH_REFUND',orderId,{refund_id:ref,payment_id:p.id,amount_vnd:p.amount_vnd,reason});
+   return {refund_id:ref,amount_vnd:p.amount_vnd,payment_status:'REFUNDED'};
+  });
+ }
  reprint(a:Actor,id:string,body:any,key:unknown){
   return this.idem('receipt.reprint:'+id,key,body,()=>{
    const r=this.store.row<any>('SELECT * FROM receipts WHERE id=?',id);if(!r)throw new StoreError(404,'NOT_FOUND','Không tìm thấy liên in');
@@ -241,7 +260,7 @@ export class StoreService implements OnModuleInit {
  }
  summary(){
   const p=this.store.row<any>("SELECT COUNT(*) paid_orders,COALESCE(SUM(total_vnd),0) net_revenue_vnd FROM orders WHERE payment_status='PAID'");
-  const cash=this.store.row<any>("SELECT COALESCE(SUM(amount_vnd),0) val FROM payments WHERE method='CASH'")?.val||0;
+  const cash=(this.store.row<any>("SELECT COALESCE(SUM(amount_vnd),0) val FROM payments WHERE method='CASH'")?.val||0)-(this.store.row<any>("SELECT COALESCE(SUM(amount_vnd),0) val FROM refunds")?.val||0);
   const unpaid=this.store.row<any>("SELECT COUNT(*) n FROM orders WHERE status='COMMITTED' AND payment_status='UNPAID'")?.n||0;
   const bank=this.store.row<any>("SELECT COUNT(*) n FROM orders WHERE status='COMMITTED' AND payment_status='UNPAID' AND requested_method='BANK'")?.n||0;
   return {paid_orders:p.paid_orders,net_revenue_vnd:p.net_revenue_vnd,cash_vnd:cash,bank_vnd:(this.store.row<{v:number}>("SELECT COALESCE(SUM(amount_vnd),0) v FROM payments WHERE method='BANK'")?.v||0),pending_orders:unpaid,bank_pending:bank,last_synced_at:now(),shift:this.currentShift()};

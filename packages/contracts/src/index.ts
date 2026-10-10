@@ -8,6 +8,7 @@ export interface OrderItem {product_id:string;name_snapshot:string;qty:number;un
 export interface Order {order_id:string;display_code:string;created_at:string;created_by:string;status:'COMMITTED'|'VOIDED';payment_status:PaymentStatus;requested_payment_method:PaymentMethod;total_vnd:number;version:number;items:OrderItem[];note:string}
 export interface Shift {id:string;cashier_id:string;opening_float_vnd:number;status:'OPEN'|'CLOSED';opened_at:string;closed_at?:string;expected_cash_vnd:number;counted_cash_vnd?:number;variance_vnd?:number}
 export interface PaymentReceipt {payment_id:string;cash_tendered_vnd:number;cash_change_vnd:number;cash_net_vnd:number;payment_status:PaymentStatus;receipt_batch_id:string}
+export interface CashRefund {refund_id:string;amount_vnd:number;payment_status:'REFUNDED'}
 export interface ReceiptCopy {id:string;kind:'CUSTOMER'|'STORE';status:'QUEUED'|'SENT'|'UNKNOWN'|'FAILED'|'WAITING_FOR_PRINTER';attempts:number}
 export interface OrderPage {items:Order[];next_cursor:string|null}
 export interface BankIntent {status:'PENDING';reference:string;amount_vnd:number;qr_url:string;account_number:string;bank_bin:string}
@@ -41,6 +42,7 @@ export class HubClient {
   shift(){return this.request<Shift|null>('/v1/cash-shifts/current')}
   openShift(opening_float_vnd:number,key:string){return this.request<Shift>('/v1/cash-shifts/open',{method:'POST',body:JSON.stringify({opening_float_vnd})},key)}
   captureCash(id:string,shift_id:string,cash_tendered_vnd:number,expected_order_version:number,key:string){return this.request<PaymentReceipt>('/v1/orders/'+id+'/payments/cash',{method:'POST',body:JSON.stringify({shift_id,cash_tendered_vnd,expected_order_version})},key)}
+  refundCash(id:string,shift_id:string,expected_order_version:number,reason:string,key:string){return this.request<CashRefund>('/v1/orders/'+encodeURIComponent(id)+'/refunds/cash',{method:'POST',body:JSON.stringify({shift_id,expected_order_version,reason})},key)}
   receipts(id:string){return this.request<ReceiptCopy[]>('/v1/orders/'+id+'/receipts')}
   reprint(id:string,reason:string,key:string){return this.request<ReceiptCopy>('/v1/receipt-copies/'+id+'/reprint',{method:'POST',body:JSON.stringify({reason})},key)}
   movement(shift_id:string,kind:'ADD'|'WITHDRAW'|'EXPENSE',amount_vnd:number,reason:string,key:string){return this.request<Shift>('/v1/cash-shifts/'+shift_id+'/movements',{method:'POST',body:JSON.stringify({kind,amount_vnd,reason})},key)}

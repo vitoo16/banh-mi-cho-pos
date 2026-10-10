@@ -18,6 +18,7 @@ export class StoreController {
  @Post('cash-shifts/:id/movements')movement(@Req()r:any,@Param('id')id:string,@Body()b:any,@Headers('idempotency-key')key:string){return this.call(()=>this.s.movement(this.s.actor(r.headers.authorization,['CASHIER']),id,b,key))}
  @Post('cash-shifts/:id/close')close(@Req()r:any,@Param('id')id:string,@Body()b:any,@Headers('idempotency-key')key:string){return this.call(()=>this.s.closeShift(this.s.actor(r.headers.authorization,['CASHIER']),id,b,key))}
  @Post('orders/:id/payments/cash')cash(@Req()r:any,@Param('id')id:string,@Body()b:any,@Headers('idempotency-key')key:string){return this.call(()=>this.s.cash(this.s.actor(r.headers.authorization,['CASHIER']),id,b,key))}
+ @Post('orders/:id/refunds/cash')refund(@Req()r:any,@Param('id')id:string,@Body()body:any,@Headers('idempotency-key')key:string){return this.call(()=>this.s.refundCash(this.s.actor(r.headers.authorization,['CASHIER']),id,body,key))}
  @Post('orders/:id/payments/bank-intent')async bank(@Req()r:any,@Param('id')id:string,@Headers('idempotency-key')key:string){
   const actor=this.s.actor(r.headers.authorization,['CASHIER']),reference=this.call(()=>this.s.createBankIntent(actor,id,key));
   try{await this.cloud.flush()}catch{throw new HttpException({code:'CLOUD_UNREACHABLE',message:'Chưa đồng bộ được mã chuyển khoản, không hiển thị QR'},503)}
