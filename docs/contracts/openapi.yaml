@@ -222,6 +222,32 @@ paths:
       requestBody: {required: true, content: {application/json: {schema: {type: object, required: [name, price_vnd, is_active], properties: {name: {type: string}, price_vnd: { $ref: '#/components/schemas/MoneyVnd'}, is_active: {type: boolean}}}}}}
       responses:
         '200': {description: Updated product with price version increment}
+  /v1/owner/device-pairings:
+    post:
+      operationId: issueStaffDevicePairing
+      summary: Owner-only 180-second single-use device pairing code
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody: {required: true, content: {application/json: {schema: {type: object, required: [label], properties: {label: {type: string, minLength: 3, maxLength: 80}}}}}}
+      responses:
+        '201': {description: 16-character one-time pairing code, expiry timestamp}
+  /v1/owner/devices:
+    get:
+      operationId: listStaffDevices
+      responses:
+        '200': {description: Bound Staff devices without exposing secrets}
+  /v1/owner/devices/{deviceId}/revoke:
+    post:
+      operationId: revokeStaffDevice
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - name: deviceId
+          in: path
+          required: true
+          schema: {type: string, format: uuid}
+      requestBody: {required: true, content: {application/json: {schema: {type: object, required: [reason], properties: {reason: {type: string, minLength: 3}}}}}}
+      responses:
+        '201': {description: Device revoked and all bound sessions invalidated}
   /v1/owner/employees:
     get:
       operationId: ownerListEmployees
