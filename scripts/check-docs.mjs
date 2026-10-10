@@ -24,7 +24,7 @@ for(const word of ['requested_payment_method','hai liên','Không quản lý s�
   if(!spec.includes(word)) throw new Error(`Spec invariant missing: ${word}`);
 }
 const readme=readFileSync(join(root,'README.md'),'utf8');
-if(!readme.includes('SPEC/PLAN BASELINE ONLY')) throw new Error('README must reflect non-implemented status');
+if(!(readme.includes('SPEC/PLAN BASELINE ONLY') || readme.includes('pilot implementation in progress'))) throw new Error('README must accurately reflect planning or incomplete-pilot status');
 const bad = required.filter(p=>readFileSync(join(root,p),'utf8').trim().length===0);
 if(bad.length) throw new Error(`Empty mandatory documents: ${bad.join(', ')}`);
 console.log(`Planning pack OK: ${required.length} required files; docs-only validation, NOT app CI.`);
