@@ -6,6 +6,9 @@ export class StoreDb {
   if(path!==':memory:')mkdirSync(dirname(path),{recursive:true});
   this.db=new DatabaseSync(path);this.db.exec('PRAGMA journal_mode=WAL; PRAGMA foreign_keys=ON; PRAGMA busy_timeout=5000;');
   this.db.exec(`
+CREATE TABLE IF NOT EXISTS device_pairing_codes(code_hash TEXT PRIMARY KEY,label TEXT NOT NULL,created_by TEXT NOT NULL,expires_at INTEGER NOT NULL,claimed_at INTEGER);
+CREATE TABLE IF NOT EXISTS staff_devices(id TEXT PRIMARY KEY,user_id TEXT NOT NULL,label TEXT NOT NULL,token_hash TEXT NOT NULL UNIQUE,created_at TEXT NOT NULL,last_seen_at TEXT,revoked_at TEXT);
+CREATE INDEX IF NOT EXISTS idx_staff_devices_user ON staff_devices(user_id,revoked_at);
 CREATE TABLE IF NOT EXISTS users(id TEXT PRIMARY KEY,name TEXT NOT NULL,role TEXT NOT NULL,pin_hash TEXT NOT NULL,active INTEGER DEFAULT 1);
 CREATE TABLE IF NOT EXISTS login_attempts(user_id TEXT PRIMARY KEY,attempts INTEGER NOT NULL,blocked_until INTEGER NOT NULL);
 CREATE TABLE IF NOT EXISTS sessions(token_hash TEXT PRIMARY KEY,user_id TEXT NOT NULL,expires_at INTEGER NOT NULL);
@@ -65,6 +68,9 @@ CREATE TRIGGER IF NOT EXISTS sync_shift_updated AFTER UPDATE ON shifts BEGIN
 END;
 
 `);
+  // Additive migration for previously created shops.
+  const columns=this.db.prepare('PRAGMA table_info(sessions)').all() as Array<{name:string}>;
+  if(!columns.some(c=>c.name==='device_id'))this.db.exec('ALTER TABLE sessions ADD COLUMN device_id TEXT');
   if(!this.db.prepare("SELECT 1 FROM settings WHERE key='catalog_version'").get())this.db.prepare('INSERT INTO settings(key,value) VALUES(?,?)').run('catalog_version','1');
  }
 /** Backfill existing local rows BEFORE first cloud sync. One atomic snapshot, one marker per store.

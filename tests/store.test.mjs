@@ -86,3 +86,36 @@ test('Store Hub: price snapshots, idempotency, exact change, shift and guards',(
   assert.throws(()=>s.movement(cashier,sh.id,{kind:'ADD',amount_vnd:20000,reason:'Sửa quỹ'},'after-close-001'),e=>e.code==='INVALID_SHIFT');
  }finally{rmSync(dir,{recursive:true,force:true})}
 });
+
+test('pair code one-time use, device-bound Staff sessions, restart and Owner revocation',()=>{
+ const dir=mkdtempSync(join(tmpdir(),'bmc-pair-'));
+ const old={path:process.env.STORE_DB_PATH,pair:process.env.PAIRING_ENFORCED};
+ try{
+  process.env.STORE_DB_PATH=join(dir,'pairing.sqlite');process.env.PAIRING_ENFORCED='1';
+  process.env.BOOTSTRAP_OWNER_PIN='secure-owner-test';process.env.BOOTSTRAP_CASHIER_PIN='secure-cashier-test';process.env.BOOTSTRAP_STAFF_PIN='secure-staff-test';process.env.SEED_DEMO_CATALOG='1';
+  const {StoreService}=require('../apps/store-hub/dist/service.js');const s=new StoreService();s.onModuleInit();
+  const owner=s.actor('Bearer '+s.login('owner','secure-owner-test').token,['OWNER']);
+  assert.throws(()=>s.login('staff','secure-staff-test'),e=>e.code==='DEVICE_PAIRING_REQUIRED');
+  const issued=s.issuePairing(owner,'Máy nhân viên 01','pairing-issue-001');
+  assert.equal(issued.pairing_code.length,16);
+  assert.throws(()=>s.login('staff','secure-staff-test','FFFFFFFFFFFFFFFF'),e=>e.code==='DEVICE_PAIRING_REQUIRED');
+  const session=s.login('staff','secure-staff-test',issued.pairing_code);
+  assert.ok(session.device_token);
+  assert.ok(s.actor('Bearer '+session.token,['STAFF'],session.device_token));
+  assert.throws(()=>s.actor('Bearer '+session.token,['STAFF'],'stolen-wrong-token'),e=>e.code==='DEVICE_NOT_TRUSTED');
+  assert.throws(()=>s.login('staff','secure-staff-test',issued.pairing_code),e=>e.code==='DEVICE_PAIRING_REQUIRED');
+  const relogin=s.login('staff','secure-staff-test',undefined,session.device_token);
+  assert.ok(s.actor('Bearer '+relogin.token,['STAFF'],session.device_token));
+  const db2=new StoreService(); // persisted device pairing and tokens survive process restart
+  assert.ok(db2.actor('Bearer '+relogin.token,['STAFF'],session.device_token));
+  const device=s.devices()[0];
+  assert.equal(device.user_id,'staff');
+  assert.deepEqual(s.revokeDevice(owner,device.id,'Điện thoại bị mất','revoke-pair-001'),{ok:true,revoked:true});
+  assert.throws(()=>s.actor('Bearer '+relogin.token,['STAFF'],session.device_token),e=>e.code==='SESSION_EXPIRED');
+  assert.throws(()=>s.login('staff','secure-staff-test',undefined,session.device_token),e=>e.code==='DEVICE_PAIRING_REQUIRED');
+ }finally{
+  if(old.path===undefined)delete process.env.STORE_DB_PATH;else process.env.STORE_DB_PATH=old.path;
+  if(old.pair===undefined)delete process.env.PAIRING_ENFORCED;else process.env.PAIRING_ENFORCED=old.pair;
+  rmSync(dir,{recursive:true,force:true});
+ }
+});

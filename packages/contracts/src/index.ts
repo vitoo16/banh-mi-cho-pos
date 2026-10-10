@@ -13,23 +13,26 @@ export interface OrderPage {items:Order[];next_cursor:string|null}
 export interface Summary {paid_orders:number;net_revenue_vnd:number;cash_vnd:number;bank_vnd:number;pending_orders:number;bank_pending:number;last_synced_at:string;shift:Shift|null}
 export interface Employee {id:string;name:string;role:Role;active:boolean}
 export interface User {id:string;name:string;role:Role}
-export interface Session {token:string;user:User}
+export interface Session {token:string;user:User;device_token?:string}
+export interface StaffDevice {id:string;user_id:string;label:string;created_at:string;last_seen_at:string|null;revoked_at:string|null}
+export interface PairingCode {pairing_code:string;label:string;expires_at:number}
 export interface CreateOrderInput {catalog_version:number;requested_payment_method:PaymentMethod;items:{product_id:string;qty:number;note?:string}[];note?:string}
 export function formatVnd(value:number):string {return new Intl.NumberFormat('vi-VN').format(value)+'đ'}
 export const money = (x:unknown):number=>{if(typeof x!=='number'||!Number.isSafeInteger(x)||x<0||x>1_000_000_000)throw new Error('Số tiền không hợp lệ');return x};
 export class ApiError extends Error {constructor(public status:number,public code:string,message:string){super(message)}}
 export class HubClient {
-  constructor(public readonly baseUrl:string,private getToken:()=>string|undefined){}
+  constructor(public readonly baseUrl:string,private getToken:()=>string|undefined,private getDeviceToken:()=>string|undefined=()=>undefined){}
   async request<T>(path:string,init:RequestInit={},key?:string):Promise<T>{
     const headers:Record<string,string>={'Content-Type':'application/json',...(init.headers as Record<string,string>||{})};
     const token=this.getToken(); if(token)headers.Authorization='Bearer '+token;
+    const deviceToken=this.getDeviceToken();if(deviceToken)headers['x-device-token']=deviceToken;
     if(key)headers['Idempotency-Key']=key;
     const res=await fetch(this.baseUrl.replace(/\/$/,'')+path,{...init,headers});
     const body=await res.json().catch(()=>({}));
     if(!res.ok)throw new ApiError(res.status,String(body.code||'HTTP_ERROR'),String(body.message||'Không thể thực hiện thao tác'));
     return body as T;
   }
-  login(pin:string,user_id:string){return this.request<Session>('/v1/auth/login',{method:'POST',body:JSON.stringify({user_id,pin})})}
+  login(pin:string,user_id:string,pairing_code?:string){return this.request<Session>('/v1/auth/login',{method:'POST',body:JSON.stringify({user_id,pin,...pairing_code?{pairing_code}:{}})})}
   logout(){return this.request<{ok:boolean}>('/v1/auth/logout',{method:'POST',body:'{}'})}
   catalog(){return this.request<Catalog>('/v1/catalog')}
   orders(){return this.request<Order[]>('/v1/orders')}
@@ -49,6 +52,9 @@ export class HubClient {
   products(){return this.request<Catalog>('/v1/owner/products')}
   updateProduct(id:string,body:{name:string;price_vnd:number;is_active:boolean},key:string){return this.request<Product>('/v1/owner/products/'+id,{method:'PATCH',body:JSON.stringify(body)},key)}
   bankExceptions(){return this.request<Array<{provider_tx_id:string;reference:string;amount_vnd:number;reason:string;received_at:string}>>('/v1/owner/bank-exceptions')}
+  issuePairing(label:string,key:string){return this.request<PairingCode>('/v1/owner/device-pairings',{method:'POST',body:JSON.stringify({label})},key)}
+  devices(){return this.request<StaffDevice[]>('/v1/owner/devices')}
+  revokeDevice(id:string,reason:string,key:string){return this.request<{ok:boolean;revoked:boolean}>('/v1/owner/devices/'+encodeURIComponent(id)+'/revoke',{method:'POST',body:JSON.stringify({reason})},key)}
   employees(){return this.request<Employee[]>('/v1/owner/employees')}
   addEmployee(body:{id:string;name:string;role:'STAFF'|'CASHIER';pin:string},key:string){return this.request<Employee>('/v1/owner/employees',{method:'POST',body:JSON.stringify(body)},key)}
   setEmployeeActive(id:string,active:boolean,key:string){return this.request<Employee>('/v1/owner/employees/'+encodeURIComponent(id),{method:'PATCH',body:JSON.stringify({active})},key)}
