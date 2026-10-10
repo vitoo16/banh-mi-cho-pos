@@ -55,7 +55,7 @@ export class CloudService{
   for(const tx of transactions.rows){
    if(tx.account_number!==account){await c.query("UPDATE bank_transactions SET status='EXCEPTION',reason='WRONG_ACCOUNT' WHERE provider_tx_id=$1",[tx.provider_tx_id]);continue}
    const v=tx.payload as SepayTransfer;
-   const refs=await c.query("SELECT bi.*,co.status order_status FROM bank_intents bi JOIN cloud_orders co ON co.order_id=bi.order_id WHERE bi.status='PENDING'");
+   const refs=await c.query("SELECT bi.*,co.status order_status FROM bank_intents bi JOIN cloud_orders co ON co.order_id=bi.order_id WHERE bi.status IN ('PENDING','CONFIRMED')");
    const candidates=refs.rows.filter(r=>findExactMemoReference(v.content,r.reference,v.code));
    if(candidates.length===0)continue; // arrives before order sync; retry at next ingest
    if(candidates.length!==1){await c.query("UPDATE bank_transactions SET status='EXCEPTION',reason='AMBIGUOUS_REFERENCE' WHERE provider_tx_id=$1",[tx.provider_tx_id]);continue}
