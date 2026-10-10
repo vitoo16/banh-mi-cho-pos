@@ -49,5 +49,5 @@ export class HubClient {
   employees(){return this.request<Employee[]>('/v1/owner/employees')}
   addEmployee(body:{id:string;name:string;role:'STAFF'|'CASHIER';pin:string},key:string){return this.request<Employee>('/v1/owner/employees',{method:'POST',body:JSON.stringify(body)},key)}
   setEmployeeActive(id:string,active:boolean,key:string){return this.request<Employee>('/v1/owner/employees/'+encodeURIComponent(id),{method:'PATCH',body:JSON.stringify({active})},key)}
-  bankIntent(id:string,key:string){return this.request<{status:string;message:string}>('/v1/orders/'+id+'/payments/bank-intent',{method:'POST',body:'{}'},key)}
+  bankIntent(id:string,key:string){return this.request<{status:string;reference:string;amount_vnd:number;bank_code:string;account_number:string}>('/v1/orders/'+id+'/payments/bank-intent',{method:'POST',body:'{}'},key)}
 }
