@@ -1,9 +1,10 @@
 import 'reflect-metadata';
+import 'dotenv/config';
 import {NestFactory} from '@nestjs/core';
 import {Module} from '@nestjs/common';
 import {FastifyAdapter,NestFastifyApplication} from '@nestjs/platform-fastify';
-import {StoreDb} from './db';import {StoreService} from './service';import {StoreController} from './controller';
-@Module({controllers:[StoreController],providers:[StoreService]})
+import {ReceiptPrinter} from './printer';import {StoreService} from './service';import {StoreController} from './controller';
+@Module({controllers:[StoreController],providers:[StoreService,ReceiptPrinter]})
 class AppModule{}
 async function main(){
  const app=await NestFactory.create<NestFastifyApplication>(AppModule,new FastifyAdapter({logger:true,bodyLimit:64*1024}));

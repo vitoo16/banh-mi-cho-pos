@@ -22,7 +22,7 @@ function Staff(){
  const adjust=useCallback((id:string,delta:number)=>{setCart(old=>({...old,[id]:{qty:Math.max(0,(old[id]?.qty||0)+delta),note:old[id]?.note||''}}))},[]);
  const save=async()=>{if(busy||count===0||!catalog||unknown)return;setBusy(true);setError('');const key=pendingKey.current||(pendingKey.current=newKey());
   try{const o=await api.createOrder({catalog_version:catalog.version,requested_payment_method:method,items:selected.map(p=>({product_id:p.id,qty:cart[p.id].qty,note:cart[p.id].note})),note:orderNote},key);pendingKey.current=null;setUnknown(false);setConfirmed(o);setScreen('saved');setCart({});setOrderNote('');setMethod('CASH')}
-  catch(e){const message=(e as Error).message;setError(message);if((e as {status?:number}).status===409){pendingKey.current=null;setUnknown(false);await load()}else{setUnknown(true)}}
+  catch(e){const message=(e as Error).message;setError(message);if((e as {status?:number}).status!==undefined){pendingKey.current=null;setUnknown(false);if((e as {status?:number}).status===409)await load()}else{setUnknown(true)}}
   finally{setBusy(false)}
  };
  async function resolveUnknown(){if(!pendingKey.current||!catalog)return;setBusy(true);setError('');try{

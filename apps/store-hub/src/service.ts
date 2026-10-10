@@ -57,9 +57,9 @@ export class StoreService implements OnModuleInit {
  }
  catalog(){
   const version=Number(this.store.row<{value:string}>("SELECT value FROM settings WHERE key='catalog_version'")?.value||1);
-  return {version,products:this.store.all<any>('SELECT id,name,category,price_vnd,is_active FROM products WHERE is_active=1 ORDER BY category,name'),enabled_payment_methods:['CASH','BANK']};
+  return {version,products:this.store.all<any>('SELECT id,name,category,price_vnd,is_active FROM products WHERE is_active=1 ORDER BY category,name').map(p=>({...p,is_active:!!p.is_active})),enabled_payment_methods:['CASH','BANK']};
  }
- allProducts(){return {version:this.catalog().version,products:this.store.all<any>('SELECT id,name,category,price_vnd,is_active FROM products ORDER BY category,name'),enabled_payment_methods:['CASH','BANK']}}
+ allProducts(){return {version:this.catalog().version,products:this.store.all<any>('SELECT id,name,category,price_vnd,is_active FROM products ORDER BY category,name').map(p=>({...p,is_active:!!p.is_active})),enabled_payment_methods:['CASH','BANK']}}
  createProduct(a:Actor,body:any,key:unknown){
   return this.idem('product.create:'+a.id,key,()=>{
    const id=randomUUID(),name=ensureText(body?.name,120),category=ensureText(body?.category||'Khác',80),price=ensureMoney(body?.price_vnd);
