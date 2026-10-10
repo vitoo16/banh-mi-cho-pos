@@ -9,9 +9,8 @@ class AppModule{}
 async function main(){
  const app=await NestFactory.create<NestFastifyApplication>(AppModule,new FastifyAdapter({logger:true,bodyLimit:64*1024}));
  const origins=(process.env.CORS_ORIGINS||'http://localhost:5173,http://localhost:5174').split(',').filter(Boolean);
- app.enableCors({origin:origins,methods:['GET','POST','PATCH'],allowedHeaders:['Authorization','Content-Type','Idempotency-Key']});
+ app.enableCors({origin:origins,methods:['GET','POST','PATCH'],allowedHeaders:['Authorization','Content-Type','Idempotency-Key','X-Device-Token']});
  const host=process.env.HUB_BIND_HOST||'127.0.0.1',port=Number(process.env.HUB_PORT||4400);
- if(host!=='127.0.0.1'&&host!=='::1'&&process.env.REQUIRE_STAFF_DEVICE_PAIRING!=='1')throw new Error('LAN requires staff device pairing');
  if(host!=='127.0.0.1'&&host!=='::1'&&process.env.ALLOW_INSECURE_LAN_DEV!=='1')
   throw new Error('LAN bind blocked without explicit development opt-in. Configure trusted TLS reverse proxy and pairing before production.');
  await app.listen({host,port});

@@ -7,6 +7,13 @@ test('Store Hub: price snapshots, idempotency, exact change, shift and guards',(
   process.env.STORE_DB_PATH=join(dir,'shop.sqlite');process.env.BOOTSTRAP_OWNER_PIN='owner-secure-123';process.env.BOOTSTRAP_CASHIER_PIN='cashier-secure-456';process.env.BOOTSTRAP_STAFF_PIN='staff-secure-789';process.env.SEED_DEMO_CATALOG='1';
   const {StoreService}=require('../apps/store-hub/dist/service.js'),s=new StoreService();s.onModuleInit();
   const staff=s.actor('Bearer '+s.login('staff','staff-secure-789').token,['STAFF']);
+  const pair=s.issuePairCode(s.actor('Bearer '+s.login('owner','owner-secure-123').token,['OWNER']));
+  const dev=s.pairDevice(pair.code,'Android test');assert.ok(dev.device_token);
+  assert.throws(()=>s.pairDevice(pair.code,'Second test'),e=>e.code==='PAIR_EXPIRED');
+  process.env.REQUIRE_STAFF_DEVICE_PAIRING='1';
+  assert.throws(()=>s.actor('Bearer '+s.login('staff','staff-secure-789').token,['STAFF']),e=>e.code==='DEVICE_PAIR_REQUIRED');
+  assert.equal(s.actor('Bearer '+s.login('staff','staff-secure-789').token,['STAFF'],dev.device_token).role,'STAFF');
+  delete process.env.REQUIRE_STAFF_DEVICE_PAIRING;
   const cashier=s.actor('Bearer '+s.login('cashier','cashier-secure-456').token,['CASHIER']);
   const owner=s.actor('Bearer '+s.login('owner','owner-secure-123').token,['OWNER']);
   assert.throws(()=>s.actor('Bearer '+s.login('staff','staff-secure-789').token,['OWNER']),e=>e.code==='FORBIDDEN');

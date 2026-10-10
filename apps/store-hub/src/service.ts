@@ -58,17 +58,50 @@ export class StoreService implements OnModuleInit {
   this.store.run('INSERT INTO sessions(token_hash,user_id,expires_at) VALUES(?,?,?)',hash,uid,Date.now()+12*3600_000);
   return {token,user:{id:u.id,name:u.name,role:u.role}};
  }
+ issuePairCode(a:Actor){
+  const code=String(randomBytes(4).readUInt32BE(0)%100000000).padStart(8,'0');
+  const hash=createHash('sha256').update(code).digest('hex');
+  this.store.run('DELETE FROM pair_codes WHERE expires_at<? OR redeemed=1',Date.now());
+  this.store.run('INSERT INTO pair_codes(code_hash,expires_at) VALUES(?,?)',hash,Date.now()+300000);
+  audit(this.store,a.id,'DEVICE_PAIR_CODE_ISSUED',hash.slice(0,12));
+  return {code,expires_at:new Date(Date.now()+300000).toISOString()};
+ }
+ pairDevice(code:unknown,name:unknown){
+  const val=ensureText(code,16),deviceName=ensureText(name,80);
+  if(!/^\d{8}$/.test(val)||deviceName.length<2)throw new StoreError(400,'INVALID_PAIR_REQUEST','Mã ghép hoặc tên thiết bị không hợp lệ');
+  return this.store.transaction(()=>{
+   const hash=createHash('sha256').update(val).digest('hex');
+   const result=this.store.run('UPDATE pair_codes SET redeemed=1 WHERE code_hash=? AND redeemed=0 AND expires_at>?',hash,Date.now());
+   if(result.changes!==1)throw new StoreError(401,'PAIR_EXPIRED','Mã ghép không hợp lệ hoặc đã hết hạn');
+   const id=randomUUID(),token=randomBytes(32).toString('base64url'),tokenHash=createHash('sha256').update(token).digest('hex');
+   this.store.run('INSERT INTO paired_devices(id,device_name,token_hash,created_at) VALUES(?,?,?,?)',id,deviceName,tokenHash,now());
+   audit(this.store,'DEVICE_PAIR','DEVICE_PAIRED',id,{device_name:deviceName});
+   return {device_id:id,device_token:token};
+  });
+ }
+ devices(){return this.store.all<{id:string;device_name:string;active:number;created_at:string}>('SELECT id,device_name,active,created_at FROM paired_devices ORDER BY created_at DESC').map(d=>({...d,active:!!d.active}))}
+ revokeDevice(a:Actor,id:string){
+  const changed=this.store.run('UPDATE paired_devices SET active=0 WHERE id=? AND active=1',id);
+  if(changed.changes!==1)throw new StoreError(404,'DEVICE_NOT_FOUND','Thiết bị không tồn tại hoặc đã khóa');
+  audit(this.store,a.id,'DEVICE_REVOKED',id);
+  return {success:true};
+ }
  logout(auth:unknown){
   if(typeof auth!=='string'||!auth.startsWith('Bearer '))throw new StoreError(401,'LOGIN_REQUIRED','Vui lòng đăng nhập');
   const hash=createHash('sha256').update(auth.slice(7)).digest('hex');this.store.run('DELETE FROM sessions WHERE token_hash=?',hash);return {success:true};
  }
- actor(auth:unknown,roles:Role[]=['OWNER','CASHIER','STAFF']):Actor{
+ actor(auth:unknown,roles:Role[]=['OWNER','CASHIER','STAFF'],deviceToken?:unknown):Actor{
   if(typeof auth!=='string'||!auth.startsWith('Bearer '))throw new StoreError(401,'LOGIN_REQUIRED','Vui lòng đăng nhập');
   const token=auth.slice(7);if(token.length>200)throw new StoreError(401,'LOGIN_REQUIRED','Phiên đăng nhập không hợp lệ');
   const hash=createHash('sha256').update(token).digest('hex');
   const row=this.store.row<any>('SELECT u.id,u.name,u.role FROM users u JOIN sessions s ON s.user_id=u.id WHERE s.token_hash=? AND s.expires_at>? AND u.active=1',hash,Date.now());
   if(!row)throw new StoreError(401,'SESSION_EXPIRED','Phiên đăng nhập hết hạn');
   if(!roles.includes(row.role))throw new StoreError(403,'FORBIDDEN','Không có quyền thực hiện');
+  if(row.role==='STAFF'&&process.env.REQUIRE_STAFF_DEVICE_PAIRING==='1'){
+   if(typeof deviceToken!=='string'||deviceToken.length>200)throw new StoreError(403,'DEVICE_PAIR_REQUIRED','Thiết bị cần được chủ tiệm ghép trước');
+   const hash=createHash('sha256').update(deviceToken).digest('hex');
+   if(!this.store.row('SELECT 1 FROM paired_devices WHERE token_hash=? AND active=1',hash))throw new StoreError(403,'DEVICE_REVOKED','Thiết bị chưa được cho phép hoặc đã bị khóa');
+  }
   return row as Actor;
  }
  private idem<T>(scope:string,key:unknown,payload:unknown,fn:()=>T):T{

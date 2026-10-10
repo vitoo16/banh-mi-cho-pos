@@ -6,29 +6,33 @@ export class StoreController {
  private call<T>(fn:()=>T):T{try{return fn()}catch(e:any){if(e instanceof StoreError)throw new HttpException({code:e.code,message:e.message},e.status);if(e?.message&&['INVALID_MONEY','INVALID_QUANTITY','INSUFFICIENT_CASH'].includes(e.message))throw new HttpException({code:e.message,message:e.message},422);throw e}}
  @Get('health') health(){return {status:'ok',mode:'PILOT_LOCAL',bank_integration:'DISABLED',printing:'UNVERIFIED'}}
  @Post('auth/login')login(@Body()b:any){return this.call(()=>this.s.login(b?.user_id,b?.pin))}
+ @Post('auth/device/pair')pair(@Body()body:any){return this.call(()=>this.s.pairDevice(body?.code,body?.device_name))}
  @Post('auth/logout')logout(@Req()r:any){return this.call(()=>this.s.logout(r.headers.authorization))}
- @Get('catalog')catalog(@Req()r:any){return this.call(()=>{this.s.actor(r.headers.authorization);return this.s.catalog()})}
- @Get('orders')orders(@Req()r:any){return this.call(()=>this.s.orders(this.s.actor(r.headers.authorization)))}
- @Get('orders/history')history(@Req()r:any,@Query('cursor')cursor?:string,@Query('limit')limit?:string){return this.call(()=>this.s.history(this.s.actor(r.headers.authorization),cursor,limit?Number(limit):100))}
- @Get('orders/:id')order(@Req()r:any,@Param('id')id:string){return this.call(()=>this.s.order(this.s.actor(r.headers.authorization),id))}
- @Post('orders')create(@Req()r:any,@Body()b:any,@Headers('idempotency-key')key:string){return this.call(()=>this.s.createOrder(this.s.actor(r.headers.authorization),b,key))}
- @Post('orders/:id/void')voidOrder(@Req()r:any,@Param('id')id:string,@Body()b:any,@Headers('idempotency-key')key:string){return this.call(()=>this.s.voidOrder(this.s.actor(r.headers.authorization,['OWNER','CASHIER']),id,b,key))}
- @Get('cash-shifts/current')shift(@Req()r:any){return this.call(()=>{this.s.actor(r.headers.authorization,['OWNER','CASHIER']);return this.s.currentShift()})}
- @Post('cash-shifts/open')open(@Req()r:any,@Body()b:any,@Headers('idempotency-key')key:string){return this.call(()=>this.s.openShift(this.s.actor(r.headers.authorization,['CASHIER']),b,key))}
- @Post('cash-shifts/:id/movements')movement(@Req()r:any,@Param('id')id:string,@Body()b:any,@Headers('idempotency-key')key:string){return this.call(()=>this.s.movement(this.s.actor(r.headers.authorization,['CASHIER']),id,b,key))}
- @Post('cash-shifts/:id/close')close(@Req()r:any,@Param('id')id:string,@Body()b:any,@Headers('idempotency-key')key:string){return this.call(()=>this.s.closeShift(this.s.actor(r.headers.authorization,['CASHIER']),id,b,key))}
- @Post('orders/:id/payments/cash')cash(@Req()r:any,@Param('id')id:string,@Body()b:any,@Headers('idempotency-key')key:string){return this.call(()=>this.s.cash(this.s.actor(r.headers.authorization,['CASHIER']),id,b,key))}
- @Post('orders/:id/refunds/cash')refund(@Req()r:any,@Param('id')id:string,@Body()body:any,@Headers('idempotency-key')key:string){return this.call(()=>this.s.refundCash(this.s.actor(r.headers.authorization,['CASHIER']),id,body,key))}
+ @Get('catalog')catalog(@Req()r:any){return this.call(()=>{this.s.actor(r.headers.authorization,undefined,r.headers['x-device-token']);return this.s.catalog()})}
+ @Get('orders')orders(@Req()r:any){return this.call(()=>this.s.orders(this.s.actor(r.headers.authorization,undefined,r.headers['x-device-token'])))}
+ @Get('orders/history')history(@Req()r:any,@Query('cursor')cursor?:string,@Query('limit')limit?:string){return this.call(()=>this.s.history(this.s.actor(r.headers.authorization,undefined,r.headers['x-device-token']),cursor,limit?Number(limit):100))}
+ @Get('orders/:id')order(@Req()r:any,@Param('id')id:string){return this.call(()=>this.s.order(this.s.actor(r.headers.authorization,undefined,r.headers['x-device-token']),id))}
+ @Post('orders')create(@Req()r:any,@Body()b:any,@Headers('idempotency-key')key:string){return this.call(()=>this.s.createOrder(this.s.actor(r.headers.authorization,undefined,r.headers['x-device-token']),b,key))}
+ @Post('orders/:id/void')voidOrder(@Req()r:any,@Param('id')id:string,@Body()b:any,@Headers('idempotency-key')key:string){return this.call(()=>this.s.voidOrder(this.s.actor(r.headers.authorization,['OWNER','CASHIER'],r.headers['x-device-token']),id,b,key))}
+ @Get('cash-shifts/current')shift(@Req()r:any){return this.call(()=>{this.s.actor(r.headers.authorization,['OWNER','CASHIER'],r.headers['x-device-token']);return this.s.currentShift()})}
+ @Post('cash-shifts/open')open(@Req()r:any,@Body()b:any,@Headers('idempotency-key')key:string){return this.call(()=>this.s.openShift(this.s.actor(r.headers.authorization,['CASHIER'],r.headers['x-device-token']),b,key))}
+ @Post('cash-shifts/:id/movements')movement(@Req()r:any,@Param('id')id:string,@Body()b:any,@Headers('idempotency-key')key:string){return this.call(()=>this.s.movement(this.s.actor(r.headers.authorization,['CASHIER'],r.headers['x-device-token']),id,b,key))}
+ @Post('cash-shifts/:id/close')close(@Req()r:any,@Param('id')id:string,@Body()b:any,@Headers('idempotency-key')key:string){return this.call(()=>this.s.closeShift(this.s.actor(r.headers.authorization,['CASHIER'],r.headers['x-device-token']),id,b,key))}
+ @Post('orders/:id/payments/cash')cash(@Req()r:any,@Param('id')id:string,@Body()b:any,@Headers('idempotency-key')key:string){return this.call(()=>this.s.cash(this.s.actor(r.headers.authorization,['CASHIER'],r.headers['x-device-token']),id,b,key))}
+ @Post('orders/:id/refunds/cash')refund(@Req()r:any,@Param('id')id:string,@Body()body:any,@Headers('idempotency-key')key:string){return this.call(()=>this.s.refundCash(this.s.actor(r.headers.authorization,['CASHIER'],r.headers['x-device-token']),id,body,key))}
  @Post('orders/:id/payments/bank-intent')async bank(@Req()r:any,@Param('id')id:string,@Headers('idempotency-key')key:string){
-  const actor=this.s.actor(r.headers.authorization,['CASHIER']),reference=this.call(()=>this.s.createBankIntent(actor,id,key));
+  const actor=this.s.actor(r.headers.authorization,['CASHIER'],r.headers['x-device-token']),reference=this.call(()=>this.s.createBankIntent(actor,id,key));
   try{await this.cloud.flush()}catch{throw new HttpException({code:'CLOUD_UNREACHABLE',message:'Chưa đồng bộ được mã chuyển khoản, không hiển thị QR'},503)}
   const intent=this.s.store.row<{cloud_acked:number;amount_vnd:number}>('SELECT cloud_acked,amount_vnd FROM bank_intents WHERE order_id=?',id);
   if(!intent?.cloud_acked)throw new HttpException({code:'BANK_INTENT_PENDING',message:'Cloud chưa xác nhận mã chuyển khoản'},503);
   const bank=process.env.BANK_BIN!,acct=process.env.BANK_ACCOUNT_NUMBER!,name=process.env.BANK_ACCOUNT_NAME||'';
   return {status:'PENDING',reference,amount_vnd:intent.amount_vnd,qr_url:'https://img.vietqr.io/image/'+encodeURIComponent(bank)+'-'+encodeURIComponent(acct)+'-compact2.png?amount='+intent.amount_vnd+'&addInfo='+encodeURIComponent(reference)+'&accountName='+encodeURIComponent(name),account_number:acct,bank_bin:bank};
  }
- @Get('orders/:id/receipts')receipts(@Req()r:any,@Param('id')id:string){return this.call(()=>this.s.receipts(this.s.actor(r.headers.authorization,['OWNER','CASHIER']),id))}
- @Post('receipt-copies/:id/reprint')reprint(@Req()r:any,@Param('id')id:string,@Body()b:any,@Headers('idempotency-key')key:string){return this.call(()=>this.s.reprint(this.s.actor(r.headers.authorization,['CASHIER']),id,b,key))}
+ @Get('orders/:id/receipts')receipts(@Req()r:any,@Param('id')id:string){return this.call(()=>this.s.receipts(this.s.actor(r.headers.authorization,['OWNER','CASHIER'],r.headers['x-device-token']),id))}
+ @Post('receipt-copies/:id/reprint')reprint(@Req()r:any,@Param('id')id:string,@Body()b:any,@Headers('idempotency-key')key:string){return this.call(()=>this.s.reprint(this.s.actor(r.headers.authorization,['CASHIER'],r.headers['x-device-token']),id,b,key))}
+ @Post('owner/device-pair-code')pairCode(@Req()r:any){return this.call(()=>this.s.issuePairCode(this.s.actor(r.headers.authorization,['OWNER'])))}
+ @Get('owner/devices')devices(@Req()r:any){return this.call(()=>{this.s.actor(r.headers.authorization,['OWNER']);return this.s.devices()})}
+ @Post('owner/devices/:id/revoke')revoke(@Req()r:any,@Param('id')id:string){return this.call(()=>this.s.revokeDevice(this.s.actor(r.headers.authorization,['OWNER']),id))}
  @Get('owner/employees')employees(@Req()r:any){return this.call(()=>{this.s.actor(r.headers.authorization,['OWNER']);return this.s.employees()})}
  @Post('owner/employees')addEmployee(@Req()r:any,@Body()b:any,@Headers('idempotency-key')key:string){return this.call(()=>this.s.addEmployee(this.s.actor(r.headers.authorization,['OWNER']),b,key))}
  @Patch('owner/employees/:id')employeeState(@Req()r:any,@Param('id')id:string,@Body()b:any,@Headers('idempotency-key')key:string){return this.call(()=>this.s.setEmployeeActive(this.s.actor(r.headers.authorization,['OWNER']),id,b,key))}

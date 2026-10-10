@@ -21,16 +21,21 @@ export function formatVnd(value:number):string {return new Intl.NumberFormat('vi
 export const money = (x:unknown):number=>{if(typeof x!=='number'||!Number.isSafeInteger(x)||x<0||x>1_000_000_000)throw new Error('Số tiền không hợp lệ');return x};
 export class ApiError extends Error {constructor(public status:number,public code:string,message:string){super(message)}}
 export class HubClient {
-  constructor(public readonly baseUrl:string,private getToken:()=>string|undefined){}
+  constructor(public readonly baseUrl:string,private getToken:()=>string|undefined,private getDeviceToken:()=>string|undefined=()=>undefined){}
   async request<T>(path:string,init:RequestInit={},key?:string):Promise<T>{
     const headers:Record<string,string>={'Content-Type':'application/json',...(init.headers as Record<string,string>||{})};
     const token=this.getToken(); if(token)headers.Authorization='Bearer '+token;
+    const device=this.getDeviceToken();if(device)headers['X-Device-Token']=device;
     if(key)headers['Idempotency-Key']=key;
     const res=await fetch(this.baseUrl.replace(/\/$/,'')+path,{...init,headers});
     const body=await res.json().catch(()=>({}));
     if(!res.ok)throw new ApiError(res.status,String(body.code||'HTTP_ERROR'),String(body.message||'Không thể thực hiện thao tác'));
     return body as T;
   }
+  pairDevice(code:string,device_name:string){return this.request<{device_id:string;device_token:string}>('/v1/auth/device/pair',{method:'POST',body:JSON.stringify({code,device_name})})}
+  issuePairCode(){return this.request<{code:string;expires_at:string}>('/v1/owner/device-pair-code',{method:'POST',body:'{}'})}
+  devices(){return this.request<Array<{id:string;device_name:string;active:boolean;created_at:string}>>('/v1/owner/devices')}
+  revokeDevice(id:string){return this.request<{success:boolean}>('/v1/owner/devices/'+encodeURIComponent(id)+'/revoke',{method:'POST',body:'{}'})}
   logout(){return this.request<{success:boolean}>('/v1/auth/logout',{method:'POST',body:'{}'})}
   login(pin:string,user_id:string){return this.request<Session>('/v1/auth/login',{method:'POST',body:JSON.stringify({user_id,pin})})}
   catalog(){return this.request<Catalog>('/v1/catalog')}
