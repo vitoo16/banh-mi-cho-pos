@@ -197,5 +197,17 @@ test('SePay raw HMAC to cloud settlement to verified local cash desk, no duplica
   assert.equal(local.order(staff,conflictOrder.order_id).payment_status,'PAID');
   assert.equal(local.store.row('SELECT COUNT(*) n FROM payments WHERE order_id=?',conflictOrder.order_id).n,1);
   assert.equal(local.receipts(cashier,conflictOrder.order_id).length,2);
+  // A late local bank exception may sync as a separate mirrored event; Owner gets
+  // ONE canonical conflict record, not duplicate rows with the same provider ID.
+  const hubExceptions=local.store.all("SELECT id,entity,payload_json FROM sync_outbox WHERE entity='bank_exception' ORDER BY seq")
+   .filter(x=>JSON.parse(x.payload_json).provider_tx_id==='sepay:92708')
+   .map(x=>({id:x.id,entity:x.entity,payload:JSON.parse(x.payload_json)}));
+  assert.equal(hubExceptions.length,1);
+  const exceptionStamp=String(Date.now());
+  await cloud.ingest(hubExceptions,exceptionStamp,
+   mac(process.env.CLOUD_SYNC_SECRET,exceptionStamp+'.'+JSON.stringify({events:hubExceptions})),process.env.CLOUD_STORE_ID);
+  const canonical=(await cloud.bankExceptions()).filter(x=>x.provider_tx_id==='sepay:92708');
+  assert.equal(canonical.length,1);
+  assert.equal(canonical[0].reason,'CASH_AND_BANK_CAPTURE');
  }finally{await db.onModuleDestroy();rmSync(dir,{recursive:true,force:true})}
 });

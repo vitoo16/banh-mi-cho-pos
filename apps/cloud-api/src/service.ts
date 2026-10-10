@@ -153,7 +153,12 @@ SELECT (SELECT COUNT(*) FROM mirror_orders WHERE store_id=$1 AND payment_status=
  async bankExceptions(){
   const rows=await this.db.pool.query(`SELECT provider_tx_id,order_id,reference,amount_vnd,state,reason,received_at FROM (
  SELECT provider_tx_id,order_id,reference,amount_vnd,state,reason,received_at
- FROM mirror_bank_events WHERE store_id=$1 AND state='EXCEPTION'
+ FROM mirror_bank_events e WHERE e.store_id=$1 AND e.state='EXCEPTION'
+ AND NOT EXISTS (
+  SELECT 1 FROM cloud_bank_settlements s
+  JOIN mirror_payments p ON p.store_id=s.store_id AND p.order_id=s.order_id AND p.method='CASH'
+  WHERE s.store_id=e.store_id AND s.provider_tx_id=e.provider_tx_id
+ )
  UNION ALL
  SELECT 'sepay:'||sepay_id AS provider_tx_id,NULL AS order_id,COALESCE(reference,'') AS reference,amount_vnd,state,reason,received_at
  FROM sepay_events WHERE store_id=$1 AND state='EXCEPTION'
