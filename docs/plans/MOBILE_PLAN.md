@@ -38,3 +38,7 @@
 
 ## Deliverable
 Expo project bootstrapped and reproducible in CI; RN app links to shared generated contract package; no native change without build/test proof; no store staff banking credentials on phone.
+
+## Detailed UI execution overlay (P0, 2026-10-10)
+
+Before any RN UI task read `docs/ui/UI_IMPLEMENTATION_MASTER_PLAN.md`, `docs/ui/SCREEN_SPECS.md` (RN-00..RN-04), `docs/ui/DESIGN_SYSTEM.md`, `docs/ui/UI_QA_MATRIX.md`, and `docs/ui/AGENT_UI_WORKFLOW.md`. UI-01A implements Menu + Review + requested CASH/BANK, UI-01B implements verified Hub ACK and recent orders. No new kitchen/inventory or staff financial authority. Agents use local `expo-react-native`, `mobile-first-operational-ui` skills and current reviewed Vercel RN + Taste references. RN screen baseline 320dp with keyboard + safe area; signed off only with real Android handset measurements.

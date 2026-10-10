@@ -133,3 +133,7 @@ Report exact evidence, blocker rank, reproducible steps and required corrections
 Do not merge or mark milestone CLOSED if applicable source, native device, physical
 printer, bank sandbox, restore or cashier signoff evidence is missing.
 ```
+
+## UI task specialization (2026-10-10)
+
+UI work MUST additionally load `docs/ui/AGENT_UI_WORKFLOW.md`, `docs/ui/SCREEN_SPECS.md`, `docs/ui/DESIGN_SYSTEM.md`, `docs/ui/UI_QA_MATRIX.md`, and `.agents/skills/mobile-first-operational-ui/SKILL.md`. The visual review agent loads `.agents/skills/ui-visual-audit/SKILL.md`. Vercel Web Interface/React/RN guidelines and Taste skill must be inspected and applied only where compatible with the approved operational UX and payment boundaries. Work is split into RN Staff and Web POS P0 in parallel after contract mocks, followed by Owner P1. One scoped implementation/review loop is expected; full-audit repetitions are not default.

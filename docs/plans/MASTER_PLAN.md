@@ -92,3 +92,7 @@ A single cashier can record exact cash tender/change, reliably reconcile shift c
 
 ## Prioritization
 P0: correctness/durability/security (no false paid, no missing cash, no double receipts from retry, no duplicate order, no untracked refunds). P1: 2–3 taps order capture and payment UX. P2: advanced owner reports, batching and micro-optimizations. No scope creep to stock/kitchen flows.
+
+## UI sequencing refinement (2026-10-10)
+
+See `docs/ui/UI_IMPLEMENTATION_MASTER_PLAN.md` for P0 RN Staff + POS touch UI and P1 Owner UI, `docs/ui/SCREEN_SPECS.md` for each screen, and `docs/ui/AGENT_UI_WORKFLOW.md` for Vercel Web Interface Guidelines + Taste skill routing. Shared API fixture freeze (M1) comes before parallel RN/Web implementation. UI validation must include the narrow 320dp phone, 1024px POS, keyboard, safe-area, no horizontal overflow, user-visible payment authority and printer-UNKNOWN recovery.
