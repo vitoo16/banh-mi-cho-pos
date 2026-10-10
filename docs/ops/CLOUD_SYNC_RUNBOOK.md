@@ -26,3 +26,9 @@ Owner login requires a strong 16+ character cloud password, per-origin-address P
 ## Operational remaining acceptance
 
 Automated backfill and auth tests do **not** certify restored database, performance across 8 phones, actual thermal printing, or bank settlement provider. Test those on deployment infrastructure. Confirm remote report freshness before accounting decisions.
+
+## SePay verified settlement inbox (gated)
+
+When the SePay cloud adapter and merchant-linked bank account have passed testing, set `ENABLE_VERIFIED_BANK_INBOX=1` on Store Hub, alongside HTTPS `CLOUD_SYNC_URL`, `CLOUD_SYNC_SECRET`, `BANK_BRIDGE_SECRET`, and identical `CLOUD_STORE_ID`. The outbound worker polls signed settlement envelopes, validates signature/store ID/cursor/amount/reference and submits each event through the Hub's idempotent bank-verification transaction. Cursor moves forward only after local processing, so retries do not create second captures.
+
+Hub never trusts a screenshot or an unauthenticated cloud response, and it never needs an inbound public webhook port. Bank provider verification stays cloud-authoritative. Confirmed-but-late transfers after a cashier CASH capture become explicit exception events, not a second local receipt batch.
