@@ -1,12 +1,19 @@
 {
   "name": "banh-mi-cho-pos",
   "private": true,
-  "version": "0.0.0",
-  "description": "Banh Mi Cho POS: spec/plan phase only",
-  "engines": { "node": ">=24" },
-  "packageManager": "pnpm@10.0.0",
+  "version": "0.1.0",
+  "description": "Banh Mi Cho operational POS monorepo",
+  "engines": {"node": ">=24"},
+  "workspaces": ["apps/*", "packages/*"],
   "scripts": {
+    "build": "npm run build -w @bmc/contracts && npm run build -w @bmc/store-hub && npm run build -w @bmc/web-pos && npm run build -w @bmc/web-owner",
+    "check": "npm run typecheck -w @bmc/contracts && npm run typecheck -w @bmc/store-hub && npm run typecheck -w @bmc/web-pos && npm run typecheck -w @bmc/web-owner",
+    "test:domain": "node --test tests/*.test.mjs",
     "docs:check": "node scripts/check-docs.mjs",
-    "test": "node scripts/check-docs.mjs"
-  }
+    "dev:hub": "npm run dev -w @bmc/store-hub",
+    "dev:pos": "npm run dev -w @bmc/web-pos",
+    "dev:owner": "npm run dev -w @bmc/web-owner",
+    "dev:mobile": "npm run start -w @bmc/mobile-staff"
+  },
+  "devDependencies": {"typescript": "^5.9.3", "@types/node": "^24.0.0"}
 }
