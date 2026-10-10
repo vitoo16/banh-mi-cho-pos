@@ -39,7 +39,7 @@ export class CloudService{
   return this.db.transaction(async c=>{
    const received:string[]=[];
    for(const event of events as Event[]){
-    if(!event||typeof event!=='object'||!['order','payment','refund','product','shift','cash_movement'].includes(event.entity))throw new BadRequestException('Unknown event');
+    if(!event||typeof event!=='object'||!['order','payment','refund','product','shift','cash_movement','bank_exception'].includes(event.entity))throw new BadRequestException('Unknown event');
     const id=str(event.id,80),p=event.payload;
     if(!p||typeof p!=='object')throw new BadRequestException('Invalid event body');
     const inserted=await c.query('INSERT INTO synced_events(store_id,event_id,entity) VALUES($1,$2,$3) ON CONFLICT DO NOTHING RETURNING event_id',[storeId,id,event.entity]);
@@ -48,7 +48,9 @@ export class CloudService{
      const items=JSON.parse(str(p.lines_json,100000));if(!Array.isArray(items))throw new BadRequestException('Invalid order lines');
      await c.query(`INSERT INTO mirror_orders(store_id,id,display_code,created_at,created_by,status,payment_status,requested_method,total_vnd,version,lines_json) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
  ON CONFLICT(store_id,id) DO UPDATE SET status=EXCLUDED.status,payment_status=EXCLUDED.payment_status,total_vnd=EXCLUDED.total_vnd,version=EXCLUDED.version WHERE mirror_orders.version<EXCLUDED.version`,[storeId,str(p.id),str(p.display_code),str(p.created_at),str(p.created_by),str(p.status),str(p.payment_status),str(p.requested_method),vnd(p.total_vnd),p.version,JSON.stringify(items)]);
-     }else if(event.entity==='cash_movement'){
+      }else if(event.entity==='bank_exception'){
+      await c.query('INSERT INTO mirror_bank_events(store_id,provider_tx_id,order_id,reference,amount_vnd,state,reason,received_at) VALUES($1,$2,$3,$4,$5,$6,$7,$8) ON CONFLICT DO NOTHING',[storeId,str(p.provider_tx_id),p.order_id||null,str(p.reference),vnd(p.amount_vnd),str(p.state),p.reason||null,str(p.received_at)]);
+    }else if(event.entity==='cash_movement'){
       const amount=Number(p.amount_vnd);
       if(!Number.isSafeInteger(amount)||Math.abs(amount)>1_000_000_000)throw new BadRequestException('Invalid cash movement');
       await c.query('INSERT INTO mirror_cash_movements(store_id,id,shift_id,order_id,kind,amount_vnd,created_at) VALUES($1,$2,$3,$4,$5,$6,$7) ON CONFLICT DO NOTHING',[storeId,str(p.id),str(p.shift_id),p.order_id||null,str(p.kind),amount,str(p.created_at)]);
@@ -95,6 +97,10 @@ SELECT (SELECT COUNT(*) FROM mirror_orders WHERE store_id=$1 AND payment_status=
   const r=await this.db.pool.query('SELECT * FROM mirror_orders WHERE store_id=$1 AND ($2::timestamptz IS NULL OR (created_at,id)<($2::timestamptz,$3::text)) ORDER BY created_at DESC,id DESC LIMIT 101',[store,bound,id]);
   const items=r.rows.slice(0,100).map(x=>({...x,order_id:x.id,requested_payment_method:x.requested_method,total_vnd:Number(x.total_vnd),items:x.lines_json}));
   const last=r.rows[99];return {items,next_cursor:r.rows.length>100&&last?Buffer.from(JSON.stringify({t:last.created_at,id:last.id})).toString('base64url'):null};
+ }
+ async bankExceptions(){
+  const rows=await this.db.pool.query("SELECT provider_tx_id,order_id,reference,amount_vnd,state,reason,received_at FROM mirror_bank_events WHERE store_id=$1 AND state='EXCEPTION' ORDER BY received_at DESC LIMIT 100",[this.store()]);
+  return rows.rows.map(x=>({...x,amount_vnd:Number(x.amount_vnd)}));
  }
  async products(){
   const r=await this.db.pool.query('SELECT id,name,category,price_vnd,is_active FROM mirror_products WHERE store_id=$1 ORDER BY category,name',[this.store()]);

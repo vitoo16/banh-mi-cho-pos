@@ -11,5 +11,5 @@ export class CloudController{
  @Get('orders')orders(@Req()r:any){this.s.authorize(r.headers.authorization);return this.s.orders()}
  @Get('orders/history')history(@Req()r:any,@Query('cursor')cursor?:string){this.s.authorize(r.headers.authorization);return this.s.orderHistory(cursor)}
  @Get('owner/employees')employees(@Req()r:any){this.s.authorize(r.headers.authorization);return []}
- @Get('owner/bank-exceptions')exceptions(@Req()r:any){this.s.authorize(r.headers.authorization);return []}
+ @Get('owner/bank-exceptions')exceptions(@Req()r:any){this.s.authorize(r.headers.authorization);return this.s.bankExceptions()}
 }
