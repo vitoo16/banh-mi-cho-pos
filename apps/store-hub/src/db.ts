@@ -60,6 +60,30 @@ END;
 `);
   if(!this.db.prepare("SELECT 1 FROM settings WHERE key='catalog_version'").get())this.db.prepare('INSERT INTO settings(key,value) VALUES(?,?)').run('catalog_version','1');
  }
+/** Backfill existing local rows BEFORE first cloud sync. One atomic snapshot, one marker per store.
+ * Events already emitted by SQLite triggers may repeat logically; mirror upserts/payment IDs
+ * are idempotent. A crash rolls marker and all snapshot events back together.
+ */
+ prepareCloudBackfill(storeId:string):number{
+  if(!/^[a-zA-Z0-9._-]{1,72}$/.test(storeId))throw new Error('Invalid CLOUD_STORE_ID');
+  return this.transaction(()=>{
+   const marker='cloud_backfill_v1:'+storeId;
+   if(this.row<{value:string}>('SELECT value FROM settings WHERE key=?',marker))return 0;
+   const statements=[
+    `INSERT INTO sync_outbox(entity,payload_json) SELECT 'order',json_object('id',id,'display_code',display_code,'created_at',created_at,'created_by',created_by,'status',status,'payment_status',payment_status,'requested_method',requested_method,'total_vnd',total_vnd,'version',version,'lines_json',lines_json) FROM orders`,
+    `INSERT INTO sync_outbox(entity,payload_json) SELECT 'payment',json_object('id',id,'order_id',order_id,'method',method,'amount_vnd',amount_vnd,'created_at',created_at) FROM payments`,
+    `INSERT INTO sync_outbox(entity,payload_json) SELECT 'refund',json_object('id',id,'order_id',order_id,'amount_vnd',amount_vnd,'created_at',created_at) FROM cash_refunds`,
+    `INSERT INTO sync_outbox(entity,payload_json) SELECT 'product',json_object('id',id,'name',name,'category',category,'price_vnd',price_vnd,'is_active',is_active) FROM products`,
+    `INSERT INTO sync_outbox(entity,payload_json) SELECT 'shift',json_object('id',id,'cashier_id',cashier_id,'opening_float_vnd',opening_float_vnd,'status',status,'opened_at',opened_at,'closed_at',closed_at,'counted_cash_vnd',counted_cash_vnd,'variance_vnd',variance_vnd) FROM shifts`,
+    `INSERT INTO sync_outbox(entity,payload_json) SELECT 'cash_movement',json_object('id',id,'shift_id',shift_id,'order_id',order_id,'kind',kind,'amount_vnd',amount_vnd,'created_at',created_at) FROM cash_movements`,
+    `INSERT INTO sync_outbox(entity,payload_json) SELECT 'bank_exception',json_object('provider_tx_id',provider_tx_id,'order_id',order_id,'reference',reference,'amount_vnd',amount_vnd,'state',state,'reason',reason,'received_at',received_at) FROM bank_events`
+   ];
+   let rows=0;
+   for(const sql of statements)rows+=Number(this.run(sql).changes);
+   this.run('INSERT INTO settings(key,value) VALUES(?,?)',marker,new Date().toISOString());
+   return rows;
+  });
+ }
  transaction<T>(fn:()=>T):T{this.db.exec('BEGIN IMMEDIATE');try{const out=fn();this.db.exec('COMMIT');return out}catch(e){this.db.exec('ROLLBACK');throw e}}
  row<T>(sql:string,...args:any[]):T|undefined{return this.db.prepare(sql).get(...args) as T|undefined}
  all<T>(sql:string,...args:any[]):T[]{return this.db.prepare(sql).all(...args) as T[]}
