@@ -29,7 +29,7 @@ test('SePay raw HMAC to cloud settlement to verified local cash desk, no duplica
  const {StoreService}=require('../apps/store-hub/dist/service.js');
  const db=new CloudDb();await db.onModuleInit();
  try{
-  const cloud=new CloudService(db),sepay=new SePayService(db);
+  const sepay=new SePayService(db),cloud=new CloudService(db,sepay);
   const local=new StoreService();local.onModuleInit();
   const staff=local.actor('Bearer '+local.login('staff',process.env.BOOTSTRAP_STAFF_PIN).token,['STAFF']);
   const cashier=local.actor('Bearer '+local.login('cashier',process.env.BOOTSTRAP_CASHIER_PIN).token,['CASHIER']);
