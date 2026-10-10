@@ -67,11 +67,24 @@ test('SePay raw HMAC to cloud settlement to verified local cash desk, no duplica
   assert.equal(env.payload.settlements.length,1);
   assert.equal(env.signature,mac(process.env.CLOUD_SYNC_SECRET,env.timestamp+'.'+JSON.stringify(env.payload)));
   const command=env.payload.settlements[0];
-  const event={provider_tx_id:command.provider_tx_id,reference:command.reference,account_number:command.account_number,
-   bank_code:command.bank_code,amount_vnd:command.amount_vnd,direction:'CREDIT'};
-  const eventText=JSON.stringify(event),bridgeStamp=String(Date.now()),bridgeSig=mac(process.env.BANK_BRIDGE_SECRET,bridgeStamp+'.'+eventText);
-  assert.equal(local.bankEvent(eventText,bridgeStamp,bridgeSig).state,'CONFIRMED');
-  assert.equal(local.bankEvent(eventText,bridgeStamp,bridgeSig).duplicate,true);
+  const {CloudSyncWorker}=require('../apps/store-hub/dist/sync.js');
+  const worker=new CloudSyncWorker(local),previousFetch=globalThis.fetch;
+  process.env.CLOUD_SYNC_URL='http://127.0.0.1:4500';
+  let tamper=true;
+  globalThis.fetch=async(url,options)=>{
+   const u=new URL(String(url)),h=options?.headers||{};
+   assert.equal(u.pathname,'/v1/sync/settlements');
+   const response=await sepay.signedSettlements(u.searchParams.get('after'),h['x-bmc-store'],h['x-bmc-timestamp'],h['x-bmc-signature']);
+   if(tamper)response.payload.settlements[0].amount_vnd=1;
+   return new Response(JSON.stringify(response),{status:200,headers:{'content-type':'application/json'}});
+  };
+  try{
+   await assert.rejects(()=>worker.pullBankSettlements(),/Invalid cloud bank inbox signature/);
+   assert.equal(local.order(staff,order.order_id).payment_status,'UNPAID');
+   tamper=false;
+   await worker.pullBankSettlements();
+   await worker.pullBankSettlements();
+  }finally{globalThis.fetch=previousFetch}
   assert.equal(local.order(staff,order.order_id).payment_status,'PAID');
   assert.equal(local.receipts(cashier,order.order_id).length,2);
   assert.equal(local.summary().bank_vnd,order.total_vnd);
