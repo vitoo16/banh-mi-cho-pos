@@ -68,7 +68,7 @@ RETURNING blocked_until`,[bucket]);
   return this.db.transaction(async c=>{
    const received:string[]=[];
    for(const event of events as Event[]){
-    if(!event||typeof event!=='object'||!['order','payment','refund','product','shift','cash_movement','bank_exception'].includes(event.entity))throw new BadRequestException('Unknown event');
+    if(!event||typeof event!=='object'||!['order','payment','refund','product','shift','cash_movement','bank_exception','bank_intent'].includes(event.entity))throw new BadRequestException('Unknown event');
     const id=str(event.id,80),p=event.payload;
     if(!p||typeof p!=='object')throw new BadRequestException('Invalid event body');
     const inserted=await c.query('INSERT INTO synced_events(store_id,event_id,entity) VALUES($1,$2,$3) ON CONFLICT DO NOTHING RETURNING event_id',[storeId,id,event.entity]);
@@ -77,7 +77,13 @@ RETURNING blocked_until`,[bucket]);
      const items=JSON.parse(str(p.lines_json,100000));if(!Array.isArray(items))throw new BadRequestException('Invalid order lines');
      await c.query(`INSERT INTO mirror_orders(store_id,id,display_code,created_at,created_by,status,payment_status,requested_method,total_vnd,version,lines_json) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
  ON CONFLICT(store_id,id) DO UPDATE SET status=EXCLUDED.status,payment_status=EXCLUDED.payment_status,total_vnd=EXCLUDED.total_vnd,version=EXCLUDED.version WHERE mirror_orders.version<EXCLUDED.version`,[storeId,str(p.id),str(p.display_code),str(p.created_at),str(p.created_by),str(p.status),str(p.payment_status),str(p.requested_method),vnd(p.total_vnd),p.version,JSON.stringify(items)]);
-      }else if(event.entity==='bank_exception'){
+       }else if(event.entity==='bank_intent'){
+      await c.query(`INSERT INTO mirror_bank_intents(store_id,order_id,reference,account_number,bank_code,amount_vnd,status)
+ VALUES($1,$2,$3,$4,$5,$6,$7)
+ ON CONFLICT(store_id,order_id) DO UPDATE SET
+ status=CASE WHEN mirror_bank_intents.status='CONFIRMED' THEN 'CONFIRMED' ELSE EXCLUDED.status END`,
+ [storeId,str(p.order_id),str(p.reference),str(p.account_number),str(p.bank_code),vnd(p.amount_vnd),str(p.status)]);
+    }else if(event.entity==='bank_exception'){
       await c.query('INSERT INTO mirror_bank_events(store_id,provider_tx_id,order_id,reference,amount_vnd,state,reason,received_at) VALUES($1,$2,$3,$4,$5,$6,$7,$8) ON CONFLICT DO NOTHING',[storeId,str(p.provider_tx_id),p.order_id||null,str(p.reference),vnd(p.amount_vnd),str(p.state),p.reason||null,str(p.received_at)]);
     }else if(event.entity==='cash_movement'){
       const amount=Number(p.amount_vnd);

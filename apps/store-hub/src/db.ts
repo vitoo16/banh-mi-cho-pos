@@ -35,6 +35,12 @@ END;
 CREATE TRIGGER IF NOT EXISTS sync_payment_created AFTER INSERT ON payments BEGIN
  INSERT INTO sync_outbox(entity,payload_json) VALUES('payment',json_object('id',NEW.id,'order_id',NEW.order_id,'method',NEW.method,'amount_vnd',NEW.amount_vnd,'created_at',NEW.created_at));
 END;
+CREATE TRIGGER IF NOT EXISTS sync_bank_intent_created AFTER INSERT ON bank_intents BEGIN
+ INSERT INTO sync_outbox(entity,payload_json) VALUES('bank_intent',json_object('order_id',NEW.order_id,'reference',NEW.reference,'account_number',NEW.account_number,'bank_code',NEW.bank_code,'amount_vnd',NEW.amount_vnd,'status',NEW.status));
+END;
+CREATE TRIGGER IF NOT EXISTS sync_bank_intent_updated AFTER UPDATE ON bank_intents BEGIN
+ INSERT INTO sync_outbox(entity,payload_json) VALUES('bank_intent',json_object('order_id',NEW.order_id,'reference',NEW.reference,'account_number',NEW.account_number,'bank_code',NEW.bank_code,'amount_vnd',NEW.amount_vnd,'status',NEW.status));
+END;
 CREATE TRIGGER IF NOT EXISTS sync_bank_event AFTER INSERT ON bank_events BEGIN
  INSERT INTO sync_outbox(entity,payload_json) VALUES('bank_exception',json_object('provider_tx_id',NEW.provider_tx_id,'order_id',NEW.order_id,'reference',NEW.reference,'amount_vnd',NEW.amount_vnd,'state',NEW.state,'reason',NEW.reason,'received_at',NEW.received_at));
 END;
@@ -82,6 +88,18 @@ END;
    for(const sql of statements)rows+=Number(this.run(sql).changes);
    this.run('INSERT INTO settings(key,value) VALUES(?,?)',marker,new Date().toISOString());
    return rows;
+  });
+ }
+ /** Versioned snapshot for bank intents when adding provider integration to an existing store. */
+ prepareBankIntentBackfill(storeId:string):number{
+  if(!/^[a-zA-Z0-9._-]{1,72}$/.test(storeId))throw new Error('Invalid CLOUD_STORE_ID');
+  return this.transaction(()=>{
+   const marker='bank_intent_backfill_v1:'+storeId;
+   if(this.row('SELECT 1 FROM settings WHERE key=?',marker))return 0;
+   const result=this.run(`INSERT INTO sync_outbox(entity,payload_json)
+ SELECT 'bank_intent',json_object('order_id',order_id,'reference',reference,'account_number',account_number,'bank_code',bank_code,'amount_vnd',amount_vnd,'status',status) FROM bank_intents`);
+   this.run('INSERT INTO settings(key,value) VALUES(?,?)',marker,new Date().toISOString());
+   return Number(result.changes);
   });
  }
  transaction<T>(fn:()=>T):T{this.db.exec('BEGIN IMMEDIATE');try{const out=fn();this.db.exec('COMMIT');return out}catch(e){this.db.exec('ROLLBACK');throw e}}

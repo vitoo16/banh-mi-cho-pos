@@ -13,6 +13,7 @@ export class CloudSyncWorker implements OnModuleInit,OnModuleDestroy {
   if(!process.env.CLOUD_SYNC_SECRET||process.env.CLOUD_SYNC_SECRET.length<32||!process.env.CLOUD_STORE_ID)throw Error('Cloud sync credentials missing');
   // Seed the mirror for databases that predate outbox/sync deployment.
   this.service.store.prepareCloudBackfill(process.env.CLOUD_STORE_ID);
+  this.service.store.prepareBankIntentBackfill(process.env.CLOUD_STORE_ID);
   this.timer=setInterval(()=>void this.flush().catch(e=>console.error('Sync batch error:',String(e))),6000);
   this.timer.unref();
  }
