@@ -78,6 +78,48 @@ WHERE i.store_id=$1 AND i.reference=$2 FOR UPDATE OF i,o`,[store,ref]):{rows:[]}
   * Hub pulls a signed, replayable ordered settlement inbox over HTTPS.
   * Responses are signed using the existing cloud sync key; no unsigned payload can settle.
   */
+
+ /** A signed transfer may arrive before its Hub intent when WAN sync is delayed.
+  * Only re-evaluate HMAC-VERIFIED incoming credits originally held as unmatched.
+  * Requires exact receiver, amount and a still-unpaid committed order.
+  */
+ async reconcilePending(reference:string){
+  if(!/^BMC[A-F0-9]{14}$/.test(reference))return;
+  const store=this.store();
+  const stale=await this.db.pool.query("SELECT sepay_id FROM sepay_events WHERE store_id=$1 AND reference=$2 AND reason='UNMATCHED_REFERENCE' ORDER BY received_at LIMIT 100",[store,reference]);
+  for(const row of stale.rows){
+   await this.db.transaction(async c=>{
+    const rx=await c.query("SELECT * FROM sepay_events WHERE store_id=$1 AND sepay_id=$2 FOR UPDATE",[store,row.sepay_id]);
+    const e=rx.rows[0];
+    if(!e||e.reason!=='UNMATCHED_REFERENCE')return;
+    const q=await c.query(`SELECT i.*,o.status AS order_status,o.payment_status AS order_payment_status
+ FROM mirror_bank_intents i JOIN mirror_orders o ON o.store_id=i.store_id AND o.id=i.order_id
+ WHERE i.store_id=$1 AND i.reference=$2 FOR UPDATE OF i,o`,[store,reference]);
+    const intent=q.rows[0];
+    if(!intent)return;
+    const config=this.providerConfig();
+    let reason='';
+    if(e.account_number!==config.account||e.bank_gateway.toLowerCase()!==config.gateway.toLowerCase())
+     reason='WRONG_RECEIVER';
+    else if(intent.account_number!==config.account||intent.bank_code.toLowerCase()!==config.gateway.toLowerCase())
+     reason='INTENT_RECEIVER_MISMATCH';
+    else if(Number(intent.amount_vnd)!==Number(e.amount_vnd))reason='AMOUNT_MISMATCH';
+    else if(intent.order_status!=='COMMITTED'||intent.order_payment_status!=='UNPAID'||intent.status!=='PENDING')
+     reason='ORDER_ALREADY_SETTLED';
+    if(!reason){
+     const saved=await c.query(`INSERT INTO cloud_bank_settlements(store_id,provider_tx_id,order_id,reference,account_number,bank_code,amount_vnd)
+ VALUES($1,$2,$3,$4,$5,$6,$7) ON CONFLICT DO NOTHING RETURNING seq`,
+     [store,'sepay:'+e.sepay_id,intent.order_id,reference,config.account,intent.bank_code,Number(e.amount_vnd)]);
+     if(!saved.rowCount)reason='DUPLICATE_ORDER_SETTLEMENT';
+     else{
+      await c.query("UPDATE mirror_bank_intents SET status='CONFIRMED' WHERE store_id=$1 AND order_id=$2",[store,intent.order_id]);
+      await c.query("UPDATE mirror_orders SET payment_status='PAID' WHERE store_id=$1 AND id=$2",[store,intent.order_id]);
+     }
+    }
+    await c.query("UPDATE sepay_events SET state=$3,reason=$4 WHERE store_id=$1 AND sepay_id=$2",[store,e.sepay_id,reason?'EXCEPTION':'CONFIRMED',reason||null]);
+   });
+  }
+ }
  async signedSettlements(after:unknown,store:unknown,stamp:unknown,signature:unknown){
   const key=this.bridgeSecret(),id=this.store();
   const cursor=typeof after==='string'?after:'';

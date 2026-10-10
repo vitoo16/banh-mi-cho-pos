@@ -1,5 +1,6 @@
 import {Injectable,UnauthorizedException,BadRequestException,HttpException} from '@nestjs/common';
 import {createHash,createHmac,timingSafeEqual,randomBytes} from 'node:crypto';
+import {SePayService} from './sepay';
 import {CloudDb} from './db';
 type Event={id:string;entity:string;payload:Record<string,unknown>};
 const digest=(input:string)=>createHash('sha256').update(input).digest();
@@ -9,7 +10,7 @@ function vnd(x:unknown){if(typeof x!=='number'||!Number.isSafeInteger(x)||x<0||x
 function str(x:unknown,max=180){if(typeof x!=='string'||x.length>max||!x.length)throw new BadRequestException('Invalid field');return x}
 @Injectable()
 export class CloudService{
- constructor(private readonly db:CloudDb){}
+ constructor(private readonly db:CloudDb,private readonly sepay:SePayService){}
  private store(){const id=process.env.CLOUD_STORE_ID;if(!id)throw new Error('CLOUD_STORE_ID required');return id}
  private verifyBridge(payload:string,stamp:string,sig:string,store:string){
   const secret=process.env.CLOUD_SYNC_SECRET;if(!secret||secret.length<32)throw new UnauthorizedException('Sync bridge disabled');
@@ -65,7 +66,7 @@ RETURNING blocked_until`,[bucket]);
   const canonical=JSON.stringify({events});
   this.verifyBridge(canonical,stamp,sig,store);
   const storeId=this.store();
-  return this.db.transaction(async c=>{
+  const result=await this.db.transaction(async c=>{
    const received:string[]=[];
    for(const event of events as Event[]){
     if(!event||typeof event!=='object'||!['order','payment','refund','product','shift','cash_movement','bank_exception','bank_intent'].includes(event.entity))throw new BadRequestException('Unknown event');
@@ -104,6 +105,12 @@ RETURNING blocked_until`,[bucket]);
    }
    return {received};
   });
+  // When WAN was down, SePay may have notified Cloud before the local bank-intent
+  // was mirrored. Safely retry only previously verified, unmatched credits.
+  const references=new Set((events as Event[]).filter(e=>e.entity==='bank_intent')
+   .map(e=>e.payload.reference).filter((x):x is string=>typeof x==='string'));
+  for(const reference of references)await this.sepay.reconcilePending(reference);
+  return result;
  }
  async summary(){
   const store=this.store(),rows=await this.db.pool.query(`
@@ -134,7 +141,13 @@ SELECT (SELECT COUNT(*) FROM mirror_orders WHERE store_id=$1 AND payment_status=
   const last=r.rows[99];return {items,next_cursor:r.rows.length>100&&last?Buffer.from(JSON.stringify({t:last.created_at,id:last.id})).toString('base64url'):null};
  }
  async bankExceptions(){
-  const rows=await this.db.pool.query("SELECT provider_tx_id,order_id,reference,amount_vnd,state,reason,received_at FROM mirror_bank_events WHERE store_id=$1 AND state='EXCEPTION' ORDER BY received_at DESC LIMIT 100",[this.store()]);
+  const rows=await this.db.pool.query(`SELECT provider_tx_id,order_id,reference,amount_vnd,state,reason,received_at FROM (
+ SELECT provider_tx_id,order_id,reference,amount_vnd,state,reason,received_at
+ FROM mirror_bank_events WHERE store_id=$1 AND state='EXCEPTION'
+ UNION ALL
+ SELECT 'sepay:'||sepay_id AS provider_tx_id,NULL AS order_id,COALESCE(reference,'') AS reference,amount_vnd,state,reason,received_at
+ FROM sepay_events WHERE store_id=$1 AND state='EXCEPTION'
+ ) conflicts ORDER BY received_at DESC LIMIT 100`,[this.store()]);
   return rows.rows.map(x=>({...x,amount_vnd:Number(x.amount_vnd)}));
  }
  async products(){
