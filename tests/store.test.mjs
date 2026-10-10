@@ -16,6 +16,7 @@ test('Store Hub: price snapshots, idempotency, exact change, shift and guards',(
   const order=s.createOrder(staff,input,'create-idempotency-test-001');
   assert.equal(order.total_vnd,70000);assert.equal(order.payment_status,'UNPAID');
   assert.deepEqual(s.createOrder(staff,input,'create-idempotency-test-001'),order);
+  assert.throws(()=>s.createOrder(staff,{...input,note:'different'},'create-idempotency-test-001'),e=>e.code==='IDEMPOTENCY_CONFLICT');
   assert.throws(()=>s.createOrder(staff,{...input,requested_payment_method:'MOMO'},'create-other-002'),e=>e.code==='METHOD_DISABLED');
   const sh=s.openShift(cashier,{opening_float_vnd:1000000},'shift-open-001');
   assert.equal(sh.expected_cash_vnd,1000000);

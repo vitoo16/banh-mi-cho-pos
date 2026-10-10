@@ -6,6 +6,7 @@ export class StoreController {
  private call<T>(fn:()=>T):T{try{return fn()}catch(e:any){if(e instanceof StoreError)throw new HttpException({code:e.code,message:e.message},e.status);if(e?.message&&['INVALID_MONEY','INVALID_QUANTITY','INSUFFICIENT_CASH'].includes(e.message))throw new HttpException({code:e.message,message:e.message},422);throw e}}
  @Get('health') health(){return {status:'ok',mode:'PILOT_LOCAL',bank_integration:'DISABLED',printing:'UNVERIFIED'}}
  @Post('auth/login')login(@Body()b:any){return this.call(()=>this.s.login(b?.user_id,b?.pin))}
+ @Post('auth/logout')logout(@Req()r:any){return this.call(()=>this.s.logout(r.headers.authorization))}
  @Get('catalog')catalog(@Req()r:any){return this.call(()=>{this.s.actor(r.headers.authorization);return this.s.catalog()})}
  @Get('orders')orders(@Req()r:any){return this.call(()=>this.s.orders(this.s.actor(r.headers.authorization)))}
  @Get('orders/history')history(@Req()r:any,@Query('cursor')cursor?:string,@Query('limit')limit?:string){return this.call(()=>this.s.history(this.s.actor(r.headers.authorization),cursor,limit?Number(limit):100))}

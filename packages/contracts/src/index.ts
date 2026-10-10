@@ -29,6 +29,7 @@ export class HubClient {
     if(!res.ok)throw new ApiError(res.status,String(body.code||'HTTP_ERROR'),String(body.message||'Không thể thực hiện thao tác'));
     return body as T;
   }
+  logout(){return this.request<{success:boolean}>('/v1/auth/logout',{method:'POST',body:'{}'})}
   login(pin:string,user_id:string){return this.request<Session>('/v1/auth/login',{method:'POST',body:JSON.stringify({user_id,pin})})}
   catalog(){return this.request<Catalog>('/v1/catalog')}
   orders(){return this.request<Order[]>('/v1/orders')}
