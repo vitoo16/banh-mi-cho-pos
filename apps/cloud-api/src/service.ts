@@ -28,6 +28,7 @@ export class CloudService{
      const p=e.payload;if(typeof p.order_id!=='string'||typeof p.payment_id!=='string'||!Number.isSafeInteger(p.amount_vnd)||p.amount_vnd<=0)throw new CloudError(400,'INVALID_CASH_CAPTURE','Bad cash capture');
      const result=await c.query("UPDATE cloud_orders SET status='PAID_CASH' WHERE order_id=$1 AND total_vnd=$2 AND status='COMMITTED' RETURNING order_id",[p.order_id,p.amount_vnd]);
      if(result.rowCount===0){const prev=await c.query('SELECT status,total_vnd FROM cloud_orders WHERE order_id=$1',[p.order_id]);if(prev.rowCount===0||!['PAID_CASH','REFUNDED_CASH'].includes(prev.rows[0].status))throw new CloudError(409,'CASH_ORDER_CONFLICT','Cash order missing or already settled externally')}
+     await c.query("UPDATE bank_intents SET status='CANCELLED' WHERE order_id=$1 AND status='PENDING'",[p.order_id]);
      await c.query('INSERT INTO cloud_cash_events(event_id,order_id,kind,amount_vnd) VALUES($1,$2,$3,$4) ON CONFLICT DO NOTHING',[e.id,p.order_id,'CAPTURE',p.amount_vnd]);
     }else if(e.kind==='CASH_REFUND'){
      const p=e.payload;if(typeof p.order_id!=='string'||typeof p.refund_id!=='string'||!Number.isSafeInteger(p.amount_vnd)||p.amount_vnd<=0)throw new CloudError(400,'INVALID_CASH_REFUND','Bad refund');
@@ -37,6 +38,7 @@ export class CloudService{
     }else if(e.kind==='ORDER_VOID'){
      const p=e.payload;if(typeof p.order_id!=='string')throw new CloudError(400,'INVALID_VOID','Order id missing');
      await c.query("UPDATE cloud_orders SET status='VOIDED' WHERE order_id=$1 AND status='COMMITTED'",[p.order_id]);
+     await c.query("UPDATE bank_intents SET status='CANCELLED' WHERE order_id=$1 AND status='PENDING'",[p.order_id]);
     }else{
      const p=e.payload;if(typeof p.order_id!=='string'||typeof p.reference!=='string'||!/^BMC[A-F0-9]{16}$/.test(p.reference)||!Number.isSafeInteger(p.amount_vnd)||p.amount_vnd<=0||p.account_number!==cfg.account||p.bank_bin!==cfg.bin)throw new CloudError(400,'INVALID_INTENT','Bad intent');
      const order=await c.query('SELECT * FROM cloud_orders WHERE order_id=$1',[p.order_id]);if(order.rowCount===0)throw new CloudError(409,'ORDER_NOT_SYNCED','Order not in cloud');
@@ -65,12 +67,12 @@ export class CloudService{
   for(const tx of transactions.rows){
    if(tx.account_number!==account){await c.query("UPDATE bank_transactions SET status='EXCEPTION',reason='WRONG_ACCOUNT' WHERE provider_tx_id=$1",[tx.provider_tx_id]);continue}
    const v=tx.payload as SepayTransfer;
-   const refs=await c.query("SELECT bi.*,co.status order_status FROM bank_intents bi JOIN cloud_orders co ON co.order_id=bi.order_id WHERE bi.status IN ('PENDING','CONFIRMED')");
+   const refs=await c.query("SELECT bi.*,co.status order_status FROM bank_intents bi JOIN cloud_orders co ON co.order_id=bi.order_id WHERE bi.status IN ('PENDING','CONFIRMED','CANCELLED')");
    const candidates=refs.rows.filter(r=>findExactMemoReference(v.content,r.reference,v.code));
    if(candidates.length===0)continue; // arrives before order sync; retry at next ingest
    if(candidates.length!==1){await c.query("UPDATE bank_transactions SET status='EXCEPTION',reason='AMBIGUOUS_REFERENCE' WHERE provider_tx_id=$1",[tx.provider_tx_id]);continue}
    const intent=candidates[0];
-   if(intent.order_status!=='COMMITTED'||Number(intent.amount_vnd)!==Number(tx.amount_vnd)){
+   if(intent.status==='CANCELLED'||intent.order_status!=='COMMITTED'||Number(intent.amount_vnd)!==Number(tx.amount_vnd)){
     await c.query("UPDATE bank_transactions SET status='EXCEPTION',reason='AMOUNT_OR_STATUS_MISMATCH',matched_reference=$2 WHERE provider_tx_id=$1",[tx.provider_tx_id,intent.reference]);continue;
    }
    const settle=await c.query("INSERT INTO bank_settlements(order_id,reference,provider_tx_id,amount_vnd) VALUES($1,$2,$3,$4) ON CONFLICT DO NOTHING RETURNING seq",[intent.order_id,intent.reference,tx.provider_tx_id,intent.amount_vnd]);

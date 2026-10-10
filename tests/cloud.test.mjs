@@ -27,5 +27,12 @@ test('PostgreSQL reconciliation: early callback, exact match, replay and wrong a
   await s.ingest([cashOrder&&cashEvent,{id:randomUUID(),kind:'CASH_CAPTURE',payload:{order_id:cashOrder,payment_id:randomUUID(),amount_vnd:42000}}]);
   await s.ingest([{id:randomUUID(),kind:'CASH_REFUND',payload:{order_id:cashOrder,refund_id:randomUUID(),amount_vnd:42000}}]);
   const row=await db.pool.query('SELECT status FROM cloud_orders WHERE order_id=$1',[cashOrder]);assert.equal(row.rows[0].status,'REFUNDED_CASH');
+  const canceledId=randomUUID(),canceledRef='BMCFFFFFFFFFFFFFFFF';
+  await s.ingest([{id:randomUUID(),kind:'ORDER',payload:{order_id:canceledId,display_code:'B00999',total_vnd:25000,status:'COMMITTED',created_at:new Date().toISOString()}},{id:randomUUID(),kind:'BANK_INTENT',payload:{order_id:canceledId,reference:canceledRef,amount_vnd:25000,account_number:'123456789',bank_bin:'970415'}}]);
+  await s.ingest([{id:randomUUID(),kind:'CASH_CAPTURE',payload:{order_id:canceledId,payment_id:randomUUID(),amount_vnd:25000}}]);
+  await s.webhook(incoming(100003,25000,canceledRef));
+  const forbidden=await s.exceptions();assert.ok(forbidden.some(x=>String(x.provider_tx_id)==='100003'));
+  assert.equal((await s.settlements('0')).items.length,1);
+
  }finally{await db.onModuleDestroy()}
 });
