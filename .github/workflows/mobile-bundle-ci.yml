@@ -1,0 +1,38 @@
+name: Expo Staff production JS bundle
+on:
+  pull_request:
+    paths:
+      - 'apps/mobile-staff/**'
+      - 'packages/contracts/**'
+      - 'package.json'
+      - '.github/workflows/mobile-bundle-ci.yml'
+  push:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  metro-native-bundle:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      EXPO_PUBLIC_HUB_URL: https://pos.example.invalid
+      CI: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Install workspace dependencies
+        run: npm install --no-audit --no-fund
+      - name: Build shared API contract
+        run: npm run build -w @bmc/contracts
+      - name: Check Staff TypeScript
+        run: npm run typecheck -w @bmc/mobile-staff
+      - name: Export production Android and iOS JS bundles with Metro
+        working-directory: apps/mobile-staff
+        run: npx expo export --platform all --output-dir ../../.expo-native-export --max-workers 2
+      - name: Check nonempty export assets
+        run: |
+          test -d .expo-native-export
+          test -n "$(find .expo-native-export -type f -print -quit)"
+          du -sh .expo-native-export
