@@ -60,7 +60,14 @@ test('Store Hub: price snapshots, idempotency, exact change, shift and guards',(
   assert.equal(s.order(staff,bankOrder.order_id).payment_status,'PAID');
   assert.equal(s.bankEvent(JSON.stringify(paid),stamp,signed(paid)).duplicate,true);
   assert.equal(s.receipts(cashier,bankOrder.order_id).length,2);
-  const closed=s.closeShift(cashier,sh.id,{counted_cash_vnd:1030000,reason:'Thiếu 20k sau kiểm đếm'},'close-001');
+  assert.throws(()=>s.refundCash(cashier,bankOrder.order_id,{shift_id:sh.id,reason:'Yêu cầu đổi hàng'},'refund-bank-refused-001'),e=>e.code==='REFUND_METHOD_UNSUPPORTED');
+  const refund=s.refundCash(cashier,order.order_id,{shift_id:sh.id,reason:'Khách trả hàng'},'cash-refund-001');
+  assert.equal(refund.amount_vnd,70000);
+  assert.equal(s.refundCash(cashier,order.order_id,{shift_id:sh.id,reason:'Khách trả hàng'},'cash-refund-001').refund_id,refund.refund_id);
+  assert.equal(s.order(staff,order.order_id).payment_status,'REFUNDED');
+  assert.equal(s.summary().cash_vnd,0);
+  assert.equal(s.getShift(sh.id).expected_cash_vnd,980000);
+  const closed=s.closeShift(cashier,sh.id,{counted_cash_vnd:960000,reason:'Thiếu 20k sau kiểm đếm'},'close-001');
   assert.equal(closed.variance_vnd,-20000);
   assert.throws(()=>s.movement(cashier,sh.id,{kind:'ADD',amount_vnd:20000,reason:'Sửa quỹ'},'after-close-001'),e=>e.code==='INVALID_SHIFT');
  }finally{rmSync(dir,{recursive:true,force:true})}
