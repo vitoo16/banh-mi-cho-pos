@@ -30,6 +30,7 @@ export class HubClient {
     return body as T;
   }
   login(pin:string,user_id:string){return this.request<Session>('/v1/auth/login',{method:'POST',body:JSON.stringify({user_id,pin})})}
+  logout(){return this.request<{ok:boolean}>('/v1/auth/logout',{method:'POST',body:'{}'})}
   catalog(){return this.request<Catalog>('/v1/catalog')}
   orders(){return this.request<Order[]>('/v1/orders')}
   orderHistory(cursor?:string){return this.request<OrderPage>('/v1/orders/history?limit=100'+(cursor?'&cursor='+encodeURIComponent(cursor):''))}

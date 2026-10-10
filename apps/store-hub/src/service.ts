@@ -13,7 +13,7 @@ function audit(db:StoreDb,actor:string,kind:string,entity:string,detail:object={
 @Injectable()
 export class StoreService implements OnModuleInit {
  readonly store=new StoreDb();
- private attempts=new Map<string,{times:number;until:number}>();
+
  onModuleInit(){
   const users=this.store.row<{n:number}>('SELECT COUNT(*) n FROM users')?.n||0;
   if(users!==0)return;
@@ -43,20 +43,34 @@ export class StoreService implements OnModuleInit {
    if(!employee||employee.role==='OWNER'||typeof body?.active!=='boolean')
     throw new StoreError(400,'INVALID_EMPLOYEE','Không thể chỉnh trạng thái tài khoản này');
    this.store.run('UPDATE users SET active=? WHERE id=?',body.active?1:0,id);
+   if(!body.active)this.store.run('DELETE FROM sessions WHERE user_id=?',id);
    audit(this.store,a.id,'EMPLOYEE_ACTIVE',id,{active:body.active});
    return {...employee,active:body.active};
   });
  }
  login(user_id:unknown,pin:unknown){
   const uid=ensureText(user_id,80);if(typeof pin!=='string'||pin.length>128)throw new StoreError(401,'AUTH_FAILED','Thông tin đăng nhập không đúng');
-  const k=uid.toLowerCase(),a=this.attempts.get(k);
-  if(a&&a.until>Date.now())throw new StoreError(429,'TOO_MANY_ATTEMPTS','Thử lại sau ít phút');
+  const k=uid.toLowerCase();
+  const a=this.store.row<{attempts:number;blocked_until:number}>('SELECT attempts,blocked_until FROM login_attempts WHERE user_id=?',k);
+  if(a&&a.blocked_until>Date.now())throw new StoreError(429,'TOO_MANY_ATTEMPTS','Thử lại sau ít phút');
   const u=this.store.row<any>('SELECT * FROM users WHERE id=? AND active=1',uid);
-  if(!u||!verify(pin,u.pin_hash)){const tries=(a?.times||0)+1;this.attempts.set(k,{times:tries,until:tries>=5?Date.now()+60000:0});throw new StoreError(401,'AUTH_FAILED','Thông tin đăng nhập không đúng')}
-  this.attempts.delete(k);
+  if(!u||!verify(pin,u.pin_hash)){
+   const tries=(a?.blocked_until&&a.blocked_until<Date.now()?0:a?.attempts||0)+1;
+   const blockedUntil=tries>=5?Date.now()+60000:0;
+   this.store.run('INSERT INTO login_attempts(user_id,attempts,blocked_until) VALUES(?,?,?) ON CONFLICT(user_id) DO UPDATE SET attempts=excluded.attempts,blocked_until=excluded.blocked_until',k,tries,blockedUntil);
+   throw new StoreError(401,'AUTH_FAILED','Thông tin đăng nhập không đúng');
+  }
+  this.store.run('DELETE FROM login_attempts WHERE user_id=?',k);
   const token=randomBytes(32).toString('base64url'),hash=createHash('sha256').update(token).digest('hex');
   this.store.run('INSERT INTO sessions(token_hash,user_id,expires_at) VALUES(?,?,?)',hash,uid,Date.now()+12*3600_000);
   return {token,user:{id:u.id,name:u.name,role:u.role}};
+ }
+ logout(auth:unknown){
+  this.actor(auth);
+  const token=(auth as string).slice(7);
+  const hash=createHash('sha256').update(token).digest('hex');
+  this.store.run('DELETE FROM sessions WHERE token_hash=?',hash);
+  return {ok:true};
  }
  actor(auth:unknown,roles:Role[]=['OWNER','CASHIER','STAFF']):Actor{
   if(typeof auth!=='string'||!auth.startsWith('Bearer '))throw new StoreError(401,'LOGIN_REQUIRED','Vui lòng đăng nhập');

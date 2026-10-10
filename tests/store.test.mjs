@@ -6,10 +6,24 @@ test('Store Hub: price snapshots, idempotency, exact change, shift and guards',(
  try{
   process.env.STORE_DB_PATH=join(dir,'shop.sqlite');process.env.BOOTSTRAP_OWNER_PIN='owner-secure-123';process.env.BOOTSTRAP_CASHIER_PIN='cashier-secure-456';process.env.BOOTSTRAP_STAFF_PIN='staff-secure-789';process.env.SEED_DEMO_CATALOG='1';
   const {StoreService}=require('../apps/store-hub/dist/service.js'),s=new StoreService();s.onModuleInit();
-  const staff=s.actor('Bearer '+s.login('staff','staff-secure-789').token,['STAFF']);
+  const staffSession=s.login('staff','staff-secure-789');
+  const staff=s.actor('Bearer '+staffSession.token,['STAFF']);
+  const extra=s.login('staff','staff-secure-789');
+  assert.deepEqual(s.logout('Bearer '+extra.token),{ok:true});
+  assert.throws(()=>s.actor('Bearer '+extra.token),e=>e.code==='SESSION_EXPIRED');
   const cashier=s.actor('Bearer '+s.login('cashier','cashier-secure-456').token,['CASHIER']);
   const owner=s.actor('Bearer '+s.login('owner','owner-secure-123').token,['OWNER']);
   assert.throws(()=>s.actor('Bearer '+s.login('staff','staff-secure-789').token,['OWNER']),e=>e.code==='FORBIDDEN');
+  s.addEmployee(owner,{id:'temp123',name:'Temp',role:'STAFF',pin:'temppin123'},'create-temp-001');
+  const tempToken=s.login('temp123','temppin123').token;
+  s.setEmployeeActive(owner,'temp123',{active:false},'disable-temp-001');
+  assert.throws(()=>s.actor('Bearer '+tempToken),e=>e.code==='SESSION_EXPIRED');
+  for(let i=0;i<5;i++)assert.throws(()=>s.login('staff','wrong-pin'),e=>e.code==='AUTH_FAILED');
+  assert.throws(()=>s.login('staff','staff-secure-789'),e=>e.code==='TOO_MANY_ATTEMPTS');
+  // Failed-login counters live in SQLite, not process memory.
+  const {StoreService:Reload}=require('../apps/store-hub/dist/service.js');
+  const rebooted=new Reload();assert.throws(()=>rebooted.login('staff','staff-secure-789'),e=>e.code==='TOO_MANY_ATTEMPTS');
+  s.store.run('DELETE FROM login_attempts WHERE user_id=?','staff');
   const menu=s.catalog();assert.equal(menu.products.length,4);
   const bread=menu.products.find(p=>p.id==='bm-thit');
   const input={catalog_version:menu.version,requested_payment_method:'BANK',items:[{product_id:bread.id,qty:2,note:'Không hành'}]};
