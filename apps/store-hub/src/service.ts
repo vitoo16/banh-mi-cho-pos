@@ -258,12 +258,23 @@ export class StoreService implements OnModuleInit {
    return this.getShift(id)!;
   });
  }
- summary(){
-  const p=this.store.row<any>("SELECT COUNT(*) paid_orders,COALESCE(SUM(total_vnd),0) net_revenue_vnd FROM orders WHERE payment_status='PAID'");
-  const cash=(this.store.row<any>("SELECT COALESCE(SUM(amount_vnd),0) val FROM payments WHERE method='CASH'")?.val||0)-(this.store.row<any>("SELECT COALESCE(SUM(amount_vnd),0) val FROM refunds")?.val||0);
-  const unpaid=this.store.row<any>("SELECT COUNT(*) n FROM orders WHERE status='COMMITTED' AND payment_status='UNPAID'")?.n||0;
-  const bank=this.store.row<any>("SELECT COUNT(*) n FROM orders WHERE status='COMMITTED' AND payment_status='UNPAID' AND requested_method='BANK'")?.n||0;
-  return {paid_orders:p.paid_orders,net_revenue_vnd:p.net_revenue_vnd,cash_vnd:cash,bank_vnd:(this.store.row<{v:number}>("SELECT COALESCE(SUM(amount_vnd),0) v FROM payments WHERE method='BANK'")?.v||0),pending_orders:unpaid,bank_pending:bank,last_synced_at:now(),shift:this.currentShift()};
+ summary(date?:string){
+  let where='',args:string[]=[];
+  if(date){
+   if(!/^\d{4}-\d{2}-\d{2}$/.test(date))throw new StoreError(400,'INVALID_DATE','Ngày không hợp lệ');
+   const start=new Date(date+'T00:00:00+07:00');
+   if(Number.isNaN(start.valueOf()))throw new StoreError(400,'INVALID_DATE','Ngày không hợp lệ');
+   const next=new Date(start.valueOf()+86400000);
+   where=' WHERE created_at>=? AND created_at<?';
+   args=[start.toISOString(),next.toISOString()];
+  }
+  const filter=(w:string)=>w+(where? (w.toUpperCase().includes(' WHERE ')?' AND '+where.slice(7):where):'');
+  const p=this.store.row<any>('SELECT COUNT(*) paid_orders,COALESCE(SUM(amount_vnd),0) net_revenue_vnd FROM payments'+where,...args);
+  const refund=this.store.row<any>('SELECT COALESCE(SUM(amount_vnd),0) amount FROM refunds'+where,...args)?.amount||0;
+  const cash=(this.store.row<any>("SELECT COALESCE(SUM(amount_vnd),0) val FROM payments WHERE method='CASH'"+(where?' AND '+where.slice(7):''),...args)?.val||0)-refund;
+  const unpaid=this.store.row<any>("SELECT COUNT(*) n FROM orders WHERE status='COMMITTED' AND payment_status='UNPAID'"+(where?' AND '+where.slice(7):''),...args)?.n||0;
+  const bank=this.store.row<any>("SELECT COUNT(*) n FROM orders WHERE status='COMMITTED' AND payment_status='UNPAID' AND requested_method='BANK'"+(where?' AND '+where.slice(7):''),...args)?.n||0;
+  return {paid_orders:p.paid_orders,net_revenue_vnd:p.net_revenue_vnd-refund,cash_vnd:cash,bank_vnd:(this.store.row<{v:number}>("SELECT COALESCE(SUM(amount_vnd),0) v FROM payments WHERE method='BANK'"+(where?' AND '+where.slice(7):''),...args)?.v||0),pending_orders:unpaid,bank_pending:bank,last_synced_at:now(),shift:this.currentShift()};
  }
  createBankIntent(a:Actor,orderId:string,key:unknown){
   if(!process.env.CLOUD_SYNC_URL||!process.env.BANK_BIN||!process.env.BANK_ACCOUNT_NUMBER)throw new StoreError(503,'BANK_NOT_CONFIGURED','Chưa cấu hình tài khoản ngân hàng/Cloud');

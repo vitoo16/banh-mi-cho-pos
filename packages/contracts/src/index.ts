@@ -47,7 +47,7 @@ export class HubClient {
   reprint(id:string,reason:string,key:string){return this.request<ReceiptCopy>('/v1/receipt-copies/'+id+'/reprint',{method:'POST',body:JSON.stringify({reason})},key)}
   movement(shift_id:string,kind:'ADD'|'WITHDRAW'|'EXPENSE',amount_vnd:number,reason:string,key:string){return this.request<Shift>('/v1/cash-shifts/'+shift_id+'/movements',{method:'POST',body:JSON.stringify({kind,amount_vnd,reason})},key)}
   closeShift(id:string,counted_cash_vnd:number,reason:string,key:string){return this.request<Shift>('/v1/cash-shifts/'+id+'/close',{method:'POST',body:JSON.stringify({counted_cash_vnd,reason})},key)}
-  summary(){return this.request<Summary>('/v1/owner/dashboard')}
+  summary(date?:string){return this.request<Summary>('/v1/owner/dashboard'+(date?'?date='+encodeURIComponent(date):''))}
   products(){return this.request<Catalog>('/v1/owner/products')}
   updateProduct(id:string,body:{name:string;price_vnd:number;is_active:boolean},key:string){return this.request<Product>('/v1/owner/products/'+id,{method:'PATCH',body:JSON.stringify(body)},key)}
   employees(){return this.request<Employee[]>('/v1/owner/employees')}
