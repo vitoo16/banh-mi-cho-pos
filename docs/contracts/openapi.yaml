@@ -1,0 +1,169 @@
+openapi: 3.1.0
+info:
+  title: Banh Mi Cho POS - Hub API Contract Starter
+  version: 0.1.0-draft
+  description: Planning-only subset, expand and freeze in milestone M1.
+servers:
+  - url: http://localhost:4400
+    description: Hub localhost during POC only; real LAN trust and origin policy must be validated.
+security:
+  - bearerAuth: []
+paths:
+  /v1/catalog:
+    get:
+      operationId: listCatalog
+      summary: Return current local signed catalog snapshot
+      responses:
+        '200':
+          description: Current catalog
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Catalog'
+  /v1/orders:
+    post:
+      operationId: createOrder
+      summary: Commit one order from authenticated staff
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateOrderRequest'
+      responses:
+        '201':
+          description: Persisted order, not proof of payment
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Order'
+        '409':
+          description: Catalog version changed or concurrency conflict
+  /v1/orders/{orderId}:
+    get:
+      operationId: getOrder
+      parameters:
+        - name: orderId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Order
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Order'
+  /v1/orders/{orderId}/payments/cash:
+    post:
+      operationId: captureCash
+      description: Cashier only, local authoritative transaction, derive change on backend
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - name: orderId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CashCaptureRequest'
+      responses:
+        '200':
+          description: Settled cash and receipt intent
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CashCaptureResult'
+        '409':
+          description: Wrong shift, already paid or insufficient amount
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+  parameters:
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: true
+      schema: { type: string, minLength: 8, maxLength: 128 }
+  schemas:
+    MoneyVnd:
+      type: integer
+      minimum: 0
+      maximum: 9007199254740991
+      description: Exact VND integer, never floating point
+    PaymentMethod:
+      type: string
+      enum: [CASH, BANK, MOMO, MIXED]
+    Catalog:
+      type: object
+      required: [version, products, enabled_payment_methods]
+      properties:
+        version: { type: integer, minimum: 1 }
+        enabled_payment_methods:
+          type: array
+          items: { $ref: '#/components/schemas/PaymentMethod' }
+        products:
+          type: array
+          items:
+            type: object
+            required: [id, name, price_vnd]
+            properties:
+              id: { type: string }
+              name: { type: string }
+              price_vnd: { $ref: '#/components/schemas/MoneyVnd' }
+    CreateOrderItem:
+      type: object
+      required: [product_id, qty]
+      properties:
+        product_id: { type: string }
+        qty: { type: integer, minimum: 1, maximum: 100 }
+        note: { type: string, maxLength: 500 }
+    CreateOrderRequest:
+      type: object
+      additionalProperties: false
+      required: [catalog_version, requested_payment_method, items]
+      properties:
+        catalog_version: { type: integer, minimum: 1 }
+        requested_payment_method: { $ref: '#/components/schemas/PaymentMethod' }
+        items:
+          type: array
+          minItems: 1
+          maxItems: 60
+          items: { $ref: '#/components/schemas/CreateOrderItem' }
+        note: { type: string, maxLength: 1000 }
+    Order:
+      type: object
+      required: [order_id, display_code, status, payment_status, requested_payment_method, total_vnd, version]
+      properties:
+        order_id: { type: string, format: uuid }
+        display_code: { type: string }
+        status: { type: string, enum: [COMMITTED, VOIDED] }
+        payment_status: { type: string, enum: [UNPAID, PARTIAL, PAID, PARTIALLY_REFUNDED, REFUNDED] }
+        requested_payment_method: { $ref: '#/components/schemas/PaymentMethod' }
+        total_vnd: { $ref: '#/components/schemas/MoneyVnd' }
+        version: { type: integer, minimum: 1 }
+    CashCaptureRequest:
+      type: object
+      additionalProperties: false
+      required: [shift_id, cash_tendered_vnd, expected_order_version]
+      properties:
+        shift_id: { type: string }
+        cash_tendered_vnd: { $ref: '#/components/schemas/MoneyVnd' }
+        expected_order_version: { type: integer, minimum: 1 }
+    CashCaptureResult:
+      type: object
+      required: [payment_id, cash_tendered_vnd, cash_change_vnd, cash_net_vnd, payment_status, receipt_batch_id]
+      properties:
+        payment_id: { type: string }
+        cash_tendered_vnd: { $ref: '#/components/schemas/MoneyVnd' }
+        cash_change_vnd: { $ref: '#/components/schemas/MoneyVnd' }
+        cash_net_vnd: { $ref: '#/components/schemas/MoneyVnd' }
+        payment_status: { type: string, enum: [PAID] }
+        receipt_batch_id: { type: string }

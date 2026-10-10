@@ -1,0 +1,12 @@
+{
+  "name": "banh-mi-cho-pos",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Banh Mi Cho POS: spec/plan phase only",
+  "engines": { "node": ">=24" },
+  "packageManager": "pnpm@10.0.0",
+  "scripts": {
+    "docs:check": "node scripts/check-docs.mjs",
+    "test": "node scripts/check-docs.mjs"
+  }
+}

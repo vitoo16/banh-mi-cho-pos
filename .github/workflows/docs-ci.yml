@@ -1,0 +1,20 @@
+name: Documentation and contract starter validation
+on:
+  pull_request:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  docs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Validate planning pack
+        run: node scripts/check-docs.mjs
+# Production code CI (pnpm install, lint, typecheck, unit, contract, DB integration,
+# web Playwright, Android native build and load/print gates) will be added under M1-M5.
+# This documentation-only check must never be presented as production validation.
