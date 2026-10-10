@@ -242,6 +242,7 @@ export class StoreService implements OnModuleInit {
   });
  }
 
+ closeShift(a:Actor,id:string,body:any,key:unknown){
   return this.idem('shift.close:'+id,key,()=>{
    const s=this.store.row<any>("SELECT * FROM shifts WHERE id=? AND status='OPEN'",id);
    if(!s||s.cashier_id!==a.id)throw new StoreError(409,'INVALID_SHIFT','Không thể chốt ca không thuộc thu ngân');
