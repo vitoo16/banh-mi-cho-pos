@@ -1,0 +1,23 @@
+name: Web responsive UI
+on:
+  pull_request:
+    paths: ['apps/web-pos/**','apps/web-owner/**','packages/contracts/**','tests/ui/**','playwright.config.ts','.github/workflows/ui-ci.yml']
+permissions:
+  contents: read
+jobs:
+  responsive:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm install --no-audit --no-fund
+      - run: npm run build -w @bmc/contracts
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:ui
+      - if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: responsive-test-evidence
+          path: test-results/
