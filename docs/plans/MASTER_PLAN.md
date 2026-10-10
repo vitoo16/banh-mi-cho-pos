@@ -1,6 +1,8 @@
 # MASTER IMPLEMENTATION PLAN — Bánh Mì Chợ POS
 
-**Planning baseline:** spec v1.2, approved 2026-10-10. **Status: NOT STARTED.** No release milestones are closed.
+**Planning baseline:** spec v1.2, approved 2026-10-10. **Status: PILOT CODE IN MAIN — NOT PRODUCTION READY.** PR #2 merged initial typed API/client, NestJS Store Hub, React Native Staff, Vite POS + Owner, SQLite money ledger and receipt spool driver. No release milestones CLOSED.
+
+**2026-10-11 progress note:** M1 contracts partially implemented (typed shared SDK + expanded OpenAPI, full generated SDK/runtime schema hardening pending); M2 local order path implemented with integration tests; M3 cash/shift and two receipt intents implemented and tested in CI, physical printer acceptance pending; M4 bank adapter + cloud remote dashboard/sync NOT IMPLEMENTED; M5 device pairing/TLS, real 8-phone performance, crash/restore NOT VERIFIED; M6 pilot rollout NOT STARTED. Refer to Issues [#3](https://github.com/vitoo16/banh-mi-cho-pos/issues/3), [#4](https://github.com/vitoo16/banh-mi-cho-pos/issues/4), [#5](https://github.com/vitoo16/banh-mi-cho-pos/issues/5) and `docs/ops/LOCAL_PILOT.md`. Existing milestone rows below are **original exit requirements**, not claims of closure.
 
 ## Outcome
 A single cashier can record exact cash tender/change, reliably reconcile shift cash, confirm bank payments, print exactly *two intended receipt copies*, while 4–8 RN staff clients rapidly enter orders over local Wi-Fi; owner can configure catalog and monitor confirmed amounts, with freshness indicators.
