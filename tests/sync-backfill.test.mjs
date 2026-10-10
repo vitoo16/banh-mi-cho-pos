@@ -25,7 +25,7 @@ test('existing SQLite financial history is backfilled atomically once per cloud 
   assert.ok(original>=8,'triggers must atomically capture operational events');
   // Emulate upgrading a working pre-cloud store with historic data but without queued events.
   svc.store.run('DELETE FROM sync_outbox');
-  assert.equal(svc.store.prepareCloudBackfill('store-main'),8); // 4 products, one order, shift, payment, two drawer entries
+  assert.equal(svc.store.prepareCloudBackfill('store-main'),9); // 4 products, one order, shift, payment, two drawer entries
   const items=svc.store.all('SELECT entity,payload_json FROM sync_outbox ORDER BY seq');
   assert.deepEqual(items.map(x=>x.entity).sort(),['cash_movement','cash_movement','order','payment','product','product','product','product','shift'].sort());
   assert.ok(items.some(x=>x.entity==='order'&&JSON.parse(x.payload_json).id===order.order_id));
