@@ -4,7 +4,7 @@ import {StoreService,StoreError} from './service';
 export class StoreController {
  constructor(private readonly s:StoreService){}
  private call<T>(fn:()=>T):T{try{return fn()}catch(e:any){if(e instanceof StoreError)throw new HttpException({code:e.code,message:e.message},e.status);if(e?.message&&['INVALID_MONEY','INVALID_QUANTITY','INSUFFICIENT_CASH'].includes(e.message))throw new HttpException({code:e.message,message:e.message},422);throw e}}
- @Get('health') health(){return {status:'ok',mode:'PILOT_LOCAL',bank_integration:'DISABLED',printing:'UNVERIFIED'}}
+ @Get('health') health(){return {status:'ok',mode:'PILOT_LOCAL',bank_integration:process.env.BANK_BRIDGE_SECRET?'BRIDGE_CONFIGURED_PROVIDER_UNVERIFIED':'DISABLED',printing:'UNVERIFIED'}}
  @Post('auth/login')login(@Body()b:any){return this.call(()=>this.s.login(b?.user_id,b?.pin))}
  @Get('catalog')catalog(@Req()r:any){return this.call(()=>{this.s.actor(r.headers.authorization);return this.s.catalog()})}
  @Get('orders')orders(@Req()r:any){return this.call(()=>this.s.orders(this.s.actor(r.headers.authorization)))}
@@ -17,7 +17,10 @@ export class StoreController {
  @Post('cash-shifts/:id/movements')movement(@Req()r:any,@Param('id')id:string,@Body()b:any,@Headers('idempotency-key')key:string){return this.call(()=>this.s.movement(this.s.actor(r.headers.authorization,['CASHIER']),id,b,key))}
  @Post('cash-shifts/:id/close')close(@Req()r:any,@Param('id')id:string,@Body()b:any,@Headers('idempotency-key')key:string){return this.call(()=>this.s.closeShift(this.s.actor(r.headers.authorization,['CASHIER']),id,b,key))}
  @Post('orders/:id/payments/cash')cash(@Req()r:any,@Param('id')id:string,@Body()b:any,@Headers('idempotency-key')key:string){return this.call(()=>this.s.cash(this.s.actor(r.headers.authorization,['CASHIER']),id,b,key))}
- @Post('orders/:id/payments/bank-intent')bank(@Req()r:any){return this.call(()=>{this.s.actor(r.headers.authorization,['CASHIER']);return this.s.bankIntent()})}
+ @Post('orders/:id/refunds/cash')refundCash(@Req()r:any,@Param('id')id:string,@Body()b:any,@Headers('idempotency-key')key:string){return this.call(()=>this.s.refundCash(this.s.actor(r.headers.authorization,['CASHIER']),id,b,key))}
+ @Post('orders/:id/payments/bank-intent')bank(@Req()r:any,@Param('id')id:string,@Headers('idempotency-key')key:string){return this.call(()=>this.s.bankIntent(this.s.actor(r.headers.authorization,['CASHIER']),id,key))}
+ @Post('internal/bank-events')bankEvent(@Body()body:any,@Headers('x-bmc-timestamp')ts:string,@Headers('x-bmc-signature')sig:string){return this.call(()=>this.s.bankEvent(JSON.stringify(body),ts,sig))}
+ @Get('owner/bank-exceptions')bankExceptions(@Req()r:any){return this.call(()=>{this.s.actor(r.headers.authorization,['OWNER']);return this.s.bankExceptions()})}
  @Get('orders/:id/receipts')receipts(@Req()r:any,@Param('id')id:string){return this.call(()=>this.s.receipts(this.s.actor(r.headers.authorization,['OWNER','CASHIER']),id))}
  @Post('receipt-copies/:id/reprint')reprint(@Req()r:any,@Param('id')id:string,@Body()b:any,@Headers('idempotency-key')key:string){return this.call(()=>this.s.reprint(this.s.actor(r.headers.authorization,['CASHIER']),id,b,key))}
  @Get('owner/employees')employees(@Req()r:any){return this.call(()=>{this.s.actor(r.headers.authorization,['OWNER']);return this.s.employees()})}

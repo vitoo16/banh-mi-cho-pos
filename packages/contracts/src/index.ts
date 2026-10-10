@@ -39,6 +39,7 @@ export class HubClient {
   shift(){return this.request<Shift|null>('/v1/cash-shifts/current')}
   openShift(opening_float_vnd:number,key:string){return this.request<Shift>('/v1/cash-shifts/open',{method:'POST',body:JSON.stringify({opening_float_vnd})},key)}
   captureCash(id:string,shift_id:string,cash_tendered_vnd:number,expected_order_version:number,key:string){return this.request<PaymentReceipt>('/v1/orders/'+id+'/payments/cash',{method:'POST',body:JSON.stringify({shift_id,cash_tendered_vnd,expected_order_version})},key)}
+  refundCash(id:string,shift_id:string,reason:string,key:string){return this.request<{refund_id:string;amount_vnd:number;payment_status:'REFUNDED'}>('/v1/orders/'+id+'/refunds/cash',{method:'POST',body:JSON.stringify({shift_id,reason})},key)}
   receipts(id:string){return this.request<ReceiptCopy[]>('/v1/orders/'+id+'/receipts')}
   reprint(id:string,reason:string,key:string){return this.request<ReceiptCopy>('/v1/receipt-copies/'+id+'/reprint',{method:'POST',body:JSON.stringify({reason})},key)}
   movement(shift_id:string,kind:'ADD'|'WITHDRAW'|'EXPENSE',amount_vnd:number,reason:string,key:string){return this.request<Shift>('/v1/cash-shifts/'+shift_id+'/movements',{method:'POST',body:JSON.stringify({kind,amount_vnd,reason})},key)}
@@ -46,8 +47,9 @@ export class HubClient {
   summary(){return this.request<Summary>('/v1/owner/dashboard')}
   products(){return this.request<Catalog>('/v1/owner/products')}
   updateProduct(id:string,body:{name:string;price_vnd:number;is_active:boolean},key:string){return this.request<Product>('/v1/owner/products/'+id,{method:'PATCH',body:JSON.stringify(body)},key)}
+  bankExceptions(){return this.request<Array<{provider_tx_id:string;reference:string;amount_vnd:number;reason:string;received_at:string}>>('/v1/owner/bank-exceptions')}
   employees(){return this.request<Employee[]>('/v1/owner/employees')}
   addEmployee(body:{id:string;name:string;role:'STAFF'|'CASHIER';pin:string},key:string){return this.request<Employee>('/v1/owner/employees',{method:'POST',body:JSON.stringify(body)},key)}
   setEmployeeActive(id:string,active:boolean,key:string){return this.request<Employee>('/v1/owner/employees/'+encodeURIComponent(id),{method:'PATCH',body:JSON.stringify({active})},key)}
-  bankIntent(id:string,key:string){return this.request<{status:string;message:string}>('/v1/orders/'+id+'/payments/bank-intent',{method:'POST',body:'{}'},key)}
+  bankIntent(id:string,key:string){return this.request<{status:string;reference:string;amount_vnd:number;bank_code:string;account_number:string}>('/v1/orders/'+id+'/payments/bank-intent',{method:'POST',body:'{}'},key)}
 }

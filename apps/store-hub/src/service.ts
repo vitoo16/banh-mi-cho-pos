@@ -1,5 +1,5 @@
 import {Injectable,OnModuleInit} from '@nestjs/common';
-import {randomUUID,randomBytes,createHash,scryptSync,timingSafeEqual} from 'node:crypto';
+import {randomUUID,randomBytes,createHash,createHmac,scryptSync,timingSafeEqual} from 'node:crypto';
 import {StoreDb} from './db';
 import {closingCash,ensureMoney,ensureQty,makeCashSettlement} from './domain';
 type Role='OWNER'|'CASHIER'|'STAFF';
@@ -221,6 +221,27 @@ export class StoreService implements OnModuleInit {
    audit(this.store,a.id,'CASH_MOVEMENT',shiftId,{kind,amount_vnd:amount,reason});return this.getShift(shiftId)!;
   });
  }
+ refundCash(a:Actor,orderId:string,body:any,key:unknown){
+  return this.idem('refund.cash:'+orderId,key,()=>{
+   const order=this.store.row<any>('SELECT * FROM orders WHERE id=?',orderId);
+   if(!order||order.status!=='COMMITTED'||order.payment_status!=='PAID')throw new StoreError(409,'NOT_REFUNDABLE','Đơn không ở trạng thái có thể hoàn');
+   const p=this.store.row<any>("SELECT * FROM payments WHERE order_id=? AND method='CASH'",orderId);
+   if(!p||p.amount_vnd!==order.total_vnd)throw new StoreError(409,'REFUND_METHOD_UNSUPPORTED','Chỉ hoàn tiền mặt của đơn đã thu tiền mặt. Hoàn ngân hàng cần xử lý nhà cung cấp.');
+   const shift=this.store.row<any>("SELECT * FROM shifts WHERE id=? AND status='OPEN'",body?.shift_id);
+   if(!shift||shift.cashier_id!==a.id)throw new StoreError(409,'INVALID_SHIFT','Thu ngân phải có ca đang mở');
+   const balance=this.getShift(shift.id)!.expected_cash_vnd;
+   if(balance<p.amount_vnd)throw new StoreError(409,'INSUFFICIENT_DRAWER','Quỹ không đủ tiền hoàn');
+   const reason=ensureText(body?.reason,250);
+   if(reason.length<3)throw new StoreError(400,'REASON_REQUIRED','Ghi lý do hoàn tiền');
+   const id=randomUUID(),when=now();
+   this.store.run('INSERT INTO cash_refunds(id,order_id,shift_id,amount_vnd,reason,created_at,actor_id) VALUES(?,?,?,?,?,?,?)',id,orderId,shift.id,p.amount_vnd,reason,when,a.id);
+   this.store.run('INSERT INTO cash_movements(id,shift_id,order_id,kind,amount_vnd,created_at,reason,actor_id) VALUES(?,?,?,?,?,?,?,?)',randomUUID(),shift.id,orderId,'REFUND',-p.amount_vnd,when,reason,a.id);
+   this.store.run("UPDATE orders SET payment_status='REFUNDED',version=version+1 WHERE id=?",orderId);
+   audit(this.store,a.id,'CASH_REFUND',orderId,{refund_id:id,amount_vnd:p.amount_vnd,reason});
+   return {refund_id:id,order_id:orderId,amount_vnd:p.amount_vnd,payment_status:'REFUNDED'};
+  });
+ }
+
  closeShift(a:Actor,id:string,body:any,key:unknown){
   return this.idem('shift.close:'+id,key,()=>{
    const s=this.store.row<any>("SELECT * FROM shifts WHERE id=? AND status='OPEN'",id);
@@ -235,10 +256,57 @@ export class StoreService implements OnModuleInit {
  }
  summary(){
   const p=this.store.row<any>("SELECT COUNT(*) paid_orders,COALESCE(SUM(total_vnd),0) net_revenue_vnd FROM orders WHERE payment_status='PAID'");
-  const cash=this.store.row<any>("SELECT COALESCE(SUM(amount_vnd),0) val FROM payments WHERE method='CASH'")?.val||0;
+  const cash=(this.store.row<any>("SELECT COALESCE(SUM(amount_vnd),0) val FROM payments WHERE method='CASH'")?.val||0)-(this.store.row<any>("SELECT COALESCE(SUM(amount_vnd),0) val FROM cash_refunds")?.val||0);
   const unpaid=this.store.row<any>("SELECT COUNT(*) n FROM orders WHERE status='COMMITTED' AND payment_status='UNPAID'")?.n||0;
   const bank=this.store.row<any>("SELECT COUNT(*) n FROM orders WHERE status='COMMITTED' AND payment_status='UNPAID' AND requested_method='BANK'")?.n||0;
-  return {paid_orders:p.paid_orders,net_revenue_vnd:p.net_revenue_vnd,cash_vnd:cash,bank_vnd:0,pending_orders:unpaid,bank_pending:bank,last_synced_at:now(),shift:this.currentShift()};
+  return {paid_orders:p.paid_orders,net_revenue_vnd:p.net_revenue_vnd,cash_vnd:cash,bank_vnd:this.store.row<any>("SELECT COALESCE(SUM(amount_vnd),0) total FROM payments WHERE method='BANK'")?.total||0,pending_orders:unpaid,bank_pending:bank,last_synced_at:now(),shift:this.currentShift()};
  }
- bankIntent(){throw new StoreError(503,'BANK_PROVIDER_NOT_CONNECTED','Chưa kết nối ngân hàng. Đơn vẫn chưa được thanh toán.')}
+ bankIntent(a:Actor,id:string,key:unknown){
+  return this.idem('bank.intent:'+id,key,()=>{
+   const account=process.env.BANK_ACCOUNT_NUMBER,bank=process.env.BANK_CODE,secret=process.env.BANK_BRIDGE_SECRET;
+   if(!account||!bank||!secret||secret.length<32)throw new StoreError(503,'BANK_NOT_CONFIGURED','Chưa kết nối ngân hàng');
+   const o=this.store.row<any>('SELECT * FROM orders WHERE id=?',id);
+   if(!o)throw new StoreError(404,'NOT_FOUND','Không tìm thấy đơn');
+   if(o.status!=='COMMITTED'||o.payment_status!=='UNPAID')throw new StoreError(409,'ALREADY_SETTLED','Đơn đã hoàn tất hoặc bị hủy');
+   const old=this.store.row<any>('SELECT * FROM bank_intents WHERE order_id=?',id);
+   if(old)return {status:old.status,reference:old.reference,amount_vnd:old.amount_vnd,bank_code:old.bank_code,account_number:old.account_number};
+   const reference='BMC'+randomBytes(7).toString('hex').toUpperCase();
+   this.store.run('INSERT INTO bank_intents(order_id,reference,account_number,bank_code,amount_vnd) VALUES(?,?,?,?,?)',id,reference,account,bank,o.total_vnd);
+   audit(this.store,a.id,'BANK_INTENT',id,{reference});
+   return {status:'PENDING',reference,amount_vnd:o.total_vnd,bank_code:bank,account_number:account};
+  });
+ }
+ bankEvent(raw:string,stamp:string,signature:string){
+  const secret=process.env.BANK_BRIDGE_SECRET;
+  if(!secret||secret.length<32)throw new StoreError(503,'BANK_NOT_CONFIGURED','Bank bridge chưa cấu hình');
+  if(!/^[0-9]{13}$/.test(stamp||'')||Math.abs(Date.now()-Number(stamp))>300000)throw new StoreError(401,'STALE_EVENT','Giao dịch quá thời hạn');
+  const digest=createHmac('sha256',secret).update(stamp+'.'+raw).digest('hex');
+  if(!/^[a-f0-9]{64}$/i.test(signature||'')||!timingSafeEqual(Buffer.from(digest,'hex'),Buffer.from(signature,'hex')))throw new StoreError(401,'INVALID_SIGNATURE','Chữ ký không hợp lệ');
+  let e:any;try{e=JSON.parse(raw)}catch{throw new StoreError(400,'INVALID_BODY','Dữ liệu không hợp lệ')}
+  if(typeof e.provider_tx_id!=='string'||e.provider_tx_id.length<8||e.provider_tx_id.length>150||typeof e.reference!=='string'||typeof e.account_number!=='string'||typeof e.bank_code!=='string'||e.direction!=='CREDIT')throw new StoreError(400,'INVALID_EVENT','Sự kiện giao dịch không hợp lệ');
+  const amount=ensureMoney(e.amount_vnd,false);
+  return this.store.transaction(()=>{
+   const prior=this.store.row<any>('SELECT * FROM bank_events WHERE provider_tx_id=?',e.provider_tx_id);
+   if(prior)return {state:prior.state,reason:prior.reason,duplicate:true};
+   const intent=this.store.row<any>('SELECT * FROM bank_intents WHERE reference=?',e.reference);
+   const order=intent?this.store.row<any>('SELECT * FROM orders WHERE id=?',intent.order_id):null;
+   let reason='';
+   if(!intent||!order)reason='UNMATCHED_REFERENCE';
+   else if(e.bank_code!==intent.bank_code||e.account_number!==intent.account_number||e.bank_code!==process.env.BANK_CODE||e.account_number!==process.env.BANK_ACCOUNT_NUMBER)reason='WRONG_DESTINATION';
+   else if(amount!==intent.amount_vnd)reason='AMOUNT_MISMATCH';
+   else if(order.status!=='COMMITTED'||order.payment_status!=='UNPAID'||intent.status!=='PENDING')reason='ALREADY_SETTLED';
+   const state=reason?'EXCEPTION':'CONFIRMED';
+   this.store.run('INSERT INTO bank_events(provider_tx_id,order_id,reference,amount_vnd,state,reason,received_at) VALUES(?,?,?,?,?,?,?)',e.provider_tx_id,intent?.order_id||null,e.reference,amount,state,reason,new Date().toISOString());
+   if(!reason){
+    this.store.run('INSERT INTO payments(id,order_id,method,amount_vnd,created_at,actor_id) VALUES(?,?,?,?,?,?)',randomUUID(),order.id,'BANK',amount,new Date().toISOString(),'BANK_BRIDGE');
+    this.store.run("UPDATE orders SET payment_status='PAID',version=version+1 WHERE id=?",order.id);
+    this.store.run("UPDATE bank_intents SET status='CONFIRMED' WHERE order_id=?",order.id);
+    const batch=randomUUID();for(const kind of ['CUSTOMER','STORE'])this.store.run("INSERT INTO receipts(id,batch_id,order_id,kind,status,created_at) VALUES(?,?,?,?,?,?)",randomUUID(),batch,order.id,kind,'WAITING_FOR_PRINTER',new Date().toISOString());
+    audit(this.store,'BANK_BRIDGE','BANK_SETTLED',order.id,{provider_tx_id:e.provider_tx_id,amount_vnd:amount});
+   } else audit(this.store,'BANK_BRIDGE','BANK_EXCEPTION',intent?.order_id||'UNKNOWN',{provider_tx_id:e.provider_tx_id,reason});
+   return {state,reason:reason||undefined,duplicate:false};
+  });
+ }
+ bankExceptions(){return this.store.all<any>("SELECT * FROM bank_events WHERE state='EXCEPTION' ORDER BY received_at DESC LIMIT 100")}
+
 }

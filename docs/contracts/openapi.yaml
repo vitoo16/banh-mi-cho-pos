@@ -35,6 +35,44 @@ paths:
           schema: {type: integer, minimum: 1, maximum: 100}
       responses:
         '200': {description: Cursor page with items and next_cursor}
+  /v1/orders/{orderId}/refunds/cash:
+    post:
+      operationId: refundCash
+      summary: Cashier-only full cash refund, audited and idempotent
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - name: orderId
+          in: path
+          required: true
+          schema: {type: string, format: uuid}
+      requestBody: {required: true, content: {application/json: {schema: {type: object, required: [shift_id, reason], properties: {shift_id: {type: string}, reason: {type: string}}}}}}
+      responses:
+        '201': {description: Cash refund and drawer movement committed}
+        '409': {description: Not refundable or cash balance insufficient}
+  /v1/internal/bank-events:
+    post:
+      operationId: ingestTrustedBankBridgeEvent
+      summary: Bank bridge only; requires signed timestamp and trusted provider verification
+      security: []
+      parameters:
+        - name: x-bmc-timestamp
+          in: header
+          required: true
+          schema: {type: string}
+        - name: x-bmc-signature
+          in: header
+          required: true
+          schema: {type: string}
+      requestBody: {required: true, content: {application/json: {schema: {type: object, required: [provider_tx_id, reference, bank_code, account_number, amount_vnd, direction], properties: {provider_tx_id: {type: string}, reference: {type: string}, bank_code: {type: string}, account_number: {type: string}, amount_vnd: { $ref: '#/components/schemas/MoneyVnd'}, direction: {type: string, enum: [CREDIT]}}}}}}
+      responses:
+        '201': {description: Confirmed, exception or deduplicated bridge event}
+        '401': {description: HMAC/timestamp rejected}
+  /v1/owner/bank-exceptions:
+    get:
+      operationId: listBankExceptions
+      summary: Owner-only unmatched, wrong amount/destination and late bank transfers
+      responses:
+        '200': {description: Latest 100 bank event exceptions}
   /v1/orders/{orderId}/void:
     post:
       operationId: voidUnpaidOrder
