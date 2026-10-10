@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 # Bánh Mì Chợ POS — Product & Engineering Repository
 
 **Status: SPEC/PLAN BASELINE ONLY. No application code has been implemented, no production deployment and no completed payment integration.**
@@ -52,6 +51,3 @@ docs/               Source-of-truth specs, plans, contracts, QA, operations
 ## GitHub publishing
 
 This delivered folder is a prepared local repository, **not automatically a live GitHub repository**. See [`docs/ops/GITHUB_SETUP.md`](docs/ops/GITHUB_SETUP.md) for a private-repo, GitHub CLI and Git bundle publication path. No application tests/builds are asserted from the planning-only docs CI.
-=======
-# pos
->>>>>>> origin/main
