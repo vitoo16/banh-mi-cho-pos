@@ -105,3 +105,10 @@ The shared TypeScript contract in `packages/contracts/src/index.ts` and HubClien
 ## Signed bank bridge internal contract
 
 A trusted bridge validates a real provider event before sending signed JSON to `POST /v1/internal/bank-events`; the Hub independently checks HMAC timestamp window, bank destination, transfer reference, exact amount and unique provider transaction ID in one SQLite transaction. Confirmed bank captures create exactly one BANK payment and two receipt intents. Exceptions are retained for owner review; mismatches never mark paid. This protocol is **not a SePay/payOS/MoMo implementation**; no bank provider may be marked connected until its signed callback adapter and controlled real transfer acceptance exist.
+
+## Cash refund and signed-bank bridge extensions
+
+- `POST /v1/orders/:orderId/refunds/cash`: cashier-scoped, `Idempotency-Key`, body `{shift_id,reason}`. Only fully paid CASH orders; journal `cash_refunds` and negative drawer movement, set `REFUNDED`. Refunded orders excluded from paid-revenue total. Does **not** simulate a bank refund.
+- `POST /v1/orders/:orderId/payments/bank-intent`: cashier-scoped, generates unique transfer reference and exact destination when BANK_* environment is configured, **not** proof of payment or QR-provider integration.
+- `POST /v1/internal/bank-events`: *trusted bank bridge only*, `x-bmc-timestamp` Unix milliseconds within ±5 min, HMAC-SHA256(secret, timestamp + '.' + compact JSON body), `x-bmc-signature` hex. Events must contain `provider_tx_id`, `reference`, `bank_code`, `account_number`, `amount_vnd`, `direction: CREDIT`. Server validates exact reference/destination/amount and paid state transactionally before posting BANK capture and two receipt intents. Duplicate provider tx id returns original classification. This is **not** a direct bank-provider adapter.
+- `GET /v1/owner/bank-exceptions`: owner-scoped unmatched and mismatched transfers for human reconciliation.
