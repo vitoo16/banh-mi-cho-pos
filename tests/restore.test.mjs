@@ -62,7 +62,7 @@ test('WAL snapshot restore-copy preserves exact money/order/outbox and never ove
   assert.equal(restored.store.row('SELECT COUNT(*) n FROM payments').n,1);
   assert.equal(restored.store.row('SELECT COUNT(*) n FROM receipts').n,2);
   assert.ok(restored.store.row('SELECT COUNT(*) n FROM sync_outbox').n>0);
-  assert.equal(restored.store.row('SELECT COUNT(*) n FROM idempotency').n>0);
+  assert.ok(restored.store.row('SELECT COUNT(*) n FROM idempotency').n>0);
   assert.equal(restored.createOrder(s2,input,'restore-order-idem-001').order_id,order.order_id);
   assert.equal(restored.receipts(c2,order.order_id).length,2);
   assert.equal(restored.summary().cash_vnd,order.total_vnd);
