@@ -24,6 +24,39 @@ CREATE TABLE IF NOT EXISTS audit(id TEXT PRIMARY KEY,actor_id TEXT NOT NULL,kind
 CREATE INDEX IF NOT EXISTS idx_orders_created ON orders(created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_movements_shift ON cash_movements(shift_id);
 CREATE INDEX IF NOT EXISTS idx_receipts_order ON receipts(order_id);
+CREATE TABLE IF NOT EXISTS sync_outbox(seq INTEGER PRIMARY KEY AUTOINCREMENT,id TEXT NOT NULL UNIQUE DEFAULT (lower(hex(randomblob(16)))),entity TEXT NOT NULL,payload_json TEXT NOT NULL,created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,delivered_at TEXT);
+CREATE INDEX IF NOT EXISTS idx_sync_outbox_pending ON sync_outbox(delivered_at,seq);
+CREATE TRIGGER IF NOT EXISTS sync_order_created AFTER INSERT ON orders BEGIN
+ INSERT INTO sync_outbox(entity,payload_json) VALUES('order',json_object('id',NEW.id,'display_code',NEW.display_code,'created_at',NEW.created_at,'created_by',NEW.created_by,'status',NEW.status,'payment_status',NEW.payment_status,'requested_method',NEW.requested_method,'total_vnd',NEW.total_vnd,'version',NEW.version,'lines_json',NEW.lines_json));
+END;
+CREATE TRIGGER IF NOT EXISTS sync_order_updated AFTER UPDATE ON orders BEGIN
+ INSERT INTO sync_outbox(entity,payload_json) VALUES('order',json_object('id',NEW.id,'display_code',NEW.display_code,'created_at',NEW.created_at,'created_by',NEW.created_by,'status',NEW.status,'payment_status',NEW.payment_status,'requested_method',NEW.requested_method,'total_vnd',NEW.total_vnd,'version',NEW.version,'lines_json',NEW.lines_json));
+END;
+CREATE TRIGGER IF NOT EXISTS sync_payment_created AFTER INSERT ON payments BEGIN
+ INSERT INTO sync_outbox(entity,payload_json) VALUES('payment',json_object('id',NEW.id,'order_id',NEW.order_id,'method',NEW.method,'amount_vnd',NEW.amount_vnd,'created_at',NEW.created_at));
+END;
+CREATE TRIGGER IF NOT EXISTS sync_bank_event AFTER INSERT ON bank_events BEGIN
+ INSERT INTO sync_outbox(entity,payload_json) VALUES('bank_exception',json_object('provider_tx_id',NEW.provider_tx_id,'order_id',NEW.order_id,'reference',NEW.reference,'amount_vnd',NEW.amount_vnd,'state',NEW.state,'reason',NEW.reason,'received_at',NEW.received_at));
+END;
+CREATE TRIGGER IF NOT EXISTS sync_cash_movement AFTER INSERT ON cash_movements BEGIN
+ INSERT INTO sync_outbox(entity,payload_json) VALUES('cash_movement',json_object('id',NEW.id,'shift_id',NEW.shift_id,'order_id',NEW.order_id,'kind',NEW.kind,'amount_vnd',NEW.amount_vnd,'created_at',NEW.created_at));
+END;
+CREATE TRIGGER IF NOT EXISTS sync_refund_created AFTER INSERT ON cash_refunds BEGIN
+ INSERT INTO sync_outbox(entity,payload_json) VALUES('refund',json_object('id',NEW.id,'order_id',NEW.order_id,'amount_vnd',NEW.amount_vnd,'created_at',NEW.created_at));
+END;
+CREATE TRIGGER IF NOT EXISTS sync_product_created AFTER INSERT ON products BEGIN
+ INSERT INTO sync_outbox(entity,payload_json) VALUES('product',json_object('id',NEW.id,'name',NEW.name,'category',NEW.category,'price_vnd',NEW.price_vnd,'is_active',NEW.is_active));
+END;
+CREATE TRIGGER IF NOT EXISTS sync_product_updated AFTER UPDATE ON products BEGIN
+ INSERT INTO sync_outbox(entity,payload_json) VALUES('product',json_object('id',NEW.id,'name',NEW.name,'category',NEW.category,'price_vnd',NEW.price_vnd,'is_active',NEW.is_active));
+END;
+CREATE TRIGGER IF NOT EXISTS sync_shift_created AFTER INSERT ON shifts BEGIN
+ INSERT INTO sync_outbox(entity,payload_json) VALUES('shift',json_object('id',NEW.id,'cashier_id',NEW.cashier_id,'opening_float_vnd',NEW.opening_float_vnd,'status',NEW.status,'opened_at',NEW.opened_at,'closed_at',NEW.closed_at,'counted_cash_vnd',NEW.counted_cash_vnd,'variance_vnd',NEW.variance_vnd));
+END;
+CREATE TRIGGER IF NOT EXISTS sync_shift_updated AFTER UPDATE ON shifts BEGIN
+ INSERT INTO sync_outbox(entity,payload_json) VALUES('shift',json_object('id',NEW.id,'cashier_id',NEW.cashier_id,'opening_float_vnd',NEW.opening_float_vnd,'status',NEW.status,'opened_at',NEW.opened_at,'closed_at',NEW.closed_at,'counted_cash_vnd',NEW.counted_cash_vnd,'variance_vnd',NEW.variance_vnd));
+END;
+
 `);
   if(!this.db.prepare("SELECT 1 FROM settings WHERE key='catalog_version'").get())this.db.prepare('INSERT INTO settings(key,value) VALUES(?,?)').run('catalog_version','1');
  }
