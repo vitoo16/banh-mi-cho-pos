@@ -91,3 +91,14 @@ Authoritative result (only after DB commit): `cash_change_vnd=10000`, `cash_net_
 
 ## Schema evolution
 Additions backward compatible, breaking changes versioned with migrations, contract fixture regeneration in one PR. **Approve v1 before application implementation; v0.1 here is a draft.**
+
+## Implemented pilot API mapping (2026-10-11)
+
+The shared TypeScript contract in `packages/contracts/src/index.ts` and HubClient is consumed by both Vite apps and React Native Staff. The NestJS Store Hub implements the following routes:
+- Public: `POST /v1/auth/login`; `GET /v1/health`.
+- Staff/Cashier: `GET /v1/catalog`, `GET|POST /v1/orders`, `GET /v1/orders/:id`.
+- Cashier: `GET /v1/cash-shifts/current`, `POST /v1/cash-shifts/open`, `POST /v1/cash-shifts/:id/movements`, `POST /v1/cash-shifts/:id/close`, `POST /v1/orders/:id/payments/cash`, `GET /v1/orders/:id/receipts`, `POST /v1/receipt-copies/:id/reprint`.
+- Owner: `GET /v1/owner/dashboard`, `GET|POST /v1/owner/products`, `PATCH /v1/owner/products/:id`, `GET|POST /v1/owner/employees`, `PATCH /v1/owner/employees/:id`.
+- Bank: `POST /v1/orders/:id/payments/bank-intent` currently **returns 503** — no real payment intent or webhook in local pilot. Requested BANK still UNPAID.
+
+**Known contract follow-up:** OpenAPI was extended for route discoverability but generated clients and schema runtime validation remain to be hardened in M1. Do not label fully contract-frozen or production-ready.

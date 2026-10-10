@@ -18,6 +18,9 @@ export class StoreController {
  @Post('orders/:id/payments/bank-intent')bank(@Req()r:any){return this.call(()=>{this.s.actor(r.headers.authorization,['CASHIER']);return this.s.bankIntent()})}
  @Get('orders/:id/receipts')receipts(@Req()r:any,@Param('id')id:string){return this.call(()=>this.s.receipts(this.s.actor(r.headers.authorization,['OWNER','CASHIER']),id))}
  @Post('receipt-copies/:id/reprint')reprint(@Req()r:any,@Param('id')id:string,@Body()b:any,@Headers('idempotency-key')key:string){return this.call(()=>this.s.reprint(this.s.actor(r.headers.authorization,['CASHIER']),id,b,key))}
+ @Get('owner/employees')employees(@Req()r:any){return this.call(()=>{this.s.actor(r.headers.authorization,['OWNER']);return this.s.employees()})}
+ @Post('owner/employees')addEmployee(@Req()r:any,@Body()b:any,@Headers('idempotency-key')key:string){return this.call(()=>this.s.addEmployee(this.s.actor(r.headers.authorization,['OWNER']),b,key))}
+ @Patch('owner/employees/:id')employeeState(@Req()r:any,@Param('id')id:string,@Body()b:any,@Headers('idempotency-key')key:string){return this.call(()=>this.s.setEmployeeActive(this.s.actor(r.headers.authorization,['OWNER']),id,b,key))}
  @Get('owner/dashboard')summary(@Req()r:any){return this.call(()=>{this.s.actor(r.headers.authorization,['OWNER']);return this.s.summary()})}
  @Get('owner/products')products(@Req()r:any){return this.call(()=>{this.s.actor(r.headers.authorization,['OWNER']);return this.s.allProducts()})}
  @Post('owner/products')addProduct(@Req()r:any,@Body()b:any,@Headers('idempotency-key')key:string){return this.call(()=>this.s.createProduct(this.s.actor(r.headers.authorization,['OWNER']),b,key))}

@@ -27,6 +27,28 @@ export class StoreService implements OnModuleInit {
     this.store.run('INSERT INTO products(id,name,category,price_vnd) VALUES(?,?,?,?)',id,name,category,price);
   }
  }
+ employees(){return this.store.all<{id:string;name:string;role:string;active:number}>('SELECT id,name,role,active FROM users ORDER BY role,id').map(u=>({...u,active:!!u.active}))}
+ addEmployee(a:Actor,body:any,key:unknown){
+  return this.idem('employee.add:'+a.id,key,()=>{
+   const id=ensureText(body?.id,50).toLowerCase(),name=ensureText(body?.name,120),pin=body?.pin,role=body?.role;
+   if(!/^[a-z0-9_-]{2,50}$/.test(id)||!name||!['STAFF','CASHIER'].includes(role)||typeof pin!=='string'||pin.length<6||pin.length>128)
+    throw new StoreError(400,'INVALID_EMPLOYEE','Mã nhân viên, tên, vai trò hoặc PIN không hợp lệ');
+   if(this.store.row('SELECT 1 FROM users WHERE id=?',id))throw new StoreError(409,'USER_EXISTS','Mã nhân viên đã tồn tại');
+   this.store.run('INSERT INTO users(id,name,role,pin_hash,active) VALUES(?,?,?,?,1)',id,name,role,passwordHash(pin));
+   audit(this.store,a.id,'EMPLOYEE_CREATE',id,{role,name});
+   return {id,name,role,active:true};
+  });
+ }
+ setEmployeeActive(a:Actor,id:string,body:any,key:unknown){
+  return this.idem('employee.active:'+a.id+':'+id,key,()=>{
+   const employee=this.store.row<any>('SELECT id,name,role FROM users WHERE id=?',id);
+   if(!employee||employee.role==='OWNER'||typeof body?.active!=='boolean')
+    throw new StoreError(400,'INVALID_EMPLOYEE','Không thể chỉnh trạng thái tài khoản này');
+   this.store.run('UPDATE users SET active=? WHERE id=?',body.active?1:0,id);
+   audit(this.store,a.id,'EMPLOYEE_ACTIVE',id,{active:body.active});
+   return {...employee,active:body.active};
+  });
+ }
  login(user_id:unknown,pin:unknown){
   const uid=ensureText(user_id,80);if(typeof pin!=='string'||pin.length>128)throw new StoreError(401,'AUTH_FAILED','Thông tin đăng nhập không đúng');
   const k=uid.toLowerCase(),a=this.attempts.get(k);
