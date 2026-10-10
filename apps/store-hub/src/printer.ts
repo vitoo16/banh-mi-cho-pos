@@ -20,7 +20,7 @@ export class ReceiptPrinter implements OnModuleInit,OnModuleDestroy{
    if(!r)return;
    const o=db.row<any>('SELECT * FROM orders WHERE id=?',r.order_id);
    if(!o)return;
-   const p=db.row<any>("SELECT tendered_vnd,change_vnd FROM payments WHERE order_id=? ORDER BY created_at LIMIT 1",r.order_id);
+   const p=db.row<any>("SELECT method,tendered_vnd,change_vnd FROM payments WHERE order_id=? ORDER BY created_at LIMIT 1",r.order_id);
    // Mark uncertain BEFORE any I/O so a crash cannot trigger an untracked duplicate.
    db.run("UPDATE receipts SET status='UNKNOWN',attempts=attempts+1 WHERE id=?",r.id);
    const payload=this.render(o,r,p);
@@ -42,7 +42,7 @@ export class ReceiptPrinter implements OnModuleInit,OnModuleDestroy{
   lines.push({left:'-------------------------------------'});
   lines.push({left:'TỔNG',right:formatVnd(o.total_vnd),size:'large'});
   lines.push({left:'TRẠNG THÁI: ĐÃ THANH TOÁN'});
-  if(r.kind==='STORE'&&p){lines.push({left:'Khách đưa',right:formatVnd(p.tendered_vnd)},{left:'Tiền thối',right:formatVnd(p.change_vnd)})}
+  if(r.kind==='STORE'&&p&&p.method==='CASH'){lines.push({left:'Khách đưa',right:formatVnd(p.tendered_vnd)},{left:'Tiền thối',right:formatVnd(p.change_vnd)})}
   if(r.attempts>0)lines.push({left:'*** BẢN IN LẠI ***',size:'large'});
   lines.push({left:'Cảm ơn quý khách!'});
   const width=576,left=16,lineHeight=29;const wrapped:{left:string;right?:string;size?:'large'}[]=[];
