@@ -115,6 +115,7 @@ export class StoreService implements OnModuleInit {
   });
  }
 
+  orders(a:Actor){
   const rows=a.role==='STAFF'?
    this.store.all<any>('SELECT * FROM orders WHERE created_by=? ORDER BY created_at DESC LIMIT 100',a.id):
    this.store.all<any>('SELECT * FROM orders ORDER BY created_at DESC LIMIT 200');
