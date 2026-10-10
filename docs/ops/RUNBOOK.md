@@ -20,3 +20,13 @@ P0 duplicate money or unauthorized capture -> disable corresponding payment meth
 
 ## Deployment gates
 Staging signoffs for signed installer/runtime, autostart, least-privilege Windows service, firewall local-only, printer driver, UPS, bank integration sandbox, rollback path and DB migration backward compatibility. No production deploy/claim before all gates complete.
+
+## Verified SQLite restoration rehearsal (implemented tool)
+
+`npm run backup:store -- /secure/backup.sqlite` creates a **self-contained snapshot** using SQLite `VACUUM INTO`, then runs integrity and foreign-key checks. It refuses to overwrite an existing backup.
+
+`npm run verify:backup -- /secure/backup.sqlite` validates backup integrity and required POS financial tables.
+
+`npm run restore:copy -- /secure/backup.sqlite /isolated-restore/pos.sqlite` creates and validates a **NEW copy only**. This never overwrites the live `STORE_DB_PATH`, uses exclusive creation, verifies file SHA-256 and counts of orders, payments, receipts and outbox. Re-running against an existing destination fails closed. A corrupted source fails without creating a partial restored file. The integration test exercises backup with WAL, restored order + cash + receipts, preserved idempotency and unsent sync-outbox entries.
+
+**Disaster cutover remains supervised:** stop the Windows Store Hub service, preserve the original live `.sqlite`, `-wal` and `-shm` files, take a forensic copy, rehearse restore on a separate directory/machine, and reconcile any accepted transactions after snapshot against cloud/bank/provider and receipt logs. Only then should an authorized operator select the new database path. This tool intentionally has NO in-place restore command. Backup and restored files are plaintext and require encrypted storage/off-host rotation/Windows ACL policies; this tool does not itself encrypt. RPO/RTO targets require separate real drills.
