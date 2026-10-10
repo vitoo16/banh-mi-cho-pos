@@ -47,6 +47,7 @@ export class HubClient {
   summary(){return this.request<Summary>('/v1/owner/dashboard')}
   products(){return this.request<Catalog>('/v1/owner/products')}
   updateProduct(id:string,body:{name:string;price_vnd:number;is_active:boolean},key:string){return this.request<Product>('/v1/owner/products/'+id,{method:'PATCH',body:JSON.stringify(body)},key)}
+  bankExceptions(){return this.request<Array<{provider_tx_id:string;reference:string;amount_vnd:number;reason:string;received_at:string}>>('/v1/owner/bank-exceptions')}
   employees(){return this.request<Employee[]>('/v1/owner/employees')}
   addEmployee(body:{id:string;name:string;role:'STAFF'|'CASHIER';pin:string},key:string){return this.request<Employee>('/v1/owner/employees',{method:'POST',body:JSON.stringify(body)},key)}
   setEmployeeActive(id:string,active:boolean,key:string){return this.request<Employee>('/v1/owner/employees/'+encodeURIComponent(id),{method:'PATCH',body:JSON.stringify({active})},key)}
