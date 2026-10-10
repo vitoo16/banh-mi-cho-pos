@@ -266,7 +266,7 @@ export class StoreService implements OnModuleInit {
    if(!account||!bank||!secret||secret.length<32)throw new StoreError(503,'BANK_NOT_CONFIGURED','Chưa kết nối ngân hàng');
    const o=this.store.row<any>('SELECT * FROM orders WHERE id=?',id);
    if(!o)throw new StoreError(404,'NOT_FOUND','Không tìm thấy đơn');
-   if(o.status!==\'COMMITTED\'||o.payment_status!==\'UNPAID\')throw new StoreError(409,'ALREADY_SETTLED','Đơn đã hoàn tất hoặc bị hủy');
+   if(o.status!=='COMMITTED'||o.payment_status!=='UNPAID')throw new StoreError(409,'ALREADY_SETTLED','Đơn đã hoàn tất hoặc bị hủy');
    const old=this.store.row<any>('SELECT * FROM bank_intents WHERE order_id=?',id);
    if(old)return {status:old.status,reference:old.reference,amount_vnd:old.amount_vnd,bank_code:old.bank_code,account_number:old.account_number};
    const reference='BMC'+randomBytes(7).toString('hex').toUpperCase();
