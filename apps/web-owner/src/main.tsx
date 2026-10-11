@@ -1,4 +1,4 @@
-import React,{useEffect,useState} from 'react';import {createRoot} from 'react-dom/client';import {type Product,type Employee,type StaffDevice,type PairingCode} from '@bmc/contracts';import {LayoutDashboard,ClipboardList,Tags,Wallet,Settings,LogOut,ShoppingBag,AlertCircle,RefreshCcw} from 'lucide-react';import {QueryClientProvider} from '@tanstack/react-query';
+import React,{useEffect,useState} from 'react';import {createRoot} from 'react-dom/client';import {type Product,type Employee,type StaffDevice,type PairingCode} from '@bmc/contracts';import {QueryClientProvider} from '@tanstack/react-query';
 import {hub,remote,newKey} from './api';
 import {queryClient} from './app/queryClient';
 import {useOwnerAuth} from './app/useOwnerAuth';
@@ -17,7 +17,7 @@ import {catalogRetryStorageKey,readCatalogRetry,type CatalogRetry} from './featu
 import {submitCatalogChange} from './features/catalog/mutations';
 import './styles.css';
 
-type Page='dashboard'|'sales'|'orders'|'catalog'|'finance'|'staff';
+import {AppShell,type OwnerPage as Page} from './app/AppShell';
 
 function App(){
  const {session,login,logout}=useOwnerAuth();
@@ -48,7 +48,7 @@ function App(){
   }finally{setBusy(false)}
  }
 
- const nav:[Page,string,React.ReactNode][]=[['dashboard','Tổng quan',<LayoutDashboard size={19}/>],['sales','Sản lượng',<Tags size={19}/>],['orders','Đơn hàng',<ClipboardList size={19}/>],['finance','Tài chính',<Wallet size={19}/>],['catalog','Sản phẩm',<Tags size={19}/>],['staff','Nhân viên',<Settings size={19}/>]];
+
  async function issuePairing(){if(deviceLabel.trim().length<3)return;setBusy(true);setError('');try{const code=await hub.issuePairing(deviceLabel.trim(),newKey());setNewPairing(code);setDeviceLabel('')}catch(e){setError((e as Error).message)}finally{setBusy(false)}}
  async function revokeDevice(device:StaffDevice){if(!window.confirm('Thu hồi thiết bị '+device.label+'? Nhân viên phải ghép lại để đăng nhập.'))return;const reason=window.prompt('Lý do thu hồi thiết bị (ít nhất 3 ký tự)');if(!reason||reason.trim().length<3)return;setBusy(true);try{await hub.revokeDevice(device.id,reason.trim(),newKey());await queryClient.invalidateQueries({queryKey:deviceKey(session?.user.id??'')})}catch(e){setError((e as Error).message)}finally{setBusy(false)}}
  async function createEmployee(){if(busy)return;setBusy(true);setError('');try{await hub.addEmployee({id:empId.trim().toLowerCase(),name:empName.trim(),role:empRole,pin:empPin},newKey());setEmpId('');setEmpName('');setEmpPin('');setNotice('Đã tạo tài khoản nhân viên');await queryClient.invalidateQueries({queryKey:employeeKey(session?.user.id??'')})}catch(e){setError((e as Error).message)}finally{setBusy(false)}}
@@ -70,8 +70,26 @@ function App(){
   setEditing(p?.id||'new');setName(p?.name||'');setCategory(p?.category||'Bánh mì');
   setPrice(String(p?.price_vnd??''));setActive(p?.is_active??true);setNotice('');
  };
+ function navigateSidebar(target:Page){setPage(target);setError('');setNotice('')}
+ function refreshPage(){
+  if(!session)return;
+  if(page==='dashboard'||page==='sales')void queryClient.invalidateQueries({queryKey:page==='dashboard'?['owner']:['owner','product-sales']});
+  else if(page==='catalog'){
+   void queryClient.invalidateQueries({queryKey:catalogKey(session.user.id)});
+   if(remote)void queryClient.invalidateQueries({queryKey:commandKey(session.user.id)});
+  }else if(page==='staff'){
+   if(!remote){
+    void queryClient.invalidateQueries({queryKey:employeeKey(session.user.id)});
+    void queryClient.invalidateQueries({queryKey:deviceKey(session.user.id)});
+   }
+  }else if(page==='finance'){
+   void queryClient.invalidateQueries({queryKey:summaryKey});
+   void queryClient.invalidateQueries({queryKey:bankExceptionsKey(session.user.id)});
+  }
+ }
  if(!session)return <OwnerLogin remote={remote} pin={pin} busy={busy} error={error} onPinChange={setPin} onSignIn={signIn}/>;
- return <div className="layout"><aside className="sidebar"><div className="brand"><span className="logo"><ShoppingBag size={23}/></span><div><b>Bánh Mì Chợ</b><small>Quản lý cửa hàng</small></div></div><div className="navlinks">{nav.map(([k,l,icon])=><button key={k} className={page===k?'active':''} onClick={()=>{setPage(k);setError('');setNotice('')}}>{icon}{l}</button>)}</div><div className="sidefoot"><div><b>{session.user.name}</b><small>Chủ tiệm</small></div><button title="Đăng xuất" onClick={()=>void logout()}><LogOut size={19}/></button></div></aside><main className="main"><header className="header"><div><p className="eyebrow">BẢNG ĐIỀU KHIỂN CỬA HÀNG</p><h1>{nav.find(([k])=>k===page)?.[1]}</h1></div><button className="reload" title="Tải lại" onClick={()=>{if(page==='dashboard'||page==='sales')void queryClient.invalidateQueries({queryKey:page==='dashboard'?['owner']:['owner','product-sales']});else if(page==='catalog'){void queryClient.invalidateQueries({queryKey:catalogKey(session.user.id)});if(remote)void queryClient.invalidateQueries({queryKey:commandKey(session.user.id)})}else if(page==='staff'){if(!remote){void queryClient.invalidateQueries({queryKey:employeeKey(session.user.id)});void queryClient.invalidateQueries({queryKey:deviceKey(session.user.id)})}}else if(page==='finance'){void queryClient.invalidateQueries({queryKey:summaryKey});void queryClient.invalidateQueries({queryKey:bankExceptionsKey(session.user.id)})}}}><RefreshCcw size={19}/></button></header><div className="stale"><AlertCircle size={17}/> {remote?'Dữ liệu Cloud có thể trễ; giá mới chỉ có hiệu lực khi Hub tại tiệm xác nhận.':'Chế độ POS nội bộ; dữ liệu tại quầy.'}</div>
+ return <AppShell userName={session.user.name} page={page} remote={remote}
+ onSidebarNavigate={navigateSidebar} onBottomNavigate={setPage} onLogout={logout} onRefresh={refreshPage}>
  {page==='dashboard'&&<OwnerDashboard onOpenSales={()=>setPage('sales')}/>}
  {page==='sales'&&<OwnerProductSalesPage/>}
  {page==='orders'&&<OrderHistoryPage/>}
@@ -83,6 +101,6 @@ function App(){
  />}
  {editing&&page==='catalog'&&<ProductFormDialog editing={editing} remote={remote} name={name} category={category} price={price} active={active} error={error} busy={busy} onNameChange={setName} onCategoryChange={setCategory} onPriceChange={setPrice} onActiveChange={setActive} onSave={save} onClose={()=>setEditing(null)}/>}
  {notice&&<p className="success" role="status">{notice}</p>}{error&&!editing&&<p className="alert" role="alert">{error}</p>}
- </main><nav className="bottomnav">{nav.map(([k,l,icon])=><button key={k} className={page===k?'active':''} onClick={()=>setPage(k)}>{icon}<small>{l}</small></button>)}</nav></div>
+ </AppShell>
 }
 createRoot(document.getElementById('root')!).render(<React.StrictMode><QueryClientProvider client={queryClient}><App/></QueryClientProvider></React.StrictMode>);

@@ -662,3 +662,34 @@ test('OR-06b: production follows today over midnight until operator chooses hist
  await today.click();
  await expect(input).toHaveValue('2026-10-14');
 });
+
+
+test('OR-07a: extracted Owner desktop shell preserves navigation, refresh and logout isolation',async({page})=>{
+ const f=await fixture(page);await login(page);
+ await tab(page,'Sản phẩm');
+ await expect(page.getByText('Bánh mì thịt nguội')).toBeVisible();
+ await page.getByRole('button',{name:'Tải lại'}).click();
+ await expect.poll(()=>f.calls.filter(c=>c.path==='/v1/owner/products'&&c.method==='GET').length).toBe(2);
+ await tab(page,'Tài chính');
+ await expect(page.getByText('BANK-UNKNOWN-01')).toBeVisible();
+ await tab(page,'Tổng quan');
+ await expect(page.getByText('DOANH THU ĐÃ XÁC NHẬN')).toBeVisible();
+ await page.getByRole('button',{name:'Đăng xuất'}).click();
+ await expect(page.getByLabel('Mã PIN chủ tiệm')).toBeVisible();
+ await expect(page.getByText('BANK-UNKNOWN-01')).toHaveCount(0);
+ expect(await page.evaluate(()=>sessionStorage.getItem('bmc_owner_token'))).toBeNull();
+});
+test('OR-07a: mobile AppShell bottom nav remains active and never overflows at 320px',async({page})=>{
+ await page.setViewportSize({width:320,height:568});
+ await fixture(page);await login(page);
+ const nav=page.locator('.bottomnav');
+ await expect(nav.locator('button')).toHaveCount(6);
+ await tab(page,'Sản phẩm');
+ await expect(nav.locator('button.active small')).toHaveText('Sản phẩm');
+ await expect(page.getByText('Bánh mì thịt nguội')).toBeVisible();
+ await tab(page,'Tài chính');
+ await expect(nav.locator('button.active small')).toHaveText('Tài chính');
+ await expect(page.getByText('BANK-UNKNOWN-01')).toBeVisible();
+ const sizes=await page.evaluate(()=>({view:innerWidth,doc:document.documentElement.scrollWidth}));
+ expect(sizes.doc).toBeLessThanOrEqual(sizes.view+1);
+});
