@@ -5,26 +5,10 @@ import {useOwnerAuth} from './app/useOwnerAuth';
 import {OwnerLogin} from './app/OwnerLogin';
 import {OwnerDashboard,OwnerProductSalesPage} from './analytics/OwnerAnalytics';
 import {OrderHistoryPage} from './features/orders/OrderHistoryPage';
+import {catalogRetryStorageKey,readCatalogRetry,type CatalogRetry} from './features/catalog/catalog-retry';
 import './styles.css';
 
 type Page='dashboard'|'sales'|'orders'|'catalog'|'finance'|'staff';
-type CatalogRetry={
- key:string;
- draft:{remote:boolean;target:string|null;name:string;category:string;price_vnd:number;is_active:boolean};
- payload:{name:string;category?:string;price_vnd:number;is_active:boolean;expected_price_vnd?:number};
-};
-const catalogRetryStorageKey='bmc_owner_pending_catalog_v1';
-function readCatalogRetry():CatalogRetry|null{
- const raw=sessionStorage.getItem(catalogRetryStorageKey);
- if(!raw)return null;
- let item:CatalogRetry;
- try{item=JSON.parse(raw) as CatalogRetry}catch{throw new Error('Bản ghi yêu cầu menu chưa xác nhận bị lỗi; không tạo yêu cầu mới. Kiểm tra Cloud/POS.')}
- if(!item||typeof item.key!=='string'||item.key.length<8||!item.draft||
-  typeof item.draft.name!=='string'||typeof item.draft.price_vnd!=='number'||
-  !item.payload||typeof item.payload.name!=='string')
-  throw new Error('Bản ghi yêu cầu menu chưa xác nhận không hợp lệ; kiểm tra trước khi tạo yêu cầu mới.');
- return item;
-}
 
 function App(){
  const {session,login,logout}=useOwnerAuth();
