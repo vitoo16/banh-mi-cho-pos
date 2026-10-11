@@ -52,3 +52,7 @@
 ## Large cashier queue regression (2026-10-11)
 
 In a shop seeded with 340+ orders and 200+ payment captures, every actionable UNPAID/PARTIAL order remains on the cashier snapshot even if outside the most recent 200 overall. The bounded history window and STAFF user scope remain correct. REFUNDED/VOIDED must not be counted as waiting or render active payment controls. This is an automated SQLite + browser regression gate only; real-device load and p95 stay unverified.
+
+## Actual-payment receipt text regression (2026-10-11)
+
+The CUSTOMER and STORE receipt copies must show the tender **recorded in settled `payments.method`**, not Staff's requested method. CASH STORE copy may show `tendered_vnd` and `change_vnd`; BANK prints verified transfer amount and must never fabricate `Khách đưa 0đ / Tiền thối 0đ`. Missing/mismatched payment rows are flagged UNKNOWN instead of printing an unverified settlement statement. `tests/receipt-content.test.mjs` verifies this as pure content logic; existing virtual ESC/POS tests verify two distinct raster jobs and printer UNKNOWN/reprint handling. Actual Vietnamese font clarity/roll paper and drawer remain physical acceptance gates.
