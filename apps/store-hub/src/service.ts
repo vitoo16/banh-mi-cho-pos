@@ -36,6 +36,12 @@ export class StoreService implements OnModuleInit {
    return {pairing_code:code,label,expires_at};
   });
  }
+ assertRemoteStaffAccount(userId:unknown){
+  const id=typeof userId==='string'&&userId.length<=80?userId.trim():'';
+  const user=id?this.store.row<{role:string;active:number}>('SELECT role,active FROM users WHERE id=?',id):undefined;
+  if(!user||user.role!=='STAFF'||!user.active)
+   throw new StoreError(403,'REMOTE_STAFF_ONLY','Điện thoại chỉ được đăng nhập bằng tài khoản nhân viên');
+ }
  devices(){return this.store.all<any>('SELECT id,user_id,label,created_at,last_seen_at,revoked_at FROM staff_devices ORDER BY created_at DESC LIMIT 100')}
  revokeDevice(a:Actor,id:string,reasonInput:unknown,key:unknown){
   return this.idem('device.revoke:'+id,key,()=>{
