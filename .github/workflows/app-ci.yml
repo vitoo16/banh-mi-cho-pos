@@ -1,7 +1,7 @@
 name: App typecheck and build
 on:
   pull_request:
-    paths: ['apps/**','packages/**','tests/**','package.json','.github/workflows/app-ci.yml']
+    paths: ['apps/**','packages/**','tests/**','scripts/store-backup.mjs','scripts/check-backup-freshness.mjs','package.json','.github/workflows/app-ci.yml']
   push:
     branches: [main]
 permissions:
