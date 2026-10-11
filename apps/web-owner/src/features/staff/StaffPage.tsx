@@ -1,4 +1,5 @@
 import type {Employee,StaffDevice,PairingCode} from '@bmc/contracts';
+import {useStaffQueries} from './queries';
 
 /** OR-04a: Staff and Device UI only; server-side authorization remains in Hub. */
 export type StaffDeviceProps={
@@ -36,11 +37,20 @@ export function StaffEmployeesSection({
 }
 
 /** Cloud Owner may view reports but cannot operate local staff/device controls. */
-export function StaffPage({remote,deviceProps,employeeProps}:{
+export function StaffPage({remote,ownerId,deviceProps,employeeProps}:{
  remote:boolean;
- deviceProps:StaffDeviceProps;
- employeeProps:StaffEmployeeProps;
+ ownerId:string;
+ deviceProps:Omit<StaffDeviceProps,'devices'>;
+ employeeProps:Omit<StaffEmployeeProps,'employees'>;
 }){
+ const {devices,employees}=useStaffQueries(ownerId);
  if(remote)return (<section className="panel"><h2>Nhân viên</h2><p className="muted">Quản lý nhân viên chỉ được thao tác từ POS nội bộ; trang cloud chỉ hiển thị báo cáo.</p></section>);
- return <><StaffDevicesSection {...deviceProps}/><StaffEmployeesSection {...employeeProps}/></>;
+ return <>
+  {devices.isPending&&<p className="muted" role="status">Đang tải thiết bị…</p>}
+  {devices.isError&&<p className="alert" role="alert">Không tải được thiết bị. <button className="textbutton" type="button" onClick={()=>void devices.refetch()}>Thử lại thiết bị</button></p>}
+  {devices.isSuccess&&<StaffDevicesSection {...deviceProps} devices={devices.data}/>}
+  {employees.isPending&&<p className="muted" role="status">Đang tải nhân viên…</p>}
+  {employees.isError&&<p className="alert" role="alert">Không tải được danh sách nhân viên. <button className="textbutton" type="button" onClick={()=>void employees.refetch()}>Thử lại nhân viên</button></p>}
+  {employees.isSuccess&&<StaffEmployeesSection {...employeeProps} employees={employees.data}/>}
+ </>;
 }
