@@ -95,3 +95,11 @@ A timed-out remote or local Owner product CREATE/UPDATE may already be committed
 - Kỳ ngày, tuần bắt đầu thứ Hai, tháng, quý, năm áp dụng cửa sổ thời gian [start,end) UTC tương ứng Asia/Ho_Chi_Minh; test biên ngày/năm và ngày nhuận.
 - Truy vấn aggregate SQLite/Postgres và group từng món/nhóm; không dựa vào API lịch sử đơn chỉ lấy 100/200 bản ghi, không suy ra tồn kho hoặc lợi nhuận.
 - Dashboard KPI và sản lượng lọc kỳ là React Query key độc lập, structural sharing/selector, component riêng; Playwright 320/390/768/1366px. Query polling không phải socket realtime. Native/hardware perf vẫn cần nghiệm thu.
+
+## OR-10c — Real loopback HTTP concurrency regression
+
+The prior `tests/concurrency.test.mjs` 150-order test calls `StoreService` sequentially in-process, so its printed P95 is **not** a network/concurrency benchmark. Its original correctness coverage remains.
+
+New `npm run test:perf:http` starts an actual NestJS/Fastify controller bound only to `127.0.0.1`, using its own temporary SQLite WAL database. It creates 8 distinct authenticated Staff sessions and overlaps 150 real HTTP POST requests. The correctness gate checks unique persisted IDs/display codes, Hub-generated integer-VND totals, all UNPAID, exactly one persisted order for two same-key ACK retries, changed-body key returning HTTP 409, zero payments/receipts, and Owner cursor pagination returning all rows. It prints and stores actual HTTP p50/p95/p99, peak client requests in flight and throughput in `artifacts/perf/hub-http-smoke.json`.
+
+**CI:** This smoke test is an automatic post-integration App CI correctness gate. **Manual:** GitHub Actions `Hub HTTP performance profile` can run `burst` (1,500 orders, ten times the smoke volume) and upload the aggregate-only JSON. Timing on shared CI runners is informational, with no invented hardware SLA or arbitrary CI timing thresholds. This measures client-side HTTP round-trip, not radio/real LAN latency or 8 physical concurrent phones; a single-process synchronous SQLite handler can still serialize writes. Neither profile paces 150 orders over a literal hour. Q-01 and ≥150 orders/hour acceptance on the real Windows POS/phones, p95 ≤400ms/p99 ≤1s LAN SLO, WAN fault injection and crash/restores **remain open release gates**.
