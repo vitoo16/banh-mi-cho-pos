@@ -1,6 +1,8 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {mkdtempSync,rmSync,existsSync,writeFileSync,readFileSync} from 'node:fs';
+import {mkdtempSync,rmSync,existsSync,writeFileSync,readFileSync,renameSync} from 'node:fs';
+import {createHash} from 'node:crypto';
+import {basename} from 'node:path';
 import {tmpdir} from 'node:os';
 import {join,resolve} from 'node:path';
 import {spawnSync} from 'node:child_process';
@@ -36,6 +38,21 @@ test('WAL snapshot restore-copy preserves exact money/order/outbox and never ove
   assert.ok(existsSync(backup));
   assert.equal(run('verify',backup).status,0);
   const snapshotSize=readFileSync(backup).length;
+  const manifestFile=backup+'.manifest.json';
+  assert.ok(existsSync(manifestFile),'Backup requires an adjacent versioned manifest');
+  const manifest=JSON.parse(readFileSync(manifestFile,'utf8'));
+  assert.equal(manifest.version,1);
+  assert.equal(manifest.format,'bmc-sqlite-backup');
+  assert.equal(manifest.file_name,basename(backup));
+  assert.equal(manifest.size_bytes,snapshotSize);
+  assert.equal(manifest.sha256,createHash('sha256').update(readFileSync(backup)).digest('hex'));
+  assert.equal(manifest.counts.orders,1);
+  assert.equal(manifest.counts.payments,1);
+  assert.equal(manifest.counts.receipts,2);
+  assert.ok(manifest.counts.sync_outbox>0);
+  assert.ok(!readFileSync(manifestFile,'utf8').includes('restore-owner-secure'));
+  assert.ok(!readFileSync(manifestFile,'utf8').includes(live));
+
   // A later order only exists in the live database, proving the snapshot is point-in-time.
   svc.createOrder(staff,input,'restore-future-order-002');
   const copied=run('restore-copy',backup,copy);
@@ -43,6 +60,12 @@ test('WAL snapshot restore-copy preserves exact money/order/outbox and never ove
   assert.ok(existsSync(copy));
   assert.equal(readFileSync(copy).length,snapshotSize);
   assert.equal(run('verify',copy).status,0);
+  assert.ok(existsSync(copy+'.manifest.json'),'Restored copy needs its own verifiable sidecar');
+  const copyManifest=JSON.parse(readFileSync(copy+'.manifest.json','utf8'));
+  assert.equal(copyManifest.file_name,basename(copy));
+  assert.equal(copyManifest.derived_from_backup,basename(backup));
+  assert.equal(copyManifest.snapshot_at,manifest.snapshot_at);
+  assert.equal(copyManifest.sha256,manifest.sha256);
   const originalLive=readFileSync(live).length;
   const replay=run('restore-copy',backup,copy);
   assert.notEqual(replay.status,0,'existing target must never be overwritten');
@@ -52,6 +75,39 @@ test('WAL snapshot restore-copy preserves exact money/order/outbox and never ove
   writeFileSync(fake,'not a sqlite database');
   assert.notEqual(run('restore-copy',fake,join(dir,'invalid-restored.sqlite')).status,0);
   assert.equal(existsSync(join(dir,'invalid-restored.sqlite')),false);
+
+  // A structurally valid SQLite must not bypass corrupted or forged metadata.
+  writeFileSync(manifestFile,JSON.stringify({...manifest,sha256:'0'.repeat(64)}));
+  assert.notEqual(run('verify',backup).status,0,'Tampered checksum must fail');
+  const badShaTarget=join(dir,'bad-sha.sqlite');
+  assert.notEqual(run('restore-copy',backup,badShaTarget).status,0);
+  assert.equal(existsSync(badShaTarget),false,'Failure cannot create a restore copy');
+  writeFileSync(manifestFile,JSON.stringify({...manifest,counts:{...manifest.counts,payments:99}}));
+  assert.notEqual(run('verify',backup).status,0,'Mismatched ledger count must fail');
+  writeFileSync(manifestFile,JSON.stringify({...manifest,file_name:'renamed.sqlite'}));
+  assert.notEqual(run('verify',backup).status,0,'Renaming a backup without its provenance fails');
+  writeFileSync(manifestFile,JSON.stringify(manifest));
+  assert.equal(run('verify',backup).status,0);
+  const oldManifest=join(dir,'manifest-held-aside.json');
+  renameSync(manifestFile,oldManifest);
+  assert.notEqual(run('verify',backup).status,0,'No manifest = no valid backup');
+  const noManifestTarget=join(dir,'missing-manifest.sqlite');
+  assert.notEqual(run('restore-copy',backup,noManifestTarget).status,0);
+  assert.equal(existsSync(noManifestTarget),false);
+  renameSync(oldManifest,manifestFile);
+
+  const originalBackup=readFileSync(backup);
+  const flipped=Buffer.from(originalBackup);
+  flipped[flipped.length-1]^=1;
+  writeFileSync(backup,flipped);
+  const corrupt=run('verify',backup);
+  assert.notEqual(corrupt.status,0);
+  assert.match(corrupt.stderr,/SHA-256 mismatch/);
+  const bitflipTarget=join(dir,'bitflip-rejected.sqlite');
+  assert.notEqual(run('restore-copy',backup,bitflipTarget).status,0);
+  assert.equal(existsSync(bitflipTarget),false);
+  writeFileSync(backup,originalBackup);
+  assert.equal(run('verify',backup).status,0);
 
   // Reopen the copy as a Store Hub instance; idempotency, receipt batch and cash survive.
   process.env.STORE_DB_PATH=copy;
