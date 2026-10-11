@@ -48,3 +48,7 @@
 - Required *human* evidence: cashier counter-count signoff, paper two-copy visual proof, bank sandbox transaction IDs with redacted account identifiers, Windows reboot & restore drill, RN LAN after WAN disconnect.
 - Security review: staff bypass, MITM/rogue device pairing, webhook forgery/replay, partial transfer fraud, lost device, hard-coded key scan, dependency audit.
 - Go-live requires accountant/invoice compliance check if applicable, operator fallback SOP, production secret rotation/recovery procedure, owner sign-off after pilot.
+
+## Large cashier queue regression (2026-10-11)
+
+In a shop seeded with 340+ orders and 200+ payment captures, every actionable UNPAID/PARTIAL order remains on the cashier snapshot even if outside the most recent 200 overall. The bounded history window and STAFF user scope remain correct. REFUNDED/VOIDED must not be counted as waiting or render active payment controls. This is an automated SQLite + browser regression gate only; real-device load and p95 stay unverified.

@@ -28,6 +28,7 @@ CREATE TABLE IF NOT EXISTS bank_events(provider_tx_id TEXT PRIMARY KEY,order_id 
 CREATE TABLE IF NOT EXISTS idempotency(scope TEXT NOT NULL,key TEXT NOT NULL,request_hash TEXT,result_json TEXT NOT NULL,PRIMARY KEY(scope,key));
 CREATE TABLE IF NOT EXISTS audit(id TEXT PRIMARY KEY,actor_id TEXT NOT NULL,kind TEXT NOT NULL,entity_id TEXT NOT NULL,created_at TEXT NOT NULL,details_json TEXT NOT NULL);
 CREATE INDEX IF NOT EXISTS idx_orders_created ON orders(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_orders_actionable ON orders(status,payment_status,created_at,id);
 CREATE INDEX IF NOT EXISTS idx_movements_shift ON cash_movements(shift_id);
 CREATE INDEX IF NOT EXISTS idx_receipts_order ON receipts(order_id);
 CREATE INDEX IF NOT EXISTS idx_receipts_operational ON receipts(status,created_at,id);
