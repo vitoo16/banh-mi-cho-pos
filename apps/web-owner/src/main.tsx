@@ -1,4 +1,4 @@
-import React,{useEffect,useState} from 'react';import {createRoot} from 'react-dom/client';import {formatVnd,type Catalog,type Product,type Summary,type Employee,type StaffDevice,type PairingCode} from '@bmc/contracts';import {LayoutDashboard,ClipboardList,Tags,Wallet,Settings,LogOut,ShoppingBag,AlertCircle,RefreshCcw} from 'lucide-react';import {QueryClientProvider} from '@tanstack/react-query';
+import React,{useEffect,useState} from 'react';import {createRoot} from 'react-dom/client';import {formatVnd,type Product,type Summary,type Employee,type StaffDevice,type PairingCode} from '@bmc/contracts';import {LayoutDashboard,ClipboardList,Tags,Wallet,Settings,LogOut,ShoppingBag,AlertCircle,RefreshCcw} from 'lucide-react';import {QueryClientProvider} from '@tanstack/react-query';
 import {hub,remote,newKey} from './api';
 import {queryClient} from './app/queryClient';
 import {useOwnerAuth} from './app/useOwnerAuth';
@@ -9,6 +9,7 @@ import {CatalogPage} from './features/catalog/CatalogPage';
 import {ProductFormDialog} from './features/catalog/ProductFormDialog';
 import {catalogKey,commandKey} from './features/catalog/queries';
 import {catalogRetryStorageKey,readCatalogRetry,type CatalogRetry} from './features/catalog/catalog-retry';
+import {submitCatalogChange} from './features/catalog/mutations';
 import './styles.css';
 
 type Page='dashboard'|'sales'|'orders'|'catalog'|'finance'|'staff';
@@ -28,46 +29,17 @@ function App(){
   if(busy||!editing)return;
   setBusy(true);setError('');
   try{
-   const draft={remote,target:editing,name:name.trim(),category:category.trim(),
-    price_vnd:Number(price),is_active:active};
-   if(!draft.name||!Number.isSafeInteger(draft.price_vnd)||
-    draft.price_vnd<0||draft.price_vnd>1_000_000_000||
-    (editing==='new'&&(!draft.category||draft.category.length>80)))
-    throw new Error('Kiểm tra tên, nhóm và giá bán (số nguyên VNĐ) trước khi gửi');
-   const prior=readCatalogRetry();
-   if(prior&&JSON.stringify(prior.draft)!==JSON.stringify(draft))
-    throw new Error('Còn yêu cầu menu chưa xác nhận với nội dung khác. Hãy khôi phục và gửi lại yêu cầu cũ, không tạo mã mới.');
-   let payload=prior?.payload;
-   if(!payload){
-    payload=editing==='new'?{name:draft.name,category:draft.category,price_vnd:draft.price_vnd,is_active:active}
-      :{name:draft.name,price_vnd:draft.price_vnd,is_active:active};
-    if(remote&&editing!=='new'){
-     const product=queryClient.getQueryData<Catalog>(catalogKey(session?.user.id??''))?.products.find(p=>p.id===editing);
-     if(!product)throw new Error('Giá gốc chưa được tải; vui lòng tải lại menu');
-     payload.expected_price_vnd=product.price_vnd;
-    }
-   }
-   const stableKey=prior?.key||newKey();
-   if(!prior)sessionStorage.setItem(catalogRetryStorageKey,JSON.stringify({draft,payload,key:stableKey}));
-   // Retry the exact original JSON and key after timeout, even after reload.
-   if(remote){
-    if(editing==='new')await hub.queueRemoteProductCreate(payload as {name:string;category:string;price_vnd:number;is_active:boolean},stableKey);
-    else await hub.queueRemoteProductUpdate(editing,payload as {name:string;price_vnd:number;is_active:boolean;expected_price_vnd:number},stableKey);
-    setNotice('Đã gửi yêu cầu. POS phải xác nhận trước khi thay đổi có hiệu lực.');
-   }else{
-    if(editing==='new')await hub.request('/v1/owner/products',{method:'POST',body:JSON.stringify(payload)},stableKey);
-    else await hub.updateProduct(editing,payload,stableKey);
-    setNotice('Đã lưu sản phẩm. Đơn cũ vẫn giữ giá trước đây.');
-   }
-   sessionStorage.removeItem(catalogRetryStorageKey);
+   const message=await submitCatalogChange({
+    target:editing,name,category,price,active,ownerId:session?.user.id??'',
+   });
+   setNotice(message);
    setEditing(null);setName('');setPrice('');
    // Refresh only the affected catalog slices, not finance or staff.
    await queryClient.invalidateQueries({queryKey:catalogKey(session?.user.id??'')});
    if(remote)await queryClient.invalidateQueries({queryKey:commandKey(session?.user.id??'')});
   }catch(e){
    const status=(e as {status?:number}).status;
-   // Explicit validation errors are rejected before any catalog commit.
-   // Other failures may mean server accepted the command and response was lost.
+   // Match the pre-extraction rejection/recovery policy exactly.
    if(status===400||status===404||status===422)
     sessionStorage.removeItem(catalogRetryStorageKey);
    setError((e as Error).message+(status!==400&&status!==404&&status!==422?
