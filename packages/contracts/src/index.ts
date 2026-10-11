@@ -3,7 +3,7 @@ export type PaymentMethod='CASH'|'BANK'|'MOMO'|'MIXED';
 export type PaymentStatus='UNPAID'|'PARTIAL'|'PAID'|'PARTIALLY_REFUNDED'|'REFUNDED';
 export type Role='OWNER'|'CASHIER'|'STAFF';
 export interface Product {id:string; name:string; category:string; price_vnd:number; is_active:boolean}
-export interface RemoteProductCommand {id:string;product_id:string;name:string;price_vnd:number;expected_price_vnd:number;is_active:boolean;status:'PENDING'|'APPLIED'|'CONFLICT';result_code:string|null;created_at:string;completed_at:string|null}
+export interface RemoteProductCommand {id:string;product_id:string;operation:'CREATE'|'UPDATE';category:string;name:string;price_vnd:number;expected_price_vnd:number;is_active:boolean;status:'PENDING'|'APPLIED'|'CONFLICT';result_code:string|null;created_at:string;completed_at:string|null}
 export interface Catalog {version:number;products:Product[];enabled_payment_methods:PaymentMethod[]}
 export interface OrderItem {product_id:string;name_snapshot:string;qty:number;unit_price_vnd:number;line_total_vnd:number;note:string}
 export interface Order {order_id:string;display_code:string;created_at:string;created_by:string;status:'COMMITTED'|'VOIDED';payment_status:PaymentStatus;requested_payment_method:PaymentMethod;total_vnd:number;version:number;items:OrderItem[];note:string}
@@ -94,6 +94,9 @@ export class HubClient {
   updateProduct(id:string,body:{name:string;price_vnd:number;is_active:boolean},key:string){return this.request<Product>('/v1/owner/products/'+id,{method:'PATCH',body:JSON.stringify(body)},key)}
   queueRemoteProductUpdate(id:string,body:{name:string;price_vnd:number;is_active:boolean;expected_price_vnd:number},key:string){
     return this.request<RemoteProductCommand>('/v1/owner/products/'+encodeURIComponent(id),{method:'PATCH',body:JSON.stringify(body)},key)
+  }
+  queueRemoteProductCreate(body:{name:string;category:string;price_vnd:number;is_active:boolean},key:string){
+    return this.request<RemoteProductCommand>('/v1/owner/products',{method:'POST',body:JSON.stringify(body)},key)
   }
   remoteProductCommands(){return this.request<RemoteProductCommand[]>('/v1/owner/product-commands')}
 

@@ -3,7 +3,7 @@ import {createHash,createHmac,randomUUID,timingSafeEqual} from 'node:crypto';
 import {CloudDb} from './db';
 
 export type RemoteProductCommand={
- id:string;product_id:string;name:string;price_vnd:number;expected_price_vnd:number;
+ id:string;product_id:string;name:string;operation:'CREATE'|'UPDATE';category:string;price_vnd:number;expected_price_vnd:number;
  is_active:boolean;status:'PENDING'|'APPLIED'|'CONFLICT';result_code:string|null;
  created_at:string;completed_at:string|null;
 };
@@ -11,7 +11,7 @@ const validMoney=(value:unknown)=>Number.isSafeInteger(value)&&typeof value==='n
 const ownStore=()=>{const store=process.env.CLOUD_STORE_ID;if(!store)throw Error('CLOUD_STORE_ID required');return store};
 const signed=(stamp:string,content:string)=>createHmac('sha256',process.env.CLOUD_SYNC_SECRET!).update(stamp+'.'+content).digest('hex');
 const asCommand=(row:any):RemoteProductCommand=>({
- id:row.id,product_id:row.product_id,name:row.name,price_vnd:Number(row.price_vnd),
+ id:row.id,product_id:row.product_id,name:row.name,operation:row.operation,category:row.category,price_vnd:Number(row.price_vnd),
  expected_price_vnd:Number(row.expected_price_vnd),is_active:row.is_active,
  status:row.status,result_code:row.result_code,
  created_at:new Date(row.created_at).toISOString(),
@@ -52,6 +52,40 @@ export class RemoteProductCommands{
     [commandId,store,key,hash,id,name,price,expected,active]);
    const saved=await client.query('SELECT * FROM remote_product_commands WHERE store_id=$1 AND idem_key=$2',[store,key]);
    if(saved.rows[0].payload_hash!==hash)throw new HttpException({code:'IDEMPOTENCY_PAYLOAD_MISMATCH',message:'Idempotency key reused with different content'},409);
+   return asCommand(saved.rows[0]);
+  });
+ }
+ /**
+  * Idempotent cloud request for a new menu item. The generated product UUID
+  * belongs to the command and is reused on every Hub retry, including lost ACK.
+  */
+ async enqueueCreate(raw:any,key:string):Promise<RemoteProductCommand>{
+  if(typeof key!=='string'||key.length<8||key.length>128)
+   throw new BadRequestException('Idempotency key invalid');
+  const name=typeof raw?.name==='string'?raw.name.trim():'';
+  const category=typeof raw?.category==='string'?raw.category.trim():'';
+  const price=raw?.price_vnd,active=raw?.is_active;
+  if(!name||name.length>120||!category||category.length>80||
+   !validMoney(price)||typeof active!=='boolean')
+   throw new BadRequestException('Invalid new product');
+  const data={operation:'CREATE',name,category,price_vnd:price,is_active:active};
+  const hash=createHash('sha256').update(JSON.stringify(data)).digest('hex'),store=ownStore();
+  return this.db.transaction(async client=>{
+   const before=await client.query('SELECT * FROM remote_product_commands WHERE store_id=$1 AND idem_key=$2',[store,key]);
+   if(before.rowCount){
+    if(before.rows[0].payload_hash!==hash)
+     throw new HttpException({code:'IDEMPOTENCY_PAYLOAD_MISMATCH',message:'Idempotency key reused with different content'},409);
+    return asCommand(before.rows[0]);
+   }
+   const cmdId=randomUUID(),productId=randomUUID();
+   await client.query(`INSERT INTO remote_product_commands
+    (id,store_id,idem_key,payload_hash,product_id,name,category,operation,price_vnd,expected_price_vnd,is_active)
+    VALUES($1,$2,$3,$4,$5,$6,$7,'CREATE',$8,0,$9)
+    ON CONFLICT(store_id,idem_key) DO NOTHING`,
+    [cmdId,store,key,hash,productId,name,category,price,active]);
+   const saved=await client.query('SELECT * FROM remote_product_commands WHERE store_id=$1 AND idem_key=$2',[store,key]);
+   if(!saved.rowCount||saved.rows[0].payload_hash!==hash)
+    throw new HttpException({code:'IDEMPOTENCY_PAYLOAD_MISMATCH',message:'Idempotency key reused with different content'},409);
    return asCommand(saved.rows[0]);
   });
  }
