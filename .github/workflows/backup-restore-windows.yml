@@ -3,8 +3,10 @@ on:
   pull_request:
     paths:
       - 'scripts/store-backup.mjs'
+      - 'scripts/windows/run-store-backup.ps1'
       - 'scripts/check-backup-freshness.mjs'
       - 'tests/restore.test.mjs'
+      - 'tests/windows-backup-job.test.mjs'
       - 'tests/backup-freshness.test.mjs'
       - 'tests/restore-process-rehearsal.test.mjs'
       - 'apps/store-hub/**'
@@ -15,7 +17,11 @@ on:
     branches: [main]
     paths:
       - 'scripts/store-backup.mjs'
+      - 'scripts/check-backup-freshness.mjs'
+      - 'scripts/windows/run-store-backup.ps1'
       - 'tests/restore.test.mjs'
+      - 'tests/backup-freshness.test.mjs'
+      - 'tests/windows-backup-job.test.mjs'
       - 'tests/restore-process-rehearsal.test.mjs'
       - 'apps/store-hub/**'
       - 'packages/contracts/**'
@@ -35,4 +41,4 @@ jobs:
       - run: npm install --no-audit --no-fund
       - run: npm run build -w @bmc/contracts
       - run: npm run build -w @bmc/store-hub
-      - run: node --test tests/backup-freshness.test.mjs tests/restore.test.mjs tests/restore-process-rehearsal.test.mjs
+      - run: node --test tests/backup-freshness.test.mjs tests/restore.test.mjs tests/restore-process-rehearsal.test.mjs tests/windows-backup-job.test.mjs
