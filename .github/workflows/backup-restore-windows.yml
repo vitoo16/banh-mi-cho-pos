@@ -1,0 +1,36 @@
+name: Windows SQLite backup and restore smoke
+on:
+  pull_request:
+    paths:
+      - 'scripts/store-backup.mjs'
+      - 'tests/restore.test.mjs'
+      - 'tests/restore-process-rehearsal.test.mjs'
+      - 'apps/store-hub/**'
+      - 'packages/contracts/**'
+      - 'package.json'
+      - '.github/workflows/backup-restore-windows.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'scripts/store-backup.mjs'
+      - 'tests/restore.test.mjs'
+      - 'tests/restore-process-rehearsal.test.mjs'
+      - 'apps/store-hub/**'
+      - 'packages/contracts/**'
+      - 'package.json'
+      - '.github/workflows/backup-restore-windows.yml'
+permissions:
+  contents: read
+jobs:
+  windows-restore:
+    runs-on: windows-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm install --no-audit --no-fund
+      - run: npm run build -w @bmc/contracts
+      - run: npm run build -w @bmc/store-hub
+      - run: node --test tests/restore.test.mjs tests/restore-process-rehearsal.test.mjs
