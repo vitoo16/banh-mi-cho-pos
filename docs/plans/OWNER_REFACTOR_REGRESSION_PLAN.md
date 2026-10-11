@@ -163,3 +163,15 @@ Run real Postgres suite if Cloud/controller/query modified. Baseline refactor te
 - Agent skills reviewed: `vite-react-frontend`, `performance-qa`, `ui-visual-audit`, `contract-first`, `financial-ledger`; `AGENTS.md` and relevant UI/Web/QA plans.
 - PR regression suite result: record GitHub Actions commit and job; do not claim unrun tests.
 - Hardware/provider state remains separate and blocked pending real equipment/access.
+
+
+### OR-10b — Bundle regression budget (automated)
+
+Use `npm run build && npm run test:bundle` to measure ALL generated Vite JavaScript and CSS assets in each web app (gzip level 9, excluding source maps). These are regression gates, not claims about INP or live hardware.
+
+| Target | Baseline Vite JS gzip (PR #57 main) | Enforced JS gzip limit | CSS gzip limit |
+| --- | ---: | ---: | ---: |
+| Cashier POS | 82.08 kB | 100 KiB | 10 KiB |
+| Owner Web | 93.35 kB | 112 KiB | 10 KiB |
+
+The limits intentionally leave modest headroom for future UI work, while enforcing explicit reviews for large additions. If CI fails due to a justified feature, update the measured baseline and budget together through a separate reviewed change; do not weaken this gate quietly. Gzip transfer size alone does not establish load time, runtime CPU cost, memory, or INP. Production-device/browser profiling remains an open acceptance step.
