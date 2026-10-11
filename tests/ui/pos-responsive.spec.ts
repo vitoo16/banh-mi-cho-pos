@@ -28,7 +28,7 @@ async function mockHub(page:Page){
   else if(pathname==='/v1/cash-shifts/current')result=shift;
   else if(pathname==='/v1/cashier/operational-status')result=operational;
   else if(pathname.endsWith('/receipts'))result=[];
-  else if(pathname.endsWith('/payments/bank-intent'))result={status:'PENDING',reference:'BMC1234567890ABC',amount_vnd:90000,bank_code:'TEST_BANK',account_number:'123456789'};
+  else if(pathname.endsWith('/payments/bank-intent'))result={status:'PENDING',reference:'BMC1234567890ABC',amount_vnd:90000,bank_code:'970415',account_number:'123456789'};
   else if(pathname.endsWith('/payments/cash')){captures.push(route.request().postData()||'');status=500;result={code:'MOCK_REJECTED',message:'Never capture in layout test'};}
   else{status=404;result={code:'NOT_MOCKED',message:'Route deliberately not mocked'};}
   await route.fulfill({status,contentType:'application/json',body:JSON.stringify(result)});
@@ -74,6 +74,8 @@ for(const width of [320,390,1024,1366]){
  });
 }
 test('BANK requested is never displayed as verified PAID on cashier screen',async({page})=>{
+ await page.route('https://vietqr.app/img**',route=>route.fulfill({status:200,contentType:'image/svg+xml',
+  body:'<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256"><rect width="256" height="256"/></svg>'}));
  await page.setViewportSize({width:390,height:844});
  const {captures}=await mockHub(page);
  await startCashier(page);
@@ -82,8 +84,35 @@ test('BANK requested is never displayed as verified PAID on cashier screen',asyn
  await page.getByRole('button',{name:'Tạo yêu cầu chuyển khoản'}).click();
  await expect(page.getByText('Đang chờ xác nhận ngân hàng')).toBeVisible();
  await expect(page.getByText('BMC1234567890ABC')).toBeVisible();
+ const qr=page.getByRole('img',{name:/VietQR chuyển khoản/});
+ await expect(qr).toBeVisible();
+ const src=await qr.getAttribute('src');
+ expect(src).not.toBeNull();
+ const url=new URL(src!);
+ expect(url.origin).toBe('https://vietqr.app');
+ expect(url.searchParams.get('acc')).toBe('123456789');
+ expect(url.searchParams.get('bank')).toBe('970415');
+ expect(url.searchParams.get('amount')).toBe('90000');
+ expect(url.searchParams.get('des')).toBe('BMC1234567890ABC');
+
  await expect(page.getByText('Đã ghi nhận thanh toán')).toHaveCount(0);
  await expect(page.getByText('Chưa thanh toán').first()).toBeVisible();
  expect(captures).toHaveLength(0);
  await assertNoViewportOverflow(page,390);
+});
+
+test('BANK QR network failure keeps verified transfer details and never claims PAID',async({page})=>{
+ await page.setViewportSize({width:320,height:640});
+ await page.route('https://vietqr.app/img**',route=>route.fulfill({status:503,body:'Unavailable'}));
+ const {captures}=await mockHub(page);
+ await startCashier(page);
+ await page.getByRole('button',{name:/B00042/}).click();
+ await page.getByRole('button',{name:/Chuyển khoản/}).click();
+ await page.getByRole('button',{name:'Tạo yêu cầu chuyển khoản'}).click();
+ await expect(page.getByRole('status').filter({hasText:'Không tải được QR'})).toBeVisible();
+ await expect(page.getByText('123456789')).toBeVisible();
+ await expect(page.getByText('BMC1234567890ABC')).toBeVisible();
+ await expect(page.getByText('Đã ghi nhận thanh toán')).toHaveCount(0);
+ await assertNoViewportOverflow(page,320);
+ expect(captures).toHaveLength(0);
 });

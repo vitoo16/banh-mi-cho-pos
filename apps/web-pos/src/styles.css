@@ -25,3 +25,12 @@
 .cash-recovery button{min-height:44px;max-width:100%;white-space:normal;text-align:center}
 @media(max-width:1023px){.cash-recovery{margin:6px 14px}}
 @media(max-width:700px){.cash-recovery{padding:11px;flex-direction:column;align-items:stretch}.cash-recovery button{width:100%}}
+
+/* Bank QR is informative, not a payment-success indicator. Keep manual transfer instructions visible. */
+.vietqr-block{width:100%;display:flex;flex-direction:column;align-items:center;gap:10px;margin:16px auto;padding:14px;background:#fff;border:1px solid #e3e9de;border-radius:14px}
+.vietqr-block img{display:block;width:min(100%,256px);max-width:100%;height:auto;aspect-ratio:1;object-fit:contain}
+.vietqr-block small{display:block;color:#526154;font-size:12px;line-height:1.5;max-width:320px}
+.vietqr-fallback{padding:12px;border-radius:10px;border:1px solid #e9d8bb;background:#fff7e8;color:#704713;overflow-wrap:anywhere;font-size:13px}
+.bank-panel{min-width:0;overflow-wrap:anywhere}
+.bank-panel p b{overflow-wrap:anywhere}
+@media(max-width:390px){.bank-panel{padding:16px}}
