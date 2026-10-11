@@ -490,3 +490,25 @@ test('OR-03d: HTTP 409 catalog conflict does not clear uncertain mutation key or
  expect(await page.evaluate(()=>JSON.parse(sessionStorage.getItem('bmc_owner_pending_catalog_v1')!))).toEqual(pending);
  await expect(dlg).toBeVisible();
 });
+
+
+test('OR-04a: extracted Staff and Devices keep validation gates and never send incomplete commands',async({page})=>{
+ const f=await fixture(page);await login(page);await tab(page,'Nhân viên');
+ await expect(page.getByRole('heading',{name:'Thiết bị nhân viên'})).toBeVisible();
+ await expect(page.getByRole('heading',{name:'Tài khoản tại tiệm'})).toBeVisible();
+ const pair=page.getByRole('button',{name:'Tạo mã ghép'});
+ await expect(pair).toBeDisabled();
+ await page.getByLabel('Tên thiết bị').fill('ab');
+ await expect(pair).toBeDisabled();
+ await page.getByLabel('Tên thiết bị').fill('Điện thoại tại quầy');
+ await expect(pair).toBeEnabled();
+ const employeeCreate=page.getByRole('button',{name:'Tạo tài khoản'});
+ await expect(employeeCreate).toBeDisabled();
+ await page.getByPlaceholder('nv01').fill('nv03');
+ await page.getByPlaceholder('Nguyễn A').fill('Nhân viên thử form');
+ await page.locator('input[type="password"]').fill('123');
+ await expect(employeeCreate).toBeDisabled();
+ await page.locator('input[type="password"]').fill('123456');
+ await expect(employeeCreate).toBeEnabled();
+ expect(f.calls.filter(x=>x.method==='POST'&&(x.path==='/v1/owner/device-pairings'||x.path==='/v1/owner/employees'))).toHaveLength(0);
+});
