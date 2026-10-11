@@ -409,3 +409,84 @@ test('OR-03c: Cloud menu and command status use only their isolated reads, queue
  expect(patches).toHaveLength(1);
  expect(patches[0].body).toMatchObject({price_vnd:41000,expected_price_vnd:35000});
 });
+
+
+test('OR-03d: actual lost PATCH response keeps the request key/body across browser reload and login',async({page})=>{
+ const f=await fixture(page);
+ let attempted:{key:string;raw:string}|null=null;
+ let loseAck=true;
+ await page.route('**/v1/owner/products/bm-thit',async route=>{
+  if(route.request().method()==='PATCH'&&loseAck){
+   loseAck=false;
+   attempted={key:route.request().headers()['idempotency-key'],raw:route.request().postData()!};
+   return route.abort('failed');
+  }
+  return route.fallback();
+ });
+ await login(page);await tab(page,'Sản phẩm');
+ await page.getByRole('button',{name:'Sửa',exact:true}).click();
+ const dlg=page.getByRole('dialog',{name:'Chỉnh sản phẩm'});
+ await dlg.getByLabel('Tên món').fill('Bánh mì sau đứt mạng');
+ await dlg.getByLabel('Giá bán (VNĐ)').fill('47000');
+ await dlg.getByRole('button',{name:'Lưu sản phẩm'}).click();
+ await expect(dlg.getByRole('alert')).toBeVisible();
+ const persisted=await page.evaluate(()=>sessionStorage.getItem('bmc_owner_pending_catalog_v1'));
+ expect(persisted).toBeTruthy();
+ expect(attempted).not.toBeNull();
+ const first=attempted! as {key:string;raw:string};
+ expect(first.key.length).toBeGreaterThanOrEqual(8);
+ const pending=JSON.parse(persisted!);
+ expect(pending.key).toBe(first.key);
+ expect(JSON.stringify(pending.payload)).toBe(first.raw);
+ await page.reload();
+ await login(page,false,'recovery');
+ const restored=page.getByRole('dialog',{name:'Chỉnh sản phẩm'});
+ await expect(restored.getByLabel('Giá bán (VNĐ)')).toHaveValue('47000');
+ await restored.getByRole('button',{name:'Lưu sản phẩm'}).click();
+ await expect(restored).toHaveCount(0);
+ const patches=f.calls.filter(c=>c.path==='/v1/owner/products/bm-thit'&&c.method==='PATCH');
+ expect(patches).toHaveLength(1,'Retry is the one successful request, not an unrelated second operation');
+ expect(patches[0].key).toBe(first.key);
+ expect(JSON.stringify(patches[0].body)).toBe(first.raw);
+ expect(await page.evaluate(()=>sessionStorage.getItem('bmc_owner_pending_catalog_v1'))).toBeNull();
+});
+test('OR-03d: Cloud pending catalog mutation keeps expected original price and idempotency key on recovery',async({page})=>{
+ const f=await fixture(page,{remote:true});
+ const pending={
+  key:'cloud-ack-lost-key-001',
+  draft:{remote:true,target:'bm-thit',name:'Bánh mì thịt nguội',category:'Bánh mì',price_vnd:39000,is_active:true},
+  payload:{name:'Bánh mì thịt nguội',price_vnd:39000,is_active:true,expected_price_vnd:35000},
+ };
+ await page.addInitScript(value=>sessionStorage.setItem('bmc_owner_pending_catalog_v1',JSON.stringify(value)),pending);
+ await login(page,true,'recovery');
+ const dlg=page.getByRole('dialog',{name:'Chỉnh sản phẩm'});
+ await expect(dlg.getByLabel('Giá bán (VNĐ)')).toHaveValue('39000');
+ await dlg.getByRole('button',{name:'Lưu sản phẩm'}).click();
+ await expect(dlg).toHaveCount(0);
+ await expect(page.locator('.command-row .command-pending')).toHaveText('Đang chờ POS');
+ const patches=f.calls.filter(c=>c.path==='/v1/owner/products/bm-thit'&&c.method==='PATCH');
+ expect(patches).toHaveLength(1);
+ expect(patches[0].key).toBe(pending.key);
+ expect(patches[0].body).toEqual(pending.payload);
+ expect(f.products[0].price_vnd).toBe(35000);
+ expect(await page.evaluate(()=>sessionStorage.getItem('bmc_owner_pending_catalog_v1'))).toBeNull();
+});
+test('OR-03d: HTTP 409 catalog conflict does not clear uncertain mutation key or silently close editor',async({page})=>{
+ await fixture(page);
+ const pending={
+  key:'recovery-conflict-key-001',
+  draft:{remote:false,target:'bm-thit',name:'Bánh mì tranh chấp',category:'Bánh mì',price_vnd:41000,is_active:true},
+  payload:{name:'Bánh mì tranh chấp',price_vnd:41000,is_active:true},
+ };
+ await page.addInitScript(value=>sessionStorage.setItem('bmc_owner_pending_catalog_v1',JSON.stringify(value)),pending);
+ await page.route('**/v1/owner/products/bm-thit',async route=>{
+  if(route.request().method()==='PATCH')return route.fulfill({status:409,contentType:'application/json',body:JSON.stringify({code:'CONFLICT',message:'Xung đột phiên bản'})});
+  return route.fallback();
+ });
+ await login(page,false,'recovery');
+ const dlg=page.getByRole('dialog',{name:'Chỉnh sản phẩm'});
+ await dlg.getByRole('button',{name:'Lưu sản phẩm'}).click();
+ await expect(dlg.getByRole('alert')).toBeVisible();
+ expect(await page.evaluate(()=>JSON.parse(sessionStorage.getItem('bmc_owner_pending_catalog_v1')!))).toEqual(pending);
+ await expect(dlg).toBeVisible();
+});
