@@ -32,7 +32,7 @@ const PaymentBreakdown=memo(function PaymentBreakdown(){
  })});
  return <section className="panel"><h2>Tình trạng tiền</h2>
   <div className="metricrow"><span>Thu tiền mặt</span><b>{formatVnd(data?.cash??0)}</b></div>
-  <div className="metricrow"><span>Chuyển khoản đã xác minh</span><b>{formatVnd(data?.bank??0)}</b></div>
+  <div className="metricrow"><span>Chuyển khoản xác nhận</span><b>{formatVnd(data?.bank??0)}</b></div>
   <div className="metricrow"><span>Đơn chưa thanh toán</span><b>{fmt(data?.pending)}</b></div>
   <div className="metricrow"><span>Chờ chuyển khoản</span><b>{fmt(data?.bankPending)}</b></div>
   {error&&<ErrorMessage error={error}/>}
