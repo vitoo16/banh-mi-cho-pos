@@ -289,3 +289,25 @@ test('CLOUD G6: remote CREATE stays in pending command log, never becomes effect
  expect(pending[0].body).toMatchObject({name:'Bánh mì mùa mới',price_vnd:28000,is_active:true});
  expect(f.commands[0].status).toBe('PENDING');
 });
+
+test('OR-01: login → logout → login again uses fresh owner query data, not old cache',async({page})=>{
+ const f=await fixture(page);
+ await login(page);
+ await expect(page.getByText('245.000đ')).toBeVisible();
+ const first=f.calls.filter(x=>x.path==='/v1/owner/dashboard').length;
+ await page.getByRole('button',{name:'Đăng xuất'}).click();
+ await expect(page.getByLabel('Mã PIN chủ tiệm')).toBeVisible();
+ f.setRevenue(390000);
+ await page.getByLabel('Mã PIN chủ tiệm').fill('owner-pin-test');
+ await page.getByRole('button',{name:'Đăng nhập'}).click();
+ await expect(page.getByText('390.000đ')).toBeVisible();
+ expect(f.calls.filter(x=>x.path==='/v1/owner/dashboard').length).toBeGreaterThan(first);
+});
+test('OR-01: Cloud logout revokes session once and wipes Owner protected view',async({page})=>{
+ const f=await fixture(page,{remote:true});await login(page,true);
+ await page.getByRole('button',{name:'Đăng xuất'}).click();
+ await expect(page.getByLabel('Mật khẩu quản trị từ xa')).toBeVisible();
+ await expect(page.getByText('DOANH THU ĐÃ XÁC NHẬN')).toHaveCount(0);
+ await expect.poll(()=>f.calls.filter(x=>x.path==='/v1/auth/logout'&&x.method==='POST').length).toBe(1);
+ expect(await page.evaluate(()=>sessionStorage.getItem('bmc_owner_token'))).toBeNull();
+});
