@@ -601,3 +601,30 @@ test('OR-05b: failed bank exception query never disguises outage as empty ledger
  await expect(page.getByText('50.000đ')).toBeVisible();
  await expect(page.getByRole('alert').filter({hasText:'Không tải được giao dịch ngoại lệ.'})).toHaveCount(0);
 });
+
+
+test('OR-06a: extracted production period and date controls share one query across report components',async({page})=>{
+ const f=await fixture(page);
+ const requested:string[]=[];
+ page.on('request',r=>{
+  const u=new URL(r.url());
+  if(u.pathname==='/v1/owner/analytics/products')requested.push(u.search);
+ });
+ await login(page);
+ await tab(page,'Sản lượng');
+ await expect(page.getByRole('heading',{name:'Thống kê số bánh đã bán'})).toBeVisible();
+ await expect(page.getByRole('region',{name:'Số lượng bán theo từng món'}).getByText('5 bánh')).toBeVisible();
+ expect(requested).toHaveLength(1,'Overview/category/product subscribers share the same server result');
+ await page.getByRole('button',{name:'Tuần',exact:true}).click();
+ await expect.poll(()=>requested.length).toBe(2);
+ expect(requested[1]).toContain('period=week');
+ await page.getByLabel('Chọn ngày tham chiếu').fill('2026-01-01');
+ await expect.poll(()=>requested.length).toBe(3);
+ expect(requested[2]).toContain('period=week');
+ expect(requested[2]).toContain('date=2026-01-01');
+ await page.getByRole('button',{name:'Năm',exact:true}).click();
+ await expect.poll(()=>requested.length).toBe(4);
+ expect(requested[3]).toContain('period=year');
+ expect(requested[3]).toContain('date=2026-01-01');
+ expect(f.calls.filter(c=>['/v1/orders/history','/v1/owner/products','/v1/owner/employees'].includes(c.path))).toHaveLength(0);
+});
