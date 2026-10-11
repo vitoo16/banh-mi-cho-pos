@@ -52,7 +52,13 @@ async function assertNoOverflow(page:Page,width:number){
  expect(size.body,'Owner body overflow '+JSON.stringify(size)).toBeLessThanOrEqual(width+1);
 }
 async function startOwner(page:Page){
- await page.goto('http://127.0.0.1:5174/',{waitUntil:'domcontentloaded'});
+ const errors:string[]=[];
+ page.on('pageerror',e=>errors.push('pageerror: '+(e.stack||e.message)));
+ page.on('console',m=>{if(m.type()==='error')errors.push('console: '+m.text())});
+ const response=await page.goto('http://127.0.0.1:5174/',{waitUntil:'domcontentloaded'});
+ await page.waitForTimeout(250);
+ if(errors.length||!(await page.getByLabel('Mã PIN chủ tiệm').count()))
+  throw new Error('Owner boot failed: HTTP '+response?.status()+' errors='+JSON.stringify(errors)+' body='+JSON.stringify((await page.locator('body').innerText()).slice(0,600)));
  await page.getByLabel('Mã PIN chủ tiệm').fill('owner-pin-for-test');
  await page.getByRole('button',{name:'Đăng nhập'}).click();
  await expect(page.getByText('DOANH THU ĐÃ XÁC NHẬN')).toBeVisible();
