@@ -15,6 +15,8 @@ export function assertRemoteStaffRequest(
  const path=typeof rawUrl==='string'?rawUrl.split('?')[0]:'';
  // CORS preflight/health have no financial effects.
  if(verb==='OPTIONS'||(verb==='GET'&&path==='/v1/health'))return;
+ if(process.env.PAIRING_ENFORCED!=='1')
+  throw new StoreError(503,'PAIRING_ENFORCEMENT_REQUIRED','LAN chưa được bật bảo vệ ghép thiết bị');
  if(verb==='POST'&&path==='/v1/auth/login'){
   // Do not even issue OWNER/CASHIER bearer tokens on remote sockets.
   service.assertRemoteStaffAccount(
