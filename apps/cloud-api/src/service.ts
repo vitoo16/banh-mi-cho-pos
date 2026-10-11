@@ -83,11 +83,14 @@ RETURNING blocked_until`,[bucket]);
      await c.query(`INSERT INTO mirror_orders(store_id,id,display_code,created_at,created_by,status,payment_status,requested_method,total_vnd,version,lines_json) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
  ON CONFLICT(store_id,id) DO UPDATE SET status=EXCLUDED.status,payment_status=EXCLUDED.payment_status,total_vnd=EXCLUDED.total_vnd,version=EXCLUDED.version WHERE mirror_orders.version<EXCLUDED.version`,[storeId,str(p.id),str(p.display_code),str(p.created_at),str(p.created_by),str(p.status),str(p.payment_status),str(p.requested_method),vnd(p.total_vnd),p.version,JSON.stringify(items)]);
        }else if(event.entity==='bank_intent'){
-      await c.query(`INSERT INTO mirror_bank_intents(store_id,order_id,reference,account_number,bank_code,amount_vnd,status)
- VALUES($1,$2,$3,$4,$5,$6,$7)
+      await c.query(`INSERT INTO mirror_bank_intents(store_id,order_id,reference,account_number,bank_code,amount_vnd,status,source_seq)
+ VALUES($1,$2,$3,$4,$5,$6,$7,$8)
  ON CONFLICT(store_id,order_id) DO UPDATE SET
- status=CASE WHEN mirror_bank_intents.status='CONFIRMED' THEN 'CONFIRMED' ELSE EXCLUDED.status END`,
- [storeId,str(p.order_id),str(p.reference),str(p.account_number),str(p.bank_code),vnd(p.amount_vnd),str(p.status)]);
+ status=CASE WHEN mirror_bank_intents.status='CONFIRMED' THEN 'CONFIRMED' ELSE EXCLUDED.status END,
+ source_seq=EXCLUDED.source_seq
+ WHERE EXCLUDED.source_seq>mirror_bank_intents.source_seq
+ OR (EXCLUDED.source_seq=0 AND mirror_bank_intents.source_seq=0)`,
+ [storeId,str(p.order_id),str(p.reference),str(p.account_number),str(p.bank_code),vnd(p.amount_vnd),str(p.status),sourceSeq]);
     }else if(event.entity==='bank_exception'){
       await c.query('INSERT INTO mirror_bank_events(store_id,provider_tx_id,order_id,reference,amount_vnd,state,reason,received_at) VALUES($1,$2,$3,$4,$5,$6,$7,$8) ON CONFLICT DO NOTHING',[storeId,str(p.provider_tx_id),p.order_id||null,str(p.reference),vnd(p.amount_vnd),str(p.state),p.reason||null,str(p.received_at)]);
     }else if(event.entity==='cash_movement'){
