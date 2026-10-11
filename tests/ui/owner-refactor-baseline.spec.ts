@@ -787,3 +787,58 @@ test('OR-07b: uncertain Catalog request overrides deep link without rotating its
  expect(patches[0].body).toEqual(pending.payload);
  expect(await page.evaluate(()=>sessionStorage.getItem('bmc_owner_pending_catalog_v1'))).toBeNull();
 });
+
+
+test('OR-07c: shareable quarter report deep link survives login and hard reload',async({page})=>{
+ const f=await fixture(page);
+ const target=localUrl+'sales?period=quarter&date=2026-01-08';
+ await page.goto(target);
+ await expect(page.getByLabel('Mã PIN chủ tiệm')).toBeVisible();
+ await page.getByLabel('Mã PIN chủ tiệm').fill('owner-pin-test');
+ await page.getByRole('button',{name:'Đăng nhập'}).click();
+ const input=page.getByLabel('Chọn ngày tham chiếu');
+ await expect(input).toHaveValue('2026-01-08');
+ await expect(page.getByRole('button',{name:'Quý'})).toHaveAttribute('aria-pressed','true');
+ await expect(page).toHaveURL(target);
+ await expect.poll(()=>f.calls.filter(c=>c.path==='/v1/owner/analytics/products'&&c.method==='GET').length).toBe(1);
+ await page.reload();
+ await expect(page.getByLabel('Mã PIN chủ tiệm')).toBeVisible();
+ await page.getByLabel('Mã PIN chủ tiệm').fill('owner-pin-test');
+ await page.getByRole('button',{name:'Đăng nhập'}).click();
+ await expect(input).toHaveValue('2026-01-08');
+ await expect(page.getByRole('button',{name:'Quý'})).toHaveAttribute('aria-pressed','true');
+ await expect(page).toHaveURL(target);
+ expect(f.calls.filter(c=>c.path==='/v1/orders/history'||c.path==='/v1/owner/products')).toHaveLength(0);
+});
+test('OR-07c: report filters update URL and Back/Forward restores exact selected period and date',async({page})=>{
+ await fixture(page);await login(page);await tab(page,'Sản lượng');
+ await expect(page).toHaveURL(localUrl+'sales');
+ const date=page.getByLabel('Chọn ngày tham chiếu');
+ await page.getByRole('button',{name:'Tuần',exact:true}).click();
+ await expect(page).toHaveURL(localUrl+'sales?period=week');
+ await date.fill('2026-02-10');
+ await expect(page).toHaveURL(localUrl+'sales?period=week&date=2026-02-10');
+ await page.getByRole('button',{name:'Năm',exact:true}).click();
+ await expect(page).toHaveURL(localUrl+'sales?period=year&date=2026-02-10');
+ await page.goBack();
+ await expect(page).toHaveURL(localUrl+'sales?period=week&date=2026-02-10');
+ await expect(date).toHaveValue('2026-02-10');
+ await expect(page.getByRole('button',{name:'Tuần',exact:true})).toHaveAttribute('aria-pressed','true');
+ await page.goBack();
+ await expect(page).toHaveURL(localUrl+'sales?period=week');
+ await expect(page.getByRole('button',{name:'Tuần',exact:true})).toHaveAttribute('aria-pressed','true');
+ await page.goForward();
+ await expect(page).toHaveURL(localUrl+'sales?period=week&date=2026-02-10');
+ await expect(date).toHaveValue('2026-02-10');
+ await page.getByRole('button',{name:'Về hôm nay'}).click();
+ await expect(page).toHaveURL(localUrl+'sales?period=week');
+});
+test('OR-07c: invalid period, impossible calendar date and unknown params never persist in report URL',async({page})=>{
+ await fixture(page);
+ await page.goto(localUrl+'sales?period=bad&date=2026-02-30&secret=discard');
+ await page.getByLabel('Mã PIN chủ tiệm').fill('owner-pin-test');
+ await page.getByRole('button',{name:'Đăng nhập'}).click();
+ await expect(page).toHaveURL(localUrl+'sales');
+ await expect(page.getByRole('button',{name:'Ngày',exact:true})).toHaveAttribute('aria-pressed','true');
+ await expect(page.getByRole('heading',{name:'Thống kê số bánh đã bán'})).toBeVisible();
+});
