@@ -7,12 +7,13 @@ const summary={
 async function mockOwner(page:Page){
  const products:Array<{id:string;name:string;category:string;price_vnd:number;is_active:boolean}>=[];
  const created:unknown[]=[];
+ let revenue=summary.net_revenue_vnd, todayCount=753;
  await page.route('**/v1/**',async route=>{
   const {pathname}=new URL(route.request().url()),method=route.request().method();
   let body:unknown={},status=200;
   if(pathname==='/v1/auth/login')body={token:'test-owner',user:{id:'owner',role:'OWNER',name:'Chủ tiệm'}};
-  else if(pathname==='/v1/owner/dashboard')body=summary;
-  else if(pathname==='/v1/owner/analytics/today')body={total_orders:753,paid_orders:621,voided_orders:12,refunded_orders:5,pending_orders:115};
+  else if(pathname==='/v1/owner/dashboard')body={...summary,net_revenue_vnd:revenue};
+  else if(pathname==='/v1/owner/analytics/today')body={total_orders:todayCount,paid_orders:621,voided_orders:12,refunded_orders:5,pending_orders:115};
   else if(pathname==='/v1/owner/analytics/products')body={
    period:new URL(route.request().url()).searchParams.get('period'),date:'2026-10-11',
    start_utc:'2026-10-10T17:00:00.000Z',end_utc:'2026-10-11T17:00:00.000Z',
@@ -39,7 +40,7 @@ async function mockOwner(page:Page){
   else{status=404;body={code:'NOT_MOCKED',message:'Unexpected API request '+pathname};}
   await route.fulfill({status,contentType:'application/json',body:JSON.stringify(body)});
  });
- return {created};
+ return {created,setRevenue:(amount:number)=>{revenue=amount},setToday:(count:number)=>{todayCount=count}};
 }
 async function assertNoOverflow(page:Page,width:number){
  const size=await page.evaluate(()=>({
@@ -227,4 +228,38 @@ test('OR-08a: 320px dialog stays keyboard-contained and returns focus after conf
  expect(created).toHaveLength(1);
  expect(created[0]).toMatchObject({name:'Bánh mì keyboard QA',price_vnd:43000});
  await assertNoOverflow(page,320);
+});
+
+
+test('OR-10a: React Profiler proves only the changed KPI subtree commits after independent query updates',async({page})=>{
+ await page.clock.install({time:new Date('2026-10-12T10:00:00.000Z')});
+ await page.addInitScript(()=>{
+  (window as Window&{__BMC_OWNER_RENDER_COMMITS__?:{id:string;phase:string}[]}).__BMC_OWNER_RENDER_COMMITS__=[];
+ });
+ const f=await mockOwner(page);
+ await startOwner(page);
+ await expect(page.getByText('1.234.567đ')).toBeVisible();
+ await expect(page.getByLabel('Tổng số đơn hôm nay')).toHaveText('753');
+ const reset=()=>page.evaluate(()=>{
+  (window as Window&{__BMC_OWNER_RENDER_COMMITS__?:{id:string;phase:string}[]}).__BMC_OWNER_RENDER_COMMITS__=[];
+ });
+ const commits=()=>page.evaluate(()=>
+  (window as Window&{__BMC_OWNER_RENDER_COMMITS__?:{id:string;phase:string}[]}).__BMC_OWNER_RENDER_COMMITS__??[]
+ );
+ await reset();
+ f.setRevenue(1_400_000);
+ await page.clock.fastForward(11_000);
+ await expect(page.getByText('1.400.000đ')).toBeVisible();
+ const revenueEvents=await commits();
+ expect(revenueEvents.filter(c=>c.id==='revenue').length,'Revenue component must commit for changed revenue').toBeGreaterThan(0);
+ expect(revenueEvents.filter(c=>c.id==='today-orders')).toHaveLength(0);
+ expect(revenueEvents.filter(c=>c.id==='cash')).toHaveLength(0);
+ await reset();
+ f.setToday(906);
+ await page.clock.fastForward(11_000);
+ await expect(page.getByLabel('Tổng số đơn hôm nay')).toHaveText('906');
+ const countEvents=await commits();
+ expect(countEvents.filter(c=>c.id==='today-orders').length,'Today count component must commit for new count').toBeGreaterThan(0);
+ expect(countEvents.filter(c=>c.id==='revenue')).toHaveLength(0);
+ expect(countEvents.filter(c=>c.id==='cash')).toHaveLength(0);
 });
