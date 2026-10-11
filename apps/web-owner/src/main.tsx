@@ -1,4 +1,4 @@
-import React,{useEffect,useState} from 'react';import {createRoot} from 'react-dom/client';import {formatVnd,type Catalog,type Product,type Summary,type Employee,type StaffDevice,type PairingCode,type RemoteProductCommand} from '@bmc/contracts';import {LayoutDashboard,ClipboardList,Tags,Wallet,Settings,LogOut,ShoppingBag,AlertCircle,RefreshCcw} from 'lucide-react';import {QueryClientProvider} from '@tanstack/react-query';
+import React,{useEffect,useState} from 'react';import {createRoot} from 'react-dom/client';import {formatVnd,type Catalog,type Product,type Summary,type Employee,type StaffDevice,type PairingCode} from '@bmc/contracts';import {LayoutDashboard,ClipboardList,Tags,Wallet,Settings,LogOut,ShoppingBag,AlertCircle,RefreshCcw} from 'lucide-react';import {QueryClientProvider} from '@tanstack/react-query';
 import {hub,remote,newKey} from './api';
 import {queryClient} from './app/queryClient';
 import {useOwnerAuth} from './app/useOwnerAuth';
@@ -7,6 +7,7 @@ import {OwnerDashboard,OwnerProductSalesPage} from './analytics/OwnerAnalytics';
 import {OrderHistoryPage} from './features/orders/OrderHistoryPage';
 import {CatalogPage} from './features/catalog/CatalogPage';
 import {ProductFormDialog} from './features/catalog/ProductFormDialog';
+import {catalogKey,commandKey} from './features/catalog/queries';
 import {catalogRetryStorageKey,readCatalogRetry,type CatalogRetry} from './features/catalog/catalog-retry';
 import './styles.css';
 
@@ -15,14 +16,13 @@ type Page='dashboard'|'sales'|'orders'|'catalog'|'finance'|'staff';
 function App(){
  const {session,login,logout}=useOwnerAuth();
  const [pin,setPin]=useState(''),[page,setPage]=useState<Page>('dashboard'),[error,setError]=useState(''),[notice,setNotice]=useState(''),[busy,setBusy]=useState(false);
- const [report,setReport]=useState<Summary|null>(null),[catalog,setCatalog]=useState<Catalog|null>(null);
+ const [report,setReport]=useState<Summary|null>(null);
  const [exceptions,setExceptions]=useState<Array<{provider_tx_id:string;reference:string;amount_vnd:number;reason:string;received_at:string}>>([]);
  const [devices,setDevices]=useState<StaffDevice[]>([]),[deviceLabel,setDeviceLabel]=useState(''),[newPairing,setNewPairing]=useState<PairingCode|null>(null);
- const [remoteCommands,setRemoteCommands]=useState<RemoteProductCommand[]>([]);
  const [employees,setEmployees]=useState<Employee[]>([]),[empId,setEmpId]=useState(''),[empName,setEmpName]=useState(''),[empPin,setEmpPin]=useState(''),[empRole,setEmpRole]=useState<'STAFF'|'CASHIER'>('STAFF');
  const [editing,setEditing]=useState<string|null>(null),[name,setName]=useState(''),[price,setPrice]=useState(''),[category,setCategory]=useState('Bánh mì'),[active,setActive]=useState(true);
- const reload=async()=>{try{const [r,p,e,b,d,commands]=await Promise.all([hub.summary(),hub.products(),hub.employees(),hub.bankExceptions(),!remote?hub.devices():Promise.resolve([]),remote?hub.remoteProductCommands():Promise.resolve([])]);setRemoteCommands(commands);setDevices(d);setExceptions(b);setReport(r);setCatalog(p);setEmployees(e);setError('')}catch(e){setError((e as Error).message)}finally{void queryClient.invalidateQueries({queryKey:['owner','summary']})}};
- useEffect(()=>{if(!session||page==='dashboard'||page==='sales')return;void reload();const t=setInterval(()=>void reload(),10000);return()=>clearInterval(t)},[session,page]);
+ const reload=async()=>{try{const [r,e,b,d]=await Promise.all([hub.summary(),hub.employees(),hub.bankExceptions(),!remote?hub.devices():Promise.resolve([])]);setDevices(d);setExceptions(b);setReport(r);setEmployees(e);setError('')}catch(e){setError((e as Error).message)}finally{void queryClient.invalidateQueries({queryKey:['owner','summary']})}};
+ useEffect(()=>{if(!session||page==='dashboard'||page==='sales'||page==='orders'||page==='catalog')return;void reload();const t=setInterval(()=>void reload(),10000);return()=>clearInterval(t)},[session,page]);
  async function signIn(e:React.FormEvent){e.preventDefault();setBusy(true);try{await login(pin);setPin('')}catch(e){setError((e as Error).message)}finally{setBusy(false)}}
  async function save(){
   if(busy||!editing)return;
@@ -42,7 +42,7 @@ function App(){
     payload=editing==='new'?{name:draft.name,category:draft.category,price_vnd:draft.price_vnd,is_active:active}
       :{name:draft.name,price_vnd:draft.price_vnd,is_active:active};
     if(remote&&editing!=='new'){
-     const product=catalog?.products.find(p=>p.id===editing);
+     const product=queryClient.getQueryData<Catalog>(catalogKey(session?.user.id??''))?.products.find(p=>p.id===editing);
      if(!product)throw new Error('Giá gốc chưa được tải; vui lòng tải lại menu');
      payload.expected_price_vnd=product.price_vnd;
     }
@@ -61,7 +61,9 @@ function App(){
    }
    sessionStorage.removeItem(catalogRetryStorageKey);
    setEditing(null);setName('');setPrice('');
-   await reload();
+   // Refresh only the affected catalog slices, not finance or staff.
+   await queryClient.invalidateQueries({queryKey:catalogKey(session?.user.id??'')});
+   if(remote)await queryClient.invalidateQueries({queryKey:commandKey(session?.user.id??'')});
   }catch(e){
    const status=(e as {status?:number}).status;
    // Explicit validation errors are rejected before any catalog commit.
@@ -96,12 +98,12 @@ function App(){
   setPrice(String(p?.price_vnd??''));setActive(p?.is_active??true);setNotice('');
  };
  if(!session)return <OwnerLogin remote={remote} pin={pin} busy={busy} error={error} onPinChange={setPin} onSignIn={signIn}/>;
- return <div className="layout"><aside className="sidebar"><div className="brand"><span className="logo"><ShoppingBag size={23}/></span><div><b>Bánh Mì Chợ</b><small>Quản lý cửa hàng</small></div></div><div className="navlinks">{nav.map(([k,l,icon])=><button key={k} className={page===k?'active':''} onClick={()=>{setPage(k);setError('');setNotice('')}}>{icon}{l}</button>)}</div><div className="sidefoot"><div><b>{session.user.name}</b><small>Chủ tiệm</small></div><button title="Đăng xuất" onClick={()=>void logout()}><LogOut size={19}/></button></div></aside><main className="main"><header className="header"><div><p className="eyebrow">BẢNG ĐIỀU KHIỂN CỬA HÀNG</p><h1>{nav.find(([k])=>k===page)?.[1]}</h1></div><button className="reload" title="Tải lại" onClick={()=>{if(page==='dashboard'||page==='sales')void queryClient.invalidateQueries({queryKey:['owner']});else void reload()}}><RefreshCcw size={19}/></button></header><div className="stale"><AlertCircle size={17}/> {remote?'Dữ liệu Cloud có thể trễ; giá mới chỉ có hiệu lực khi Hub tại tiệm xác nhận.':'Chế độ POS nội bộ; dữ liệu tại quầy.'} {report&&<span> Cập nhật: {report.last_synced_at?new Date(report.last_synced_at).toLocaleTimeString('vi-VN'):'Chưa đồng bộ'}</span>}</div>
+ return <div className="layout"><aside className="sidebar"><div className="brand"><span className="logo"><ShoppingBag size={23}/></span><div><b>Bánh Mì Chợ</b><small>Quản lý cửa hàng</small></div></div><div className="navlinks">{nav.map(([k,l,icon])=><button key={k} className={page===k?'active':''} onClick={()=>{setPage(k);setError('');setNotice('')}}>{icon}{l}</button>)}</div><div className="sidefoot"><div><b>{session.user.name}</b><small>Chủ tiệm</small></div><button title="Đăng xuất" onClick={()=>void logout()}><LogOut size={19}/></button></div></aside><main className="main"><header className="header"><div><p className="eyebrow">BẢNG ĐIỀU KHIỂN CỬA HÀNG</p><h1>{nav.find(([k])=>k===page)?.[1]}</h1></div><button className="reload" title="Tải lại" onClick={()=>{if(page==='dashboard'||page==='sales')void queryClient.invalidateQueries({queryKey:['owner']});else if(page==='catalog'){void queryClient.invalidateQueries({queryKey:catalogKey(session.user.id)});if(remote)void queryClient.invalidateQueries({queryKey:commandKey(session.user.id)})}else void reload()}}><RefreshCcw size={19}/></button></header><div className="stale"><AlertCircle size={17}/> {remote?'Dữ liệu Cloud có thể trễ; giá mới chỉ có hiệu lực khi Hub tại tiệm xác nhận.':'Chế độ POS nội bộ; dữ liệu tại quầy.'} {report&&<span> Cập nhật: {report.last_synced_at?new Date(report.last_synced_at).toLocaleTimeString('vi-VN'):'Chưa đồng bộ'}</span>}</div>
  {page==='dashboard'&&<OwnerDashboard onOpenSales={()=>setPage('sales')}/>}
  {page==='sales'&&<OwnerProductSalesPage/>}
  {page==='orders'&&<OrderHistoryPage/>}
  {page==='finance'&&<div className="twocol"><section className="panel"><h2>Sổ quỹ hiện tại</h2>{report?.shift?<><div className="metricrow"><span>Quỹ đầu ca</span><b>{formatVnd(report.shift.opening_float_vnd)}</b></div><div className="metricrow"><span>Tiền phải có</span><b>{formatVnd(report.shift.expected_cash_vnd)}</b></div></>:<p className="muted">Thu ngân chưa mở ca.</p>}</section><section className="panel"><h2>Đối soát ngân hàng</h2><p className="muted">Chỉ xác nhận theo sự kiện đã ký từ bộ xác minh giao dịch đáng tin cậy. Không nhận ảnh chụp.</p><div className="info">Chờ xác minh: {report?.bank_pending||0} đơn yêu cầu chuyển khoản.</div>{remote&&Boolean(report?.unallocated_bank_vnd)&&<div className="alert" role="alert"><strong>Phát hiện thu cả tiền mặt và chuyển khoản</strong><p>{report?.bank_conflict_orders||0} đơn · {formatVnd(report?.unallocated_bank_vnd||0)} tiền ngân hàng đang chờ xử lý. Khoản này được loại khỏi doanh thu chuyển khoản để không tính hai lần.</p><p>Đối chiếu giao dịch thật và hoàn/điều chỉnh có xác nhận; không tự xóa chứng từ.</p></div>}<h3>Giao dịch ngoại lệ ({exceptions.length})</h3>{exceptions.length===0?<p className="muted">Chưa phát hiện giao dịch ngân hàng bất thường.</p>:exceptions.map(x=><div className="record" key={x.provider_tx_id}><div><b>{x.reference}</b><small>{x.reason} · {new Date(x.received_at).toLocaleString('vi-VN')}</small></div><strong>{formatVnd(x.amount_vnd)}</strong></div>)}</section></div>}
- {page==='catalog'&&<CatalogPage catalog={catalog} remote={remote} remoteCommands={remoteCommands} onBegin={begin}/>}
+ {page==='catalog'&&<CatalogPage ownerId={session.user.id} remote={remote} onBegin={begin}/>}
  {page==='staff'&&remote&&<section className="panel"><h2>Nhân viên</h2><p className="muted">Quản lý nhân viên chỉ được thao tác từ POS nội bộ; trang cloud chỉ hiển thị báo cáo.</p></section>}
  {page==='staff'&&!remote&&<section className="panel" style={{marginBottom:18}}><h2>Thiết bị nhân viên</h2><p className="muted">Tạo mã ghép 16 ký tự dùng một lần, có hiệu lực 3 phút. Chỉ cung cấp trực tiếp cho nhân viên đang đứng tại quầy.</p><div className="panelhead"><input value={deviceLabel} onChange={e=>setDeviceLabel(e.target.value)} maxLength={80} placeholder="Tên thiết bị (VD: Điện thoại NV 01)" aria-label="Tên thiết bị"/><button className="primary" disabled={busy||deviceLabel.trim().length<3} onClick={()=>void issuePairing()}>Tạo mã ghép</button></div>{newPairing&&<div className="info" role="status">Mã ghép: <strong style={{letterSpacing:2}}>{newPairing.pairing_code}</strong><div>Hết hạn: {new Date(newPairing.expires_at).toLocaleTimeString('vi-VN')}</div></div>}<div className="records">{devices.map(d=><div className="record" key={d.id}><div><b>{d.label}</b><small>{d.user_id} · {d.revoked_at?'Đã thu hồi':'Đang được phép sử dụng'}</small></div>{!d.revoked_at&&<button className="textbutton" disabled={busy} onClick={()=>void revokeDevice(d)}>Thu hồi</button>}</div>)}{devices.length===0&&<p className="muted">Chưa ghép thiết bị nhân viên nào.</p>}</div></section>}
  {page==='staff'&&!remote&&<div className="twocol"><section className="panel"><h2>Tài khoản tại tiệm</h2><p className="muted">Mỗi nhân viên sử dụng mã đăng nhập riêng để truy vết đơn.</p>{employees.map(e=><div className="record" key={e.id}><div><b>{e.name}</b><small>{e.id} · {e.role==='CASHIER'?'Thu ngân':e.role==='OWNER'?'Chủ tiệm':'Nhận đơn'} · {e.active?'Hoạt động':'Đã khóa'}</small></div>{e.role!=='OWNER'&&<button className="textbutton" onClick={()=>void toggleEmployee(e)}>{e.active?'Khóa':'Mở lại'}</button>}</div>)}</section><section className="panel"><h2>Thêm nhân viên</h2><label>Mã nhân viên</label><input value={empId} onChange={e=>setEmpId(e.target.value)} placeholder="nv01" autoCapitalize="none"/><label>Tên hiển thị</label><input value={empName} onChange={e=>setEmpName(e.target.value)} placeholder="Nguyễn A"/><label>Vai trò</label><select value={empRole} onChange={e=>setEmpRole(e.target.value as 'STAFF'|'CASHIER')}><option value="STAFF">Nhận đơn</option><option value="CASHIER">Thu ngân</option></select><label>PIN (từ 6 ký tự)</label><input type="password" value={empPin} onChange={e=>setEmpPin(e.target.value)} autoComplete="new-password"/><button className="primary" disabled={busy||empPin.length<6||empId.length<2||!empName.trim()} onClick={()=>void createEmployee()}>Tạo tài khoản</button></section></div>}
