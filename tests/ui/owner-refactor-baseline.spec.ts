@@ -219,7 +219,7 @@ test('CLOUD G6: remote catalog UPDATE is queued with expected old price, never a
  await dlg.getByLabel('Giá bán (VNĐ)').fill('39000');
  await dlg.getByRole('button',{name:'Lưu sản phẩm'}).click();
  await expect(dlg).toHaveCount(0);
- await expect(page.getByText('Đang chờ POS')).toBeVisible();
+ await expect(page.locator('.command-row .command-pending')).toHaveText('Đang chờ POS');
  expect(f.products[0].price_vnd).toBe(35000);
  const request=f.calls.filter(x=>x.path==='/v1/owner/products/bm-thit'&&x.method==='PATCH');
  expect(request).toHaveLength(1);
@@ -281,7 +281,7 @@ test('CLOUD G6: remote CREATE stays in pending command log, never becomes effect
  await dlg.getByRole('button',{name:'Lưu sản phẩm'}).click();
  await expect(dlg).toHaveCount(0);
  await expect(page.getByText('Thêm món: Bánh mì mùa mới')).toBeVisible();
- await expect(page.getByText('Đang chờ POS')).toBeVisible();
+ await expect(page.locator('.command-row .command-pending')).toHaveText('Đang chờ POS');
  expect(f.products).toHaveLength(1,'Cloud command must not mutate local mirror catalog until Hub ACK');
  const pending=f.calls.filter(x=>x.path==='/v1/owner/products'&&x.method==='POST');
  expect(pending).toHaveLength(1);
