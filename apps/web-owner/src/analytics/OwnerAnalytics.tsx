@@ -4,6 +4,7 @@ import {formatVnd} from '@bmc/contracts';
 import {hub,remote} from '../api';
 import {summaryOptions} from '../features/finance/queries';
 import {useShopToday} from '../app/useShopToday';
+import {DevProfiler} from '../app/DevProfiler';
 
 const fmt=(x:number|undefined)=>new Intl.NumberFormat('vi-VN').format(x??0);
 function ErrorMessage({error}:{error:unknown}){return <p className="alert" role="alert">{error instanceof Error?error.message:'Không tải được dữ liệu. Thử tải lại.'}</p>}
@@ -48,7 +49,12 @@ const CurrentShift=memo(function CurrentShift(){
 });
 export const OwnerDashboard=memo(function OwnerDashboard({onOpenSales}:{onOpenSales:()=>void}){
  return <>
-  <section className="kpis analytics-kpis"><RevenueCard/><CashCard/><TodayOrdersCard onOpen={onOpenSales}/><PaidOrdersCard/></section>
+  <section className="kpis analytics-kpis">
+   <DevProfiler id="revenue"><RevenueCard/></DevProfiler>
+   <DevProfiler id="cash"><CashCard/></DevProfiler>
+   <DevProfiler id="today-orders"><TodayOrdersCard onOpen={onOpenSales}/></DevProfiler>
+   <DevProfiler id="paid-orders"><PaidOrdersCard/></DevProfiler>
+  </section>
   <div className="twocol"><PaymentBreakdown/><CurrentShift/></div>
   <p className="disclaimer">{remote?'Dữ liệu Cloud có thể cập nhật chậm khi tiệm mất mạng. ':''}Báo cáo bán hàng dựa trên đơn đã thu tiền; không tự suy ra lợi nhuận hay tồn kho.</p>
  </>
