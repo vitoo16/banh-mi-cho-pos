@@ -36,7 +36,7 @@ function App(){
  const [employees,setEmployees]=useState<Employee[]>([]),[empId,setEmpId]=useState(''),[empName,setEmpName]=useState(''),[empPin,setEmpPin]=useState(''),[empRole,setEmpRole]=useState<'STAFF'|'CASHIER'>('STAFF');
  const [editing,setEditing]=useState<string|null>(null),[name,setName]=useState(''),[price,setPrice]=useState(''),[category,setCategory]=useState('Bánh mì'),[active,setActive]=useState(true);
  const reload=async()=>{try{const [r,p,e,b,d,commands]=await Promise.all([hub.summary(),hub.products(),hub.employees(),hub.bankExceptions(),!remote?hub.devices():Promise.resolve([]),remote?hub.remoteProductCommands():Promise.resolve([])]);setRemoteCommands(commands);setDevices(d);setExceptions(b);setReport(r);setCatalog(p);setEmployees(e);setError('')}catch(e){setError((e as Error).message)}finally{void queryClient.invalidateQueries({queryKey:['owner','summary']})}};
- useEffect(()=>{if(!session||page==='dashboard'||page==='sales')return;void reload();const t=setInterval(()=>void reload(false),10000);return()=>clearInterval(t)},[session,page]);
+ useEffect(()=>{if(!session||page==='dashboard'||page==='sales')return;void reload();const t=setInterval(()=>void reload(),10000);return()=>clearInterval(t)},[session,page]);
  async function signIn(e:React.FormEvent){e.preventDefault();setBusy(true);try{await login(pin);setPin('')}catch(e){setError((e as Error).message)}finally{setBusy(false)}}
  async function save(){
   if(busy||!editing)return;
