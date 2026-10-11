@@ -20,3 +20,11 @@ jobs:
       - run: npm run test:bundle
       - run: npm run test:domain
       - run: npm run test:integration
+      - run: npm run test:perf:http
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: hub-http-perf-smoke
+          path: artifacts/perf/hub-http-smoke.json
+          if-no-files-found: ignore
+          retention-days: 14
