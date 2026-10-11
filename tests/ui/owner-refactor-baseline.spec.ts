@@ -842,3 +842,34 @@ test('OR-07c: invalid period, impossible calendar date and unknown params never 
  await expect(page.getByRole('button',{name:'Ngày',exact:true})).toHaveAttribute('aria-pressed','true');
  await expect(page.getByRole('heading',{name:'Thống kê số bánh đã bán'})).toBeVisible();
 });
+
+
+test('OR-08b: desktop Owner navigation exposes landmarks and current page to screen readers',async({page})=>{
+ await fixture(page);await login(page);
+ const nav=page.getByRole('navigation',{name:'Điều hướng chính'});
+ await expect(nav).toBeVisible();
+ await expect(nav.getByRole('button',{name:'Tổng quan'})).toHaveAttribute('aria-current','page');
+ const orders=nav.getByRole('button',{name:'Đơn hàng'});
+ await orders.focus();
+ await page.keyboard.press('Enter');
+ await expect(page).toHaveURL(localUrl+'orders');
+ await expect(orders).toHaveAttribute('aria-current','page');
+ await expect(nav.getByRole('button',{name:'Tổng quan'})).not.toHaveAttribute('aria-current','page');
+ await expect(page.getByText('#B00001')).toBeVisible();
+ await page.goBack();
+ await expect(page).toHaveURL(localUrl);
+ await expect(nav.getByRole('button',{name:'Tổng quan'})).toHaveAttribute('aria-current','page');
+});
+test('OR-08b: mobile Owner current-page announcements follow navigation at 320px',async({page})=>{
+ await page.setViewportSize({width:320,height:568});
+ await fixture(page);await login(page);
+ const nav=page.getByRole('navigation',{name:'Điều hướng di động'});
+ await expect(nav).toBeVisible();
+ await expect(nav.getByRole('button',{name:'Tổng quan'})).toHaveAttribute('aria-current','page');
+ await nav.getByRole('button',{name:'Tài chính'}).click();
+ await expect(page).toHaveURL(localUrl+'finance');
+ await expect(nav.getByRole('button',{name:'Tài chính'})).toHaveAttribute('aria-current','page');
+ await expect(nav.getByRole('button',{name:'Tổng quan'})).not.toHaveAttribute('aria-current','page');
+ const width=await page.evaluate(()=>({screen:innerWidth,content:document.documentElement.scrollWidth}));
+ expect(width.content).toBeLessThanOrEqual(width.screen+1);
+});
