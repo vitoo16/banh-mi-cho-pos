@@ -108,10 +108,16 @@ test('pair code one-time use, device-bound Staff sessions, restart and Owner rev
   assert.ok(s.actor('Bearer '+relogin.token,['STAFF'],session.device_token));
   const db2=new StoreService(); // persisted device pairing and tokens survive process restart
   assert.ok(db2.actor('Bearer '+relogin.token,['STAFF'],session.device_token));
+  assert.throws(()=>s.logout('Bearer '+relogin.token),e=>e.code==='DEVICE_NOT_TRUSTED','logout must require a valid bound device token');
+  assert.throws(()=>s.logout('Bearer '+relogin.token,'incorrect'),e=>e.code==='DEVICE_NOT_TRUSTED');
+  assert.deepEqual(s.logout('Bearer '+relogin.token,session.device_token),{ok:true});
+  assert.throws(()=>db2.actor('Bearer '+relogin.token,['STAFF'],session.device_token),e=>e.code==='SESSION_EXPIRED','logout must revoke the server session across Store Hub instances');
+  const renewed=s.login('staff','secure-staff-test',undefined,session.device_token);
+  assert.ok(s.actor('Bearer '+renewed.token,['STAFF'],session.device_token));
   const device=s.devices()[0];
   assert.equal(device.user_id,'staff');
   assert.deepEqual(s.revokeDevice(owner,device.id,'Điện thoại bị mất','revoke-pair-001'),{ok:true,revoked:true});
-  assert.throws(()=>s.actor('Bearer '+relogin.token,['STAFF'],session.device_token),e=>e.code==='SESSION_EXPIRED');
+  assert.throws(()=>s.actor('Bearer '+renewed.token,['STAFF'],session.device_token),e=>e.code==='SESSION_EXPIRED');
   assert.throws(()=>s.login('staff','secure-staff-test',undefined,session.device_token),e=>e.code==='DEVICE_PAIRING_REQUIRED');
  }finally{
   if(old.path===undefined)delete process.env.STORE_DB_PATH;else process.env.STORE_DB_PATH=old.path;
