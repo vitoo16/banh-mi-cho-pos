@@ -90,6 +90,8 @@ export class HubClient {
   movement(shift_id:string,kind:'ADD'|'WITHDRAW'|'EXPENSE',amount_vnd:number,reason:string,key:string){return this.request<Shift>('/v1/cash-shifts/'+shift_id+'/movements',{method:'POST',body:JSON.stringify({kind,amount_vnd,reason})},key)}
   closeShift(id:string,counted_cash_vnd:number,reason:string,key:string){return this.request<Shift>('/v1/cash-shifts/'+id+'/close',{method:'POST',body:JSON.stringify({counted_cash_vnd,reason})},key)}
   summary(){return this.request<Summary>('/v1/owner/dashboard')}
+  ownerTodayCounts(){return this.request<OwnerOrderCounts>('/v1/owner/analytics/today')}
+  ownerProductSales(period:SalesPeriod,date:string){return this.request<ProductSalesReport>('/v1/owner/analytics/products?period='+encodeURIComponent(period)+'&date='+encodeURIComponent(date))}
   products(){return this.request<Catalog>('/v1/owner/products')}
   updateProduct(id:string,body:{name:string;price_vnd:number;is_active:boolean},key:string){return this.request<Product>('/v1/owner/products/'+id,{method:'PATCH',body:JSON.stringify(body)},key)}
   queueRemoteProductUpdate(id:string,body:{name:string;price_vnd:number;is_active:boolean;expected_price_vnd:number},key:string){
@@ -108,4 +110,38 @@ export class HubClient {
   addEmployee(body:{id:string;name:string;role:'STAFF'|'CASHIER';pin:string},key:string){return this.request<Employee>('/v1/owner/employees',{method:'POST',body:JSON.stringify(body)},key)}
   setEmployeeActive(id:string,active:boolean,key:string){return this.request<Employee>('/v1/owner/employees/'+encodeURIComponent(id),{method:'PATCH',body:JSON.stringify({active})},key)}
   bankIntent(id:string,key:string){return this.request<{status:string;reference:string;amount_vnd:number;bank_code:string;account_number:string}>('/v1/orders/'+id+'/payments/bank-intent',{method:'POST',body:'{}'},key)}
+}
+
+/** Asia/Ho_Chi_Minh uses UTC+07:00 with no DST. Boundaries are [start,end) UTC. */
+export type SalesPeriod='day'|'week'|'month'|'quarter'|'year';
+export interface SalesWindow {period:SalesPeriod;date:string;start_utc:string;end_utc:string;label:string}
+export interface SalesProductRow {product_id:string;name:string;category:string;units_sold:number;gross_vnd:number}
+export interface SalesCategoryRow {category:string;units_sold:number;gross_vnd:number}
+export interface OwnerOrderCounts {total_orders:number;voided_orders:number;paid_orders:number;refunded_orders:number;pending_orders:number}
+export interface ProductSalesReport extends OwnerOrderCounts, SalesWindow {
+ total_units_sold:number;gross_vnd:number;products:SalesProductRow[];categories:SalesCategoryRow[];
+ /** Values exclude VOIDED/REFUNDED/unsettled orders; grouping by order CREATED date. */
+ sales_definition:'PAID_ONLY_BY_ORDER_CREATED_AT';
+}
+const offsetMs=7*60*60*1000;
+function calendarDate(utc:number):string{return new Date(utc).toISOString().slice(0,10)}
+export function todayInVietnam(at=Date.now()):string{return calendarDate(at+offsetMs)}
+export function salesWindow(period:SalesPeriod,date=todayInVietnam()):SalesWindow{
+ if(!['day','week','month','quarter','year'].includes(period))throw new Error('INVALID_PERIOD');
+ if(!/^\d{4}-\d{2}-\d{2}$/.test(date))throw new Error('INVALID_DATE');
+ const [year,month,day]=date.split('-').map(Number);
+ if(year<2000||year>2100||calendarDate(Date.UTC(year,month-1,day))!==date)throw new Error('INVALID_DATE');
+ const anchor=Date.UTC(year,month-1,day);
+ let start=anchor,end:number;
+ if(period==='week'){const weekday=(new Date(anchor).getUTCDay()+6)%7;start-=weekday*86400000}
+ else if(period==='month')start=Date.UTC(year,month-1,1);
+ else if(period==='quarter')start=Date.UTC(year,Math.floor((month-1)/3)*3,1);
+ else if(period==='year')start=Date.UTC(year,0,1);
+ if(period==='day')end=start+86400000;
+ else if(period==='week')end=start+7*86400000;
+ else if(period==='month')end=Date.UTC(year,month,1);
+ else if(period==='quarter')end=Date.UTC(year,Math.floor((month-1)/3)*3+3,1);
+ else end=Date.UTC(year+1,0,1);
+ return {period,date,start_utc:new Date(start-offsetMs).toISOString(),
+  end_utc:new Date(end-offsetMs).toISOString(),label:calendarDate(start)+' → '+calendarDate(end-86400000)};
 }

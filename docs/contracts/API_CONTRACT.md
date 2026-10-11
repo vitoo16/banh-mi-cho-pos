@@ -182,3 +182,10 @@ The outbound Store Hub `POST /v1/sync/events` payload now includes SQLite `sync_
 ## Bank intent stale-event guard (2026-10-11)
 
 The Cloud `mirror_bank_intents` projection now uses the signed SQLite outbox `seq` in its additive `source_seq bigint` checkpoint, consistent with product/shift projections. A delayed lower/equal-sequence PENDING intent may be acknowledged but cannot reopen a newer EXPIRED or exception state. Independently, a verified SePay Cloud settlement marks the intent CONFIRMED, and no Hub replay — including a higher-sequence PENDING packet — may demote that provider-authoritative confirmation. Existing mirror rows and legacy seq-less Hub traffic remain supported at sequence 0 until positive source sequence is seen. This is a **projection consistency guard**, not new bank-provider integration or an authority to mark a payment PAID from the frontend.
+
+## Owner order-count and production-planning reports (2026-10-11)
+
+Both Store Hub and Cloud expose two read-only OWNER-authenticated endpoints:
+
+- `GET /v1/owner/analytics/today` → `{total_orders,voided_orders,paid_orders,refunded_orders,pending_orders}`; counts ALL orders created in shop-local date `Asia/Ho_Chi_Minh`, including unpaid/canceled, without a fixed daily cap.
+- `GET /v1/owner/analytics/products?period=day|week|month|quarter|year&date=YYYY-MM-DD` → `{period,date,start_utc,end_utc,label,total_orders,voided_orders,paid_orders,refunded_orders,pending_orders,total_units_sold,gross_vnd,products:[{product_id,name,category,units_sold,gross_vnd}],categories:[{category,units_sold,gross_vnd}],sales_definition:'PAID_ONLY_BY_ORDER_CREATED_AT'}`. Monday is week start, Q1–Q4 are calendar quarters, boundary is half-open shop-local day mapped to UTC. All product measures use COMMITTED+PAID order lines and actual snapshot unit prices; fully refunded/voided/unpaid orders are excluded. Product category is the current catalog grouping, not an inventory or production target. Cloud analytics may lag Hub due to signed replication. React Query caches per query/period/date and independently refetches subscribed widgets; no financial status may be changed by this GET.

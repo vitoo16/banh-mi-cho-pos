@@ -12,6 +12,18 @@ async function mockOwner(page:Page){
   let body:unknown={},status=200;
   if(pathname==='/v1/auth/login')body={token:'test-owner',user:{id:'owner',role:'OWNER',name:'Chủ tiệm'}};
   else if(pathname==='/v1/owner/dashboard')body=summary;
+  else if(pathname==='/v1/owner/analytics/today')body={total_orders:753,paid_orders:621,voided_orders:12,refunded_orders:5,pending_orders:115};
+  else if(pathname==='/v1/owner/analytics/products')body={
+   period:new URL(route.request().url()).searchParams.get('period'),date:'2026-10-11',
+   start_utc:'2026-10-10T17:00:00.000Z',end_utc:'2026-10-11T17:00:00.000Z',
+   label:'2026-10-11 → 2026-10-11',total_orders:753,paid_orders:621,voided_orders:12,
+   refunded_orders:5,pending_orders:115,total_units_sold:1510,gross_vnd:28000000,
+   products:[{product_id:'bm-thit',name:'Bánh mì thịt nguội',category:'Bánh mì',units_sold:1260,gross_vnd:21000000},
+    {product_id:'banh-bao',name:'Bánh bao',category:'Bánh bao',units_sold:250,gross_vnd:7000000}],
+   categories:[{category:'Bánh mì',units_sold:1260,gross_vnd:21000000},
+    {category:'Bánh bao',units_sold:250,gross_vnd:7000000}],
+   sales_definition:'PAID_ONLY_BY_ORDER_CREATED_AT'};
+
   else if(pathname==='/v1/owner/products'&&method==='GET')body={version:1,enabled_payment_methods:['CASH','BANK'],products};
   else if(pathname==='/v1/owner/products'&&method==='POST'){
    const input=JSON.parse(route.request().postData()||'{}');
@@ -40,7 +52,13 @@ async function assertNoOverflow(page:Page,width:number){
  expect(size.body,'Owner body overflow '+JSON.stringify(size)).toBeLessThanOrEqual(width+1);
 }
 async function startOwner(page:Page){
- await page.goto('http://127.0.0.1:5174/',{waitUntil:'domcontentloaded'});
+ const errors:string[]=[];
+ page.on('pageerror',e=>errors.push('pageerror: '+(e.stack||e.message)));
+ page.on('console',m=>{if(m.type()==='error')errors.push('console: '+m.text())});
+ const response=await page.goto('http://127.0.0.1:5174/',{waitUntil:'domcontentloaded'});
+ await page.waitForTimeout(250);
+ if(errors.length||!(await page.getByLabel('Mã PIN chủ tiệm').count()))
+  throw new Error('Owner boot failed: HTTP '+response?.status()+' errors='+JSON.stringify(errors)+' body='+JSON.stringify((await page.locator('body').innerText()).slice(0,600)));
  await page.getByLabel('Mã PIN chủ tiệm').fill('owner-pin-for-test');
  await page.getByRole('button',{name:'Đăng nhập'}).click();
  await expect(page.getByText('DOANH THU ĐÃ XÁC NHẬN')).toBeVisible();
@@ -138,3 +156,20 @@ test('Owner preserves idempotency key when Cloud/POS committed but response was 
  expect(created).toHaveLength(1,'server-side once-only create when key is unchanged');
  await assertNoOverflow(page,390);
 });
+
+for(const width of [320,390,768,1366]){
+ test('Owner order count and production statistics at '+width+'px',async({page})=>{
+  await page.setViewportSize({width,height:width<=390?844:768});
+  await mockOwner(page);
+  await startOwner(page);
+  await expect(page.getByText('753', {exact:true})).toBeVisible();
+  await page.getByRole('button',{name:'Xem số bánh bán theo loại'}).click();
+  await expect(page.getByRole('heading',{name:'Thống kê số bánh đã bán'})).toBeVisible();
+  await expect(page.getByRole('region',{name:'Số lượng bán theo từng món'}).getByText('1.260 bánh')).toBeVisible();
+  for(const period of ['Tuần','Tháng','Quý','Năm','Ngày']){
+   await page.getByRole('button',{name:period,exact:true}).click();
+   await expect(page.getByRole('button',{name:period,exact:true})).toHaveAttribute('aria-pressed','true');
+  }
+  await assertNoOverflow(page,width);
+ });
+}

@@ -31,6 +31,14 @@ export class StoreController {
  @Get('owner/employees')employees(@Req()r:any){return this.call(()=>{this.s.actor(r.headers.authorization,['OWNER'],r.headers['x-device-token']);return this.s.employees()})}
  @Post('owner/employees')addEmployee(@Req()r:any,@Body()b:any,@Headers('idempotency-key')key:string){return this.call(()=>this.s.addEmployee(this.s.actor(r.headers.authorization,['OWNER'],r.headers['x-device-token']),b,key))}
  @Patch('owner/employees/:id')employeeState(@Req()r:any,@Param('id')id:string,@Body()b:any,@Headers('idempotency-key')key:string){return this.call(()=>this.s.setEmployeeActive(this.s.actor(r.headers.authorization,['OWNER'],r.headers['x-device-token']),id,b,key))}
+ @Get('owner/analytics/today')today(@Req()r:any){return this.call(()=>{this.s.actor(r.headers.authorization,['OWNER'],r.headers['x-device-token']);return this.s.todayOrderCounts()})}
+ @Get('owner/analytics/products')sales(@Req()r:any,@Query('period')period:string,@Query('date')date?:string){
+  return this.call(()=>{
+   this.s.actor(r.headers.authorization,['OWNER'],r.headers['x-device-token']);
+   try{return this.s.productSales(period as import('@bmc/contracts').SalesPeriod,date)}
+   catch(e){if(e instanceof Error&&['INVALID_PERIOD','INVALID_DATE'].includes(e.message))throw new StoreError(400,e.message,'Khoảng thời gian không hợp lệ');throw e}
+  });
+ }
  @Get('owner/dashboard')summary(@Req()r:any){return this.call(()=>{this.s.actor(r.headers.authorization,['OWNER'],r.headers['x-device-token']);return this.s.summary()})}
  @Get('owner/products')products(@Req()r:any){return this.call(()=>{this.s.actor(r.headers.authorization,['OWNER'],r.headers['x-device-token']);return this.s.allProducts()})}
  @Post('owner/products')addProduct(@Req()r:any,@Body()b:any,@Headers('idempotency-key')key:string){return this.call(()=>this.s.createProduct(this.s.actor(r.headers.authorization,['OWNER'],r.headers['x-device-token']),b,key))}

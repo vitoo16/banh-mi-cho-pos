@@ -1,3 +1,4 @@
+import {salesWindow,type SalesPeriod,type ProductSalesReport,type SalesProductRow} from '@bmc/contracts';
 import {Injectable,UnauthorizedException,BadRequestException,HttpException} from '@nestjs/common';
 import {createHash,createHmac,timingSafeEqual,randomBytes} from 'node:crypto';
 import {SePayService} from './sepay';
@@ -133,6 +134,56 @@ RETURNING blocked_until`,[bucket]);
    .map(e=>e.payload.reference).filter((x):x is string=>typeof x==='string'));
   for(const reference of references)await this.sepay.reconcilePending(reference);
   return result;
+ }
+ async todayOrderCounts(){
+  const window=salesWindow('day'),store=this.store();
+  const {rows}=await this.db.pool.query(`SELECT COUNT(*)::int total_orders,
+    COUNT(*) FILTER(WHERE status='VOIDED')::int voided_orders,
+    COUNT(*) FILTER(WHERE status='COMMITTED' AND payment_status='PAID')::int paid_orders,
+    COUNT(*) FILTER(WHERE payment_status='REFUNDED')::int refunded_orders,
+    COUNT(*) FILTER(WHERE status='COMMITTED' AND payment_status NOT IN ('PAID','REFUNDED'))::int pending_orders
+   FROM mirror_orders WHERE store_id=$1 AND created_at >= $2::timestamptz AND created_at < $3::timestamptz`,
+   [store,window.start_utc,window.end_utc]);
+  return rows[0];
+ }
+ async productSales(period:SalesPeriod,date?:string):Promise<ProductSalesReport>{
+  const window=salesWindow(period,date),store=this.store();
+  const {rows:counts}=await this.db.pool.query(`SELECT COUNT(*)::int total_orders,
+    COUNT(*) FILTER(WHERE status='VOIDED')::int voided_orders,
+    COUNT(*) FILTER(WHERE status='COMMITTED' AND payment_status='PAID')::int paid_orders,
+    COUNT(*) FILTER(WHERE payment_status='REFUNDED')::int refunded_orders,
+    COUNT(*) FILTER(WHERE status='COMMITTED' AND payment_status NOT IN ('PAID','REFUNDED'))::int pending_orders
+   FROM mirror_orders WHERE store_id=$1 AND created_at >= $2::timestamptz AND created_at < $3::timestamptz`,
+   [store,window.start_utc,window.end_utc]);
+  const {rows}=await this.db.pool.query(`
+   WITH eligible AS (
+    SELECT lines_json FROM mirror_orders
+    WHERE store_id=$1 AND created_at >= $2::timestamptz AND created_at < $3::timestamptz
+      AND status='COMMITTED' AND payment_status='PAID'
+   ), totals AS (
+    SELECT line.value->>'product_id' product_id,
+     MAX(line.value->>'name_snapshot') name_snapshot,
+     SUM((line.value->>'qty')::bigint) units_sold,
+     SUM((line.value->>'line_total_vnd')::bigint) gross_vnd
+    FROM eligible CROSS JOIN LATERAL jsonb_array_elements(lines_json) line(value)
+    GROUP BY line.value->>'product_id'
+   )
+   SELECT t.product_id,COALESCE(p.name,t.name_snapshot,'Món đã xóa') name,
+    COALESCE(p.category,'Khác') category,t.units_sold,t.gross_vnd
+   FROM totals t LEFT JOIN mirror_products p ON p.store_id=$1 AND p.id=t.product_id
+   ORDER BY t.units_sold DESC,t.product_id`,[store,window.start_utc,window.end_utc]);
+  const products:SalesProductRow[]=rows.map(r=>({
+   product_id:r.product_id,name:r.name,category:r.category,
+   units_sold:Number(r.units_sold),gross_vnd:Number(r.gross_vnd)
+  }));
+  const byCategory=new Map<string,{category:string;units_sold:number;gross_vnd:number}>();
+  for(const product of products){const row=byCategory.get(product.category)||{category:product.category,units_sold:0,gross_vnd:0};
+   row.units_sold+=product.units_sold;row.gross_vnd+=product.gross_vnd;byCategory.set(product.category,row)}
+  return {...window,...counts[0],
+   total_units_sold:products.reduce((n,r)=>n+r.units_sold,0),
+   gross_vnd:products.reduce((n,r)=>n+r.gross_vnd,0),products,
+   categories:[...byCategory.values()].sort((a,b)=>b.units_sold-a.units_sold||a.category.localeCompare(b.category)),
+   sales_definition:'PAID_ONLY_BY_ORDER_CREATED_AT'};
  }
  async summary(){
   const store=this.store(),rows=await this.db.pool.query(`
