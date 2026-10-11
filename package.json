@@ -30,6 +30,7 @@
   "devDependencies": {
     "typescript": "^5.9.3",
     "@types/node": "^24.0.0",
-    "@playwright/test": "^1.56.0"
+    "@playwright/test": "^1.56.0",
+    "@axe-core/playwright": "4.13.0"
   }
 }
