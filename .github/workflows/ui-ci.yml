@@ -1,0 +1,46 @@
+name: POS and Owner responsive browser E2E
+on:
+  pull_request:
+    paths:
+      - 'apps/web-pos/**'
+      - 'apps/web-owner/**'
+      - 'packages/contracts/**'
+      - 'tests/ui/**'
+      - 'playwright.config.ts'
+      - 'package.json'
+      - '.github/workflows/ui-ci.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'apps/web-pos/**'
+      - 'apps/web-owner/**'
+      - 'packages/contracts/**'
+      - 'tests/ui/**'
+      - 'playwright.config.ts'
+      - 'package.json'
+      - '.github/workflows/ui-ci.yml'
+permissions:
+  contents: read
+jobs:
+  responsive:
+    runs-on: ubuntu-latest
+    timeout-minutes: 16
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+      - name: Build shared typed API client
+        run: npm run build -w @bmc/contracts
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Run responsive UI tests with mocked Hub API
+        run: npm run test:ui
+      - if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: web-responsive-failures
+          path: test-results/
+          retention-days: 7
