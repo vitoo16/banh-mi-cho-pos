@@ -15,7 +15,7 @@ test('WAL snapshot restore-copy preserves exact money/order/outbox and never ove
  const prev={path:process.env.STORE_DB_PATH,seed:process.env.SEED_DEMO_CATALOG};
  let svc,restored;
  try{
-  const live=join(dir,'live.sqlite'),backup=join(dir,'backup.sqlite'),copy=join(dir,'isolated','restored.sqlite');
+  const live=join(dir,'live.sqlite'),backupDir=join(dir,'backups'),backup=join(backupDir,'backup.sqlite'),copy=join(dir,'isolated','restored.sqlite');
   process.env.STORE_DB_PATH=live;
   process.env.SEED_DEMO_CATALOG='1';
   process.env.BOOTSTRAP_OWNER_PIN='restore-owner-secure';
@@ -38,6 +38,15 @@ test('WAL snapshot restore-copy preserves exact money/order/outbox and never ove
   assert.equal(result.status,0,result.stderr);
   assert.ok(existsSync(backup));
   assert.equal(run('verify',backup).status,0);
+  const fresh=()=>spawnSync(process.execPath,[resolve('scripts/check-backup-freshness.mjs'),backupDir,'15'],{
+   cwd:resolve('.'),encoding:'utf8',
+  });
+  assert.equal(fresh().status,0,'Fresh verified snapshot should pass freshness check');
+  const emptyDir=join(dir,'empty-backups');
+  // Missing backup directories and missing pairs must fail rather than reporting OK.
+  assert.notEqual(spawnSync(process.execPath,[
+   resolve('scripts/check-backup-freshness.mjs'),emptyDir,'15'
+  ],{cwd:resolve('.'),encoding:'utf8'}).status,0);
   const snapshotSize=readFileSync(backup).length;
   const manifestFile=backup+'.manifest.json';
   assert.ok(existsSync(manifestFile),'Backup requires an adjacent versioned manifest');
@@ -77,8 +86,20 @@ test('WAL snapshot restore-copy preserves exact money/order/outbox and never ove
   assert.notEqual(run('restore-copy',fake,join(dir,'invalid-restored.sqlite')).status,0);
   assert.equal(existsSync(join(dir,'invalid-restored.sqlite')),false);
 
+  const stale=JSON.parse(readFileSync(manifestFile,'utf8'));
+  writeFileSync(manifestFile,JSON.stringify({...stale,snapshot_at:new Date(Date.now()-40*60*1000).toISOString()}));
+  assert.notEqual(fresh().status,0,'40-minute-old snapshot must breach 15-minute freshness target');
+  writeFileSync(manifestFile,JSON.stringify({...stale,snapshot_at:new Date(Date.now()+5*60*1000).toISOString()}));
+  assert.notEqual(fresh().status,0,'Future-dated backup must not suppress stale alerts');
+  writeFileSync(manifestFile,JSON.stringify(stale));
+  assert.equal(fresh().status,0,'Valid timestamp may be restored without touching SQLite');
+  const orphan=join(backupDir,'orphan.sqlite.manifest.json');
+  writeFileSync(orphan,'{}');
+  assert.notEqual(fresh().status,0,'Orphan sidecar must fail audit even with another valid backup');
+  rmSync(orphan);
   // A structurally valid SQLite must not bypass corrupted or forged metadata.
   writeFileSync(manifestFile,JSON.stringify({...manifest,sha256:'0'.repeat(64)}));
+  assert.notEqual(fresh().status,0,'Corrupted checksum must fail freshness inventory');
   assert.notEqual(run('verify',backup).status,0,'Tampered checksum must fail');
   const badShaTarget=join(dir,'bad-sha.sqlite');
   assert.notEqual(run('restore-copy',backup,badShaTarget).status,0);
@@ -90,6 +111,7 @@ test('WAL snapshot restore-copy preserves exact money/order/outbox and never ove
   writeFileSync(manifestFile,JSON.stringify(manifest));
   assert.equal(run('verify',backup).status,0);
   const oldManifest=join(dir,'manifest-held-aside.json');
+  assert.notEqual(fresh().status,0,'Missing manifest must fail freshness inventory');
   renameSync(manifestFile,oldManifest);
   assert.notEqual(run('verify',backup).status,0,'No manifest = no valid backup');
   const noManifestTarget=join(dir,'missing-manifest.sqlite');
