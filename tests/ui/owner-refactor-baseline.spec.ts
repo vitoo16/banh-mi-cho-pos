@@ -370,3 +370,40 @@ test('OR-03b: extracted local catalog list and product form create one exact int
  expect(creates[0].body).toEqual({name:'Bánh mì gà nướng',category:'Bánh mì',price_vnd:31000,is_active:true});
  expect(f.products.filter(x=>x.name==='Bánh mì gà nướng')).toHaveLength(1);
 });
+
+
+test('OR-03c: local Catalog GET and manual refresh do not request finance, staff or device data',async({page})=>{
+ const f=await fixture(page);await login(page);await tab(page,'Sản phẩm');
+ await expect(page.getByText('Bánh mì thịt nguội')).toBeVisible();
+ const count=(path:string)=>f.calls.filter(x=>x.path===path&&x.method==='GET').length;
+ expect(count('/v1/owner/products')).toBe(1);
+ expect(count('/v1/owner/employees')).toBe(0);
+ expect(count('/v1/owner/devices')).toBe(0);
+ expect(count('/v1/owner/bank-exceptions')).toBe(0);
+ await page.getByRole('button',{name:'Tải lại'}).click();
+ await expect.poll(()=>count('/v1/owner/products')).toBe(2);
+ expect(count('/v1/owner/employees')).toBe(0);
+ expect(count('/v1/owner/devices')).toBe(0);
+ expect(count('/v1/owner/bank-exceptions')).toBe(0);
+});
+test('OR-03c: Cloud menu and command status use only their isolated reads, queued edit does not reload finance',async({page})=>{
+ const f=await fixture(page,{remote:true});await login(page,true);await tab(page,'Sản phẩm');
+ await expect(page.getByText('Bánh mì thịt nguội')).toBeVisible();
+ await expect(page.getByText('Chưa có yêu cầu chỉnh giá từ xa.')).toBeVisible();
+ const reads=(path:string)=>f.calls.filter(x=>x.path===path&&x.method==='GET').length;
+ expect(reads('/v1/owner/products')).toBe(1);
+ expect(reads('/v1/owner/product-commands')).toBe(1);
+ expect(reads('/v1/owner/employees')).toBe(0);
+ expect(reads('/v1/owner/bank-exceptions')).toBe(0);
+ await page.getByRole('button',{name:'Đề xuất sửa giá'}).click();
+ const dlg=page.getByRole('dialog',{name:'Chỉnh sản phẩm'});
+ await dlg.getByLabel('Giá bán (VNĐ)').fill('41000');
+ await dlg.getByRole('button',{name:'Lưu sản phẩm'}).click();
+ await expect(page.locator('.command-row .command-pending')).toHaveText('Đang chờ POS');
+ expect(f.products[0].price_vnd).toBe(35000);
+ expect(reads('/v1/owner/employees')).toBe(0);
+ expect(reads('/v1/owner/bank-exceptions')).toBe(0);
+ const patches=f.calls.filter(x=>x.path==='/v1/owner/products/bm-thit'&&x.method==='PATCH');
+ expect(patches).toHaveLength(1);
+ expect(patches[0].body).toMatchObject({price_vnd:41000,expected_price_vnd:35000});
+});
