@@ -29,9 +29,9 @@ export class CloudSyncWorker implements OnModuleInit,OnModuleDestroy {
   if(this.running)return;this.running=true;
   try{
    const db=this.service.store;
-   const rows=db.all<{id:string;entity:string;payload_json:string}>("SELECT id,entity,payload_json FROM sync_outbox WHERE delivered_at IS NULL ORDER BY seq LIMIT 75");
+   const rows=db.all<{seq:number;id:string;entity:string;payload_json:string}>("SELECT seq,id,entity,payload_json FROM sync_outbox WHERE delivered_at IS NULL ORDER BY seq LIMIT 75");
    if(!rows.length)return;
-   const events=rows.map(r=>({id:r.id,entity:r.entity,payload:JSON.parse(r.payload_json)}));
+   const events=rows.map(r=>({id:r.id,seq:r.seq,entity:r.entity,payload:JSON.parse(r.payload_json)}));
    const body=JSON.stringify({events}),stamp=String(Date.now());
    const signature=createHmac('sha256',process.env.CLOUD_SYNC_SECRET!).update(stamp+'.'+body).digest('hex');
    const controller=new AbortController(),timeout=setTimeout(()=>controller.abort(),9000);
