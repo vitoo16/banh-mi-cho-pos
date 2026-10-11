@@ -27,7 +27,7 @@ test('Cloud Owner reporting groups 450+ daily paid orders via PostgreSQL without
   // Cloud mirror fixtures are source-like order snapshots; no money action API invoked.
   await db.pool.query(`INSERT INTO mirror_orders
    (store_id,id,display_code,created_at,created_by,status,payment_status,requested_method,total_vnd,version,lines_json)
-   SELECT $1,'sale-'+g::text,'Q'||g::text,$2::timestamptz,'staff',
+   SELECT $1,'sale-'||g::text,'Q'||g::text,$2::timestamptz,'staff',
    CASE WHEN g=453 THEN 'VOIDED' ELSE 'COMMITTED' END,
    CASE WHEN g<=450 THEN 'PAID' WHEN g=454 THEN 'REFUNDED' ELSE 'UNPAID' END,
    'CASH',90000,1,$3::jsonb
