@@ -311,3 +311,18 @@ test('OR-01: Cloud logout revokes session once and wipes Owner protected view',a
  await expect.poll(()=>f.calls.filter(x=>x.path==='/v1/auth/logout'&&x.method==='POST').length).toBe(1);
  expect(await page.evaluate(()=>sessionStorage.getItem('bmc_owner_token'))).toBeNull();
 });
+
+test('OR-02: navigating the Owner dashboard does not fetch order history until Orders is opened',async({page})=>{
+ const f=await fixture(page);await login(page);
+ const requests=()=>f.calls.filter(x=>x.path==='/v1/orders/history');
+ expect(requests()).toHaveLength(0);
+ await tab(page,'Sản lượng');
+ await expect(page.getByRole('heading',{name:'Thống kê số bánh đã bán'})).toBeVisible();
+ expect(requests()).toHaveLength(0);
+ await tab(page,'Đơn hàng');
+ await expect(page.getByText('#B00001')).toBeVisible();
+ expect(requests()).toHaveLength(1);
+ await page.getByLabel('Tìm đơn').fill('B00002');
+ await expect(page.getByText('#B00002')).toBeVisible();
+ expect(requests()).toHaveLength(1,'Typing in client filter must not hit server');
+});
