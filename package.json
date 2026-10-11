@@ -16,7 +16,7 @@
     "test:domain": "node --test tests/money.test.mjs tests/order-create-recovery.test.mjs tests/owner-analytics-period.test.mjs",
     "test:ui": "playwright test",
     "test:bundle": "node --test tests/web-bundle-budget.test.mjs && node scripts/check-web-bundles.mjs",
-    "test:integration": "node --test tests/store.test.mjs tests/concurrency.test.mjs tests/sync-backfill.test.mjs tests/order-ack.test.mjs tests/printer.test.mjs tests/restore.test.mjs tests/operational-status.test.mjs tests/pos-pending-cash.test.mjs tests/remote-gateway.test.mjs tests/idempotency-binding.test.mjs tests/cashier-queue.test.mjs tests/receipt-content.test.mjs tests/owner-analytics-hub.test.mjs",
+    "test:integration": "node --test tests/store.test.mjs tests/concurrency.test.mjs tests/sync-backfill.test.mjs tests/order-ack.test.mjs tests/hub-process-restart.test.mjs tests/printer.test.mjs tests/restore.test.mjs tests/operational-status.test.mjs tests/pos-pending-cash.test.mjs tests/remote-gateway.test.mjs tests/idempotency-binding.test.mjs tests/cashier-queue.test.mjs tests/receipt-content.test.mjs tests/owner-analytics-hub.test.mjs",
     "test:perf:http": "node --test tests/perf-hub-http.test.mjs",
     "docs:check": "node scripts/check-docs.mjs",
     "backup:store": "node scripts/store-backup.mjs backup",
