@@ -561,3 +561,43 @@ test('OR-05a: extracted remote Finance panels never send a payment mutation on d
  expect(writes).toHaveLength(0,'Finance render and refresh must never mutate paid/bank state');
  await expect(page.getByRole('button',{name:/Xác nhận đã thanh toán|Đã nhận tiền/})).toHaveCount(0);
 });
+
+
+test('OR-05b: Finance reuses Dashboard summary cache and refreshes only summary plus bank exceptions',async({page})=>{
+ const f=await fixture(page);
+ await login(page);
+ const getCount=(path:string)=>f.calls.filter(x=>x.path===path&&x.method==='GET').length;
+ await expect(page.getByText('245.000đ')).toBeVisible();
+ expect(getCount('/v1/owner/dashboard')).toBe(1);
+ await tab(page,'Tài chính');
+ await expect(page.getByText('375.000đ')).toBeVisible();
+ await expect(page.getByText('BANK-UNKNOWN-01')).toBeVisible();
+ expect(getCount('/v1/owner/dashboard')).toBe(1,'Fresh dashboard summary should be reused by Finance');
+ expect(getCount('/v1/owner/bank-exceptions')).toBe(1);
+ await page.getByRole('button',{name:'Tải lại'}).click();
+ await expect.poll(()=>getCount('/v1/owner/dashboard')).toBe(2);
+ await expect.poll(()=>getCount('/v1/owner/bank-exceptions')).toBe(2);
+ expect(getCount('/v1/owner/employees')).toBe(0);
+ expect(getCount('/v1/owner/devices')).toBe(0);
+ expect(getCount('/v1/owner/products')).toBe(0);
+ expect(getCount('/v1/orders/history')).toBe(0);
+});
+test('OR-05b: failed bank exception query never disguises outage as empty ledger, retry recovers independently',async({page})=>{
+ const f=await fixture(page);
+ let recover=false;
+ await page.route('**/v1/owner/bank-exceptions',async route=>{
+  if(!recover)return route.fulfill({status:503,contentType:'application/json',
+   body:JSON.stringify({code:'UNAVAILABLE',message:'Tạm thời không thể tải giao dịch ngoại lệ'})});
+  return route.fallback();
+ });
+ await login(page);await tab(page,'Tài chính');
+ await expect(page.getByText('375.000đ')).toBeVisible();
+ await expect(page.getByRole('alert').filter({hasText:'Không tải được giao dịch ngoại lệ.'})).toBeVisible();
+ await expect(page.getByText('Chưa phát hiện giao dịch ngân hàng bất thường.')).toHaveCount(0);
+ expect(f.calls.filter(c=>c.path==='/v1/owner/products'||c.path==='/v1/owner/employees')).toHaveLength(0);
+ recover=true;
+ await page.getByRole('button',{name:'Thử lại giao dịch'}).click();
+ await expect(page.getByText('BANK-UNKNOWN-01')).toBeVisible();
+ await expect(page.getByText('50.000đ')).toBeVisible();
+ await expect(page.getByRole('alert').filter({hasText:'Không tải được giao dịch ngoại lệ.'})).toHaveCount(0);
+});

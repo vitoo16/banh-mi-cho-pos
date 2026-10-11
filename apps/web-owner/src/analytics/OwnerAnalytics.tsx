@@ -2,8 +2,8 @@ import React,{memo,useState} from 'react';
 import {useQuery,useQueryClient} from '@tanstack/react-query';
 import {formatVnd,salesWindow,todayInVietnam,type SalesPeriod} from '@bmc/contracts';
 import {hub,remote} from '../api';
+import {summaryOptions} from '../features/finance/queries';
 
-const summaryOptions=()=>({queryKey:['owner','summary'],queryFn:()=>hub.summary(),refetchInterval:10_000,staleTime:4_000});
 const salesOptions=(period:SalesPeriod,date:string)=>({
  queryKey:['owner','product-sales',period,date],queryFn:()=>hub.ownerProductSales(period,date),
  refetchInterval:10_000,staleTime:4_000,
