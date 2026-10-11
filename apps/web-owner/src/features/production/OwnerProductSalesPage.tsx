@@ -1,8 +1,8 @@
-import React,{memo,useEffect,useState} from 'react';
+import React,{memo} from 'react';
 import {useQuery,useQueryClient} from '@tanstack/react-query';
 import {formatVnd,salesWindow,type SalesPeriod} from '@bmc/contracts';
 import {hub,remote} from '../../api';
-import {useShopToday} from '../../app/useShopToday';
+import {useSalesReportUrl} from './useSalesReportUrl';
 
 /** Each production slice observes the same (period, shop-local date) response. */
 const salesOptions=(period:SalesPeriod,date:string)=>({
@@ -52,18 +52,15 @@ const periods:readonly [SalesPeriod,string][]=[
  ['day','Ngày'],['week','Tuần'],['month','Tháng'],['quarter','Quý'],['year','Năm'],
 ];
 export const OwnerProductSalesPage=memo(function OwnerProductSalesPage(){
- const today=useShopToday();
- const [period,setPeriod]=useState<SalesPeriod>('day'),[date,setDate]=useState(today);
- const [followToday,setFollowToday]=useState(true);
- useEffect(()=>{if(followToday)setDate(today)},[today,followToday]);
+ const {period,date,changePeriod,changeDate,resetToday}=useSalesReportUrl();
  const qc=useQueryClient();
  return <div className="analytics-page">
   <section className="panel analytics-filter"><h2>Thống kê số bánh đã bán</h2>
    <p className="muted">Dùng số liệu đã thu tiền để điều chỉnh kế hoạch chuẩn bị bánh, không phải số lượng tồn kho.</p>
    <div className="analytics-controls"><div className="period-selector" role="group" aria-label="Xem theo kỳ">
-    {periods.map(([value,title])=><button type="button" key={value} className={period===value?'active':''} aria-pressed={period===value} onClick={()=>setPeriod(value)}>{title}</button>)}
-   </div><label className="analytics-date">Chọn ngày tham chiếu <input type="date" value={date} min="2000-01-01" max="2100-12-31" onChange={e=>{if(e.target.value){setDate(e.target.value);setFollowToday(false)}}}/></label>
-   <button type="button" className="textbutton analytics-today" onClick={()=>{setFollowToday(true);setDate(today)}}>Về hôm nay</button>
+    {periods.map(([value,title])=><button type="button" key={value} className={period===value?'active':''} aria-pressed={period===value} onClick={()=>changePeriod(value)}>{title}</button>)}
+   </div><label className="analytics-date">Chọn ngày tham chiếu <input type="date" value={date} min="2000-01-01" max="2100-12-31" onChange={e=>{if(e.target.value)changeDate(e.target.value)}}/></label>
+   <button type="button" className="textbutton analytics-today" onClick={resetToday}>Về hôm nay</button>
    <button className="textbutton" onClick={()=>void qc.invalidateQueries({queryKey:['owner','product-sales',period,date]})}>Làm mới báo cáo</button></div>
   </section>
   <SalesOverview period={period} date={date}/>
