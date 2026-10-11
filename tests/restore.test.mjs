@@ -13,6 +13,7 @@ const script=resolve('scripts/store-backup.mjs');
 test('WAL snapshot restore-copy preserves exact money/order/outbox and never overwrites the live ledger',()=>{
  const dir=mkdtempSync(join(tmpdir(),'bmc-restore-'));
  const prev={path:process.env.STORE_DB_PATH,seed:process.env.SEED_DEMO_CATALOG};
+ let svc,restored;
  try{
   const live=join(dir,'live.sqlite'),backup=join(dir,'backup.sqlite'),copy=join(dir,'isolated','restored.sqlite');
   process.env.STORE_DB_PATH=live;
@@ -21,7 +22,7 @@ test('WAL snapshot restore-copy preserves exact money/order/outbox and never ove
   process.env.BOOTSTRAP_CASHIER_PIN='restore-cashier-secure';
   process.env.BOOTSTRAP_STAFF_PIN='restore-staff-secure';
   const {StoreService}=require('../apps/store-hub/dist/service.js');
-  const svc=new StoreService();svc.onModuleInit();
+  svc=new StoreService();svc.onModuleInit();
   const staff=svc.actor('Bearer '+svc.login('staff','restore-staff-secure').token,['STAFF']);
   const cashier=svc.actor('Bearer '+svc.login('cashier','restore-cashier-secure').token,['CASHIER']);
   const catalog=svc.catalog();
@@ -111,7 +112,7 @@ test('WAL snapshot restore-copy preserves exact money/order/outbox and never ove
 
   // Reopen the copy as a Store Hub instance; idempotency, receipt batch and cash survive.
   process.env.STORE_DB_PATH=copy;
-  const restored=new StoreService();restored.onModuleInit();
+  restored=new StoreService();restored.onModuleInit();
   const s2=restored.actor('Bearer '+restored.login('staff','restore-staff-secure').token,['STAFF']);
   const c2=restored.actor('Bearer '+restored.login('cashier','restore-cashier-secure').token,['CASHIER']);
   assert.equal(restored.store.row('SELECT COUNT(*) n FROM orders').n,1);
@@ -124,6 +125,10 @@ test('WAL snapshot restore-copy preserves exact money/order/outbox and never ove
   assert.equal(restored.summary().cash_vnd,order.total_vnd);
   assert.equal(restored.getShift(shift.id).expected_cash_vnd,100000+order.total_vnd);
  }finally{
+  // Windows refuses to delete live SQLite files while handles remain open.
+  // Restore test must release BOTH connections even after an assertion failure.
+  restored?.store?.db?.close();
+  svc?.store?.db?.close();
   if(prev.path===undefined)delete process.env.STORE_DB_PATH;else process.env.STORE_DB_PATH=prev.path;
   if(prev.seed===undefined)delete process.env.SEED_DEMO_CATALOG;else process.env.SEED_DEMO_CATALOG=prev.seed;
   rmSync(dir,{recursive:true,force:true});
