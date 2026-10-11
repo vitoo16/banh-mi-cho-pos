@@ -45,14 +45,14 @@ The command scans every `*.sqlite` and its `*.sqlite.manifest.json`, invoking th
 
 After a Windows POS and **approved encrypted/off-host backup target** are available, an authorized operator can invoke:
 
-\`\`\`powershell
-pwsh -NoProfile -NonInteractive -File .\scripts\windows\run-store-backup.ps1 \`
-  -StoreDbPath "C:\BMC\store-data\bmc.sqlite" \`
-  -BackupDirectory "E:\ApprovedEncryptedStoreBackups" \`
-  -MaxAgeMinutes 15 \`
+```powershell
+pwsh -NoProfile -NonInteractive -File .\scripts\windows\run-store-backup.ps1 `
+  -StoreDbPath "C:\BMC\store-data\bmc.sqlite" `
+  -BackupDirectory "E:\ApprovedEncryptedStoreBackups" `
+  -MaxAgeMinutes 15 `
   -AcknowledgedEncryptedDestination
-\`\`\`
+```
 
-The opt-in switch is an **operator acknowledgement**, not a BitLocker/encryption probe. The script fails if approval is omitted, the source is missing, the destination is not already provisioned, or the destination is the same folder as the live ledger. It calls \`VACUUM INTO\` + paired SHA manifest, generates a collision-resistant timestamp/UUID filename, and audits **every** backup pair against the age target. It exits nonzero when verification/freshness fails, without deleting existing backups or altering the live DB. Successful runs still produce **PLAINTEXT** files: encryption, access policy, off-host replication, retention, monitoring and incident alerting are separate operator-managed prerequisites.
+The opt-in switch is an **operator acknowledgement**, not a BitLocker/encryption probe. The script fails if approval is omitted, the source is missing, the destination is not already provisioned, or the destination is the same folder as the live ledger. It calls `VACUUM INTO` + paired SHA manifest, generates a collision-resistant timestamp/UUID filename, and audits **every** backup pair against the age target. It exits nonzero when verification/freshness fails, without deleting existing backups or altering the live DB. Successful runs still produce **PLAINTEXT** files: encryption, access policy, off-host replication, retention, monitoring and incident alerting are separate operator-managed prerequisites.
 
 To approach the **proposed** RPO ≤15 minutes, an authorized Windows operator may install a least-privilege Task Scheduler task at an approved cadence, **only after** the encrypted backup destination, reliable alerting of nonzero exit, off-host transfer of **both** SQLite+manifest files, and spare-host restore have been verified. The script is a one-shot building block; it does not install a task or establish unattended backup reliability.
