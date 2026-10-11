@@ -96,7 +96,7 @@ async function fixture(page:Page,{remote=false,failLogin=false}={}){
  return {calls,products,employees,devices,commands,setToday:(value:number)=>{today=value},
   setRevenue:(value:number)=>{revenue=value}};
 }
-async function login(page:Page,remote=false){
+async function login(page:Page,remote=false,expectedLanding:'dashboard'|'recovery'='dashboard'){
  const jsErrors:string[]=[];
  page.on('pageerror',error=>jsErrors.push(error.message));
  await page.goto(remote?remoteUrl:localUrl);
@@ -104,7 +104,8 @@ async function login(page:Page,remote=false){
  await expect(page.getByLabel(label)).toBeVisible();
  await page.getByLabel(label).fill(remote?'cloud-password-mock-long':'owner-pin-test');
  await page.getByRole('button',{name:'Đăng nhập'}).click();
- await expect(page.getByText('DOANH THU ĐÃ XÁC NHẬN')).toBeVisible();
+ if(expectedLanding==='dashboard')await expect(page.getByText('DOANH THU ĐÃ XÁC NHẬN')).toBeVisible();
+ else await expect(page.getByRole('dialog',{name:'Chỉnh sản phẩm'})).toBeVisible();
  expect(jsErrors,'Owner browser runtime should not crash').toEqual([]);
 }
 async function tab(page:Page,name:string){
@@ -336,7 +337,8 @@ test('OR-03: after lost catalog ACK and reload, retry uses exact persisted key a
   payload:{name:'Bánh mì sửa sau mất ACK',price_vnd:42000,is_active:true},
  };
  await page.addInitScript(value=>sessionStorage.setItem('bmc_owner_pending_catalog_v1',JSON.stringify(value)),pending);
- await login(page);
+ // Restoring an uncertain command deliberately opens Catalog, not Dashboard.
+ await login(page,false,'recovery');
  await expect(page.getByRole('dialog',{name:'Chỉnh sản phẩm'})).toBeVisible();
  const dlg=page.getByRole('dialog',{name:'Chỉnh sản phẩm'});
  await expect(dlg.getByLabel('Giá bán (VNĐ)')).toHaveValue('42000');
