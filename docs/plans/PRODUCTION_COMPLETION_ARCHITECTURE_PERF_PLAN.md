@@ -3,7 +3,7 @@
 **State:** PROPOSED; source audit, not implementation or production sign-off.
 **Baseline:** `main@a4250f5b6b4033fcf892496a0cb3222873b2cbeb`, 2026-10-11.
 **Priority order:** Approved `docs/spec/MVP-v1.2.md` > ADR-001/002 > API contracts > implementation plans > UI refinements. Do not silently change an accepted business rule.
-**Business shape:** one store, 4–8 Staff phones, one cashier, one cash drawer, one 80mm thermal printer printing CUSTOMER + STORE copies, 300+ orders/day.
+**Business shape:** one store, 4–8 Staff phones, one cashier, one cash drawer, one 80mm thermal printer printing CUSTOMER + STORE copies, variable daily order volume with no artificial 300-order cap; 300+ is a load-test scenario only.
 
 ## 1. Executive decision and strict scope
 
@@ -34,7 +34,7 @@ Inspected Git tree (180 entries); all 13 local Agent Skills; `AGENTS.md`, archit
 | D-05 | Shared domain/UI/config | `packages/domain`, `packages/ui`, `packages/config` currently placeholders | P1: pure money/state logic + semantic tokens + tooling (web/native separate primitives) |
 | D-06 | Approved stack governance | ADR-001 specifies pnpm, Expo Router, React Router, lint/Vitest; current repo uses npm workspaces, no router, no visible lint/coverage gate | P1: choose and document one actual approach; avoid migration solely for plan compliance |
 | D-07 | Edit order before paying | Spec §1.3 requires customers changing items; Store Hub has create/read/void, no PATCH edit route | **P0 NOT IMPLEMENTED**, task F-01 |
-| D-08 | Sold-item aggregates | ACC-11 expects per-item count for 300+ daily orders; dashboard does not expose item sales | P1 NOT IMPLEMENTED, F-02 |
+| D-08 | Sold-item aggregates | ACC-11 expects item counts at any daily volume, filterable day/week/month/quarter/year; the audited main baseline did not include analytics | P1 NOT IMPLEMENTED, F-02 |
 | D-09 | Safe actual payment method change | CASH/BANK actual settlement allowed; exact override audit on mismatch with initial requested method not explicit | P1 contract/owner policy check, F-03 |
 | D-10 | Physical drawer/cutter/print acceptance | ESC/POS TCP, Unicode raster, two copy spool and UNKNOWN are coded; physical 80mm and drawer kick not verified | P0 HW gate, F-04 |
 | D-11 | Bank merchant | HMAC SePay/raw callback/signed Hub inbox/QR code exist; account eligibility and real callback/settlement not signed off | P0 PROVIDER gate, F-05 |
@@ -67,7 +67,7 @@ Inspected Git tree (180 entries); all 13 local Agent Skills; `AGENTS.md`, archit
 
 ### F-02 — Owner item sales/reporting — P1 / size M
 
-Aggregate **paid** order-line quantities and net effects of full refunds per item/category and local-shop date range. Decide and document gross/net/refund mapping; never infer profit, inventory or sold units from unsettled carts. Indexed SQL summary/aggregation with 100k-history seed and EXPLAIN; proper timezone and currency. Owner mobile cards/desktop table, server pagination and CSV with formula-injection-safe output; Cloud freshness label. Exit: item totals + confirmed cash/bank reconciliation with 300+ daily orders and historical price-change fixtures.
+Aggregate **paid** order-line quantities for day/week/month/quarter/year by item/category, with separate all-created-order totals today, explicitly excluding fully refunded/unpaid/voided items. Decide and document gross/net/refund mapping; never infer profit, inventory or sold units from unsettled carts. Indexed SQL summary/aggregation with 100k-history seed and EXPLAIN; proper timezone and currency. Owner mobile cards/desktop table, server pagination and CSV with formula-injection-safe output; Cloud freshness label. Exit: all-order today KPI and paid item quantities at any volume, backed by server SQL and isolated useQuery widgets. PR #35 addresses this requested baseline; export/advanced refund annotation can follow.
 
 ### F-03 — Payment operations and exception UX — P0/P1 / size M
 
@@ -137,7 +137,7 @@ Existing Cloud command CREATE/UPDATE is coded; do not redo. Display clear PENDIN
 - Verified bank provider callback received → live Hub UI P95 ≤3s on healthy WAN (provider delay excluded).
 - Backup RPO ≤15 min and RTO ≤2 hours are targets pending actual exercise.
 
-**PERF-01 P0 / size L: REAL concurrent HTTP.** Existing `tests/concurrency.test.mjs` is sequential service calls. Run 8 logged-in HTTP clients in parallel (k6/Artillery/undici), 150 orders/hour with human think-time/jitter, 10× burst, retries with same keys, and 300+ daily seed plus 100k historical + 100/1000 pending. Exercise shift/cash, cloud offline, printer paper-out, lost ACK, 30-minute WAN outage, checkpoint and restore while operational. No lost or duplicate money events allowed regardless of p95.
+**PERF-01 P0 / size L: REAL concurrent HTTP.** Existing `tests/concurrency.test.mjs` is sequential service calls. Run 8 logged-in HTTP clients in parallel (k6/Artillery/undici), 150 orders/hour as a sample test rate (not a quota) with jitter/10× burst, original-key retries and configurable 0–1,000+ daily seed plus 100k historical + 100/1000 pending. Exercise shift/cash, cloud offline, printer paper-out, lost ACK, 30-minute WAN outage, checkpoint and restore while operational. No lost or duplicate money events allowed regardless of p95.
 
 **PERF-02 P0/P1 / size M–L: queue.** Current cashier polls `GET /v1/orders` each 2.5s, plus shift and operational status, renders tiles with `list.map`. First implement single-flight requests, abort/generation safety against stale responses, keep last-good snapshot + STALE banner, avoid list/selection jumps and only update changed entities. Measure payload/render on 300 and pathological pending cases. If target fails, implement signed/local authenticated ordered SSE or WebSocket delta feed with snapshot-on-reconnect and cursor reconciliation; never rely on ephemeral stream for financial correctness. Virtualize/memoize many DOM rows only when profiler shows benefit. Pending queue must NEVER hide an old unpaid order.
 
@@ -173,7 +173,7 @@ Existing Cloud command CREATE/UPDATE is coded; do not redo. Display clear PENDIN
 | W1 | CONTRACT-01: canonical schema, codegen, runtime types, CI parity | BASE-01 | Contract/BE+FE | L | current endpoints/DTO compatible |
 | W1 | ORDER-EDIT-01: Hub versioned order edit + bank stale-reference rule | CONTRACT-01 | Backend | M | edit/capture race, webhook, replay green |
 | W1 | ORDER-EDIT-02: Cashier editing screen | ORDER-EDIT-01 | Web FE | M | 1024px money UX no false PAID |
-| W1 | OWNER-SALES-01: sold-item aggregates, refund policy, export | CONTRACT-01 | Backend+Owner | M | 300/day and 100k-history parity |
+| W1 | OWNER-SALES-01: all-order daily KPI + paid products by day/week/month/quarter/year with isolated TanStack Query widgets; optional CSV follow-up | CONTRACT-01 | Backend+Owner | M | Any volume incl 300+/1000+; 100k history load tested separately |
 | W1 | UI-ACCESS-01: accessibility P0 fixes | BASE-01 | Web/RN UI | M | axe/keyboard/native evidence |
 | W2 | ARCH-BE-01: pure domain and transaction facade | CONTRACT-01 | Backend | L | money golden fixtures unchanged |
 | W2 | ARCH-BE-02/03: separate catalog/order/shift, then payment/receipt/sync | ARCH-BE-01 | Backend | XL split | role, idempotency and DB parity |
@@ -237,3 +237,13 @@ Read only skills relevant to each ticket, not all 13 every time:
 - React Native FlatList responsiveness: https://reactnative.dev/docs/optimizing-flatlist-configuration
 - SQLite WAL one writer/checkpoint: https://www.sqlite.org/wal.html
 - INP: https://web.dev/articles/optimize-inp
+
+## 14. Approved variable-volume Owner Analytics amendment (2026-10-11)
+
+The shop has no fixed 300 orders/day capacity, quota or target. 300+ and 150/hour are configurable performance test scenarios, never application limits.
+
+Owner homepage shows TỔNG SỐ ĐƠN HÔM NAY for ALL orders created in the shop-local day, including unpaid/voided, with paid and other status breakdowns. The separate Sản lượng page groups units of COMMITTED+PAID bread by product and category, filterable by day, Monday week, calendar month, quarter and year; full refunds excluded. This is decision support for manual production quantities, NOT stock or automatic production quotas.
+
+UI uses independently mounted React components and TanStack Query useQuery observers with separate query keys, select and structural sharing. Only subscribers to changed slice rerender; do not refetch all history into the browser. Poll/focus updates are near-real-time, not server push. Planned follow-up for unrelated legacy Owner pages may further modularize them.
+
+Implementation tracked by https://github.com/vitoo16/banh-mi-cho-pos/pull/35; wider CSV, historical scale profiling, device acceptance and release remain separate gates.
