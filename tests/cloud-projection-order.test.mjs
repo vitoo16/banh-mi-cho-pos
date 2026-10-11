@@ -19,6 +19,7 @@ test('Cloud price and cash-shift mirror never regresses when signed outbox event
   await db.pool.query('DELETE FROM synced_events WHERE store_id=$1',[store]);
   await db.pool.query('DELETE FROM mirror_products WHERE store_id=$1',[store]);
   await db.pool.query('DELETE FROM mirror_shifts WHERE store_id=$1',[store]);
+  await db.pool.query('DELETE FROM mirror_bank_intents WHERE store_id=$1',[store]);
   const svc=new CloudService(db,new SePayService(db));
   const sign=events=>createHmac('sha256',secret).update(stamp+'.'+JSON.stringify({events})).digest('hex');
   const send=events=>svc.ingest(events,stamp,sign(events),store);
@@ -64,6 +65,33 @@ test('Cloud price and cash-shift mirror never regresses when signed outbox event
   assert.equal(Number(row.source_seq),220);
   assert.ok(row.closed_at);
   assert.equal((await svc.summary()).shift,null,'a delayed OPEN event cannot reopen the Owner cloud drawer');
+
+  // One delayed Hub PENDING event cannot resurrect a newer EXPIRED bank request.
+  // Verified provider confirmation remains authoritative even over a newer Hub event.
+  const intent={
+   order_id:'intent-order-1',reference:'BMCSEQTESTEXAMPLE',
+   account_number:'123456789',bank_code:'970415',amount_vnd:45000,status:'PENDING'
+  };
+  const intentEvent=(id,seq,payload)=>({id,seq,entity:'bank_intent',payload});
+  await send([intentEvent('bank-intent-expired-320',320,{...intent,status:'EXPIRED'})]);
+  await send([intentEvent('bank-intent-late-pending-310',310,intent)]);
+  const readIntent=async()=>{
+   const result=await db.pool.query(
+    'SELECT status,source_seq FROM mirror_bank_intents WHERE store_id=$1 AND order_id=$2',
+    [store,intent.order_id]);
+   return result.rows[0];
+  };
+  assert.equal((await readIntent()).status,'EXPIRED');
+  assert.equal(Number((await readIntent()).source_seq),320);
+  // This simulates Cloud's separately authenticated SePay settlement path.
+  await db.pool.query("UPDATE mirror_bank_intents SET status='CONFIRMED' WHERE store_id=$1 AND order_id=$2",
+   [store,intent.order_id]);
+  await send([intentEvent('bank-intent-new-hub-pending-340',340,intent)]);
+  assert.equal((await readIntent()).status,'CONFIRMED');
+  assert.equal(Number((await readIntent()).source_seq),340);
+  await send([intentEvent('bank-intent-late-expired-330',330,{...intent,status:'EXPIRED'})]);
+  assert.equal((await readIntent()).status,'CONFIRMED');
+  assert.equal(Number((await readIntent()).source_seq),340);
 
   for(const invalid of [0,-2,1.5,Number.MAX_SAFE_INTEGER+1,'999']){
    const bad=[product('invalid-'+String(invalid),invalid,updated)];
