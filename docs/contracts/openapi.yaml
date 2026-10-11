@@ -206,6 +206,28 @@ paths:
       operationId: ownerDashboard
       responses:
         '200': {description: Verified local cash sales only, no bank provider attached}
+  /v1/owner/analytics/today:
+    get:
+      operationId: ownerTodayOrders
+      summary: All orders created during today's Asia/Ho_Chi_Minh shop day
+      responses:
+        '200': {description: Total and paid/unpaid/voided/refunded order counts}
+  /v1/owner/analytics/products:
+    get:
+      operationId: ownerProductSales
+      summary: Paid units by category and product for shop-local calendar period
+      parameters:
+        - name: period
+          in: query
+          required: true
+          schema: {type: string, enum: [day, week, month, quarter, year]}
+        - name: date
+          in: query
+          required: false
+          schema: {type: string, format: date}
+      responses:
+        '200': {description: Aggregated paid item quantities and order counters}
+        '400': {description: Invalid period or date}
   /v1/owner/products:
     get:
       operationId: ownerProducts

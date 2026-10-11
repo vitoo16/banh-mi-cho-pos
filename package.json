@@ -3,14 +3,19 @@
   "private": true,
   "version": "0.1.0",
   "description": "Banh Mi Cho operational POS monorepo",
-  "engines": {"node": ">=24"},
-  "workspaces": ["apps/*", "packages/*"],
+  "engines": {
+    "node": ">=24"
+  },
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
   "scripts": {
     "build": "npm run build -w @bmc/contracts && npm run build -w @bmc/store-hub && npm run build -w @bmc/web-pos && npm run build -w @bmc/web-owner && npm run build -w @bmc/cloud-api",
     "check": "npm run build -w @bmc/contracts && npm run typecheck -w @bmc/contracts && npm run typecheck -w @bmc/store-hub && npm run typecheck -w @bmc/web-pos && npm run typecheck -w @bmc/web-owner && npm run typecheck -w @bmc/mobile-staff && npm run typecheck -w @bmc/cloud-api",
-    "test:domain": "node --test tests/money.test.mjs tests/order-create-recovery.test.mjs",
+    "test:domain": "node --test tests/money.test.mjs tests/order-create-recovery.test.mjs tests/owner-analytics-period.test.mjs",
     "test:ui": "playwright test",
-    "test:integration": "node --test tests/store.test.mjs tests/concurrency.test.mjs tests/sync-backfill.test.mjs tests/order-ack.test.mjs tests/printer.test.mjs tests/restore.test.mjs tests/operational-status.test.mjs tests/pos-pending-cash.test.mjs tests/remote-gateway.test.mjs tests/idempotency-binding.test.mjs tests/cashier-queue.test.mjs tests/receipt-content.test.mjs",
+    "test:integration": "node --test tests/store.test.mjs tests/concurrency.test.mjs tests/sync-backfill.test.mjs tests/order-ack.test.mjs tests/printer.test.mjs tests/restore.test.mjs tests/operational-status.test.mjs tests/pos-pending-cash.test.mjs tests/remote-gateway.test.mjs tests/idempotency-binding.test.mjs tests/cashier-queue.test.mjs tests/receipt-content.test.mjs tests/owner-analytics-hub.test.mjs",
     "docs:check": "node scripts/check-docs.mjs",
     "backup:store": "node scripts/store-backup.mjs backup",
     "verify:backup": "node scripts/store-backup.mjs verify",
@@ -21,5 +26,9 @@
     "dev:mobile": "npm run start -w @bmc/mobile-staff",
     "dev:cloud": "npm run dev -w @bmc/cloud-api"
   },
-  "devDependencies": {"typescript": "^5.9.3", "@types/node": "^24.0.0", "@playwright/test": "^1.56.0"}
+  "devDependencies": {
+    "typescript": "^5.9.3",
+    "@types/node": "^24.0.0",
+    "@playwright/test": "^1.56.0"
+  }
 }

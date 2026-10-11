@@ -14,6 +14,12 @@ export class CloudController{
  @Post('auth/login')login(@Body()b:any,@Req()r:any){return this.s.login(b?.user_id,b?.pin,r.ip||'unknown')}
  @Post('auth/logout')logout(@Req()r:any){return this.s.logout(r.headers.authorization)}
  @Post('sync/events')receive(@Body()b:any,@Headers('x-bmc-timestamp')ts:string,@Headers('x-bmc-signature')sig:string,@Headers('x-bmc-store')store:string){return this.s.ingest(b?.events,ts,sig,store)}
+ @Get('owner/analytics/today')async today(@Req()r:any){await this.s.authorize(r.headers.authorization);return this.s.todayOrderCounts()}
+ @Get('owner/analytics/products')async sales(@Req()r:any,@Query('period')period:string,@Query('date')date?:string){
+  await this.s.authorize(r.headers.authorization);
+  try{return await this.s.productSales(period as import('@bmc/contracts').SalesPeriod,date)}
+  catch(e){if(e instanceof Error&&['INVALID_PERIOD','INVALID_DATE'].includes(e.message))throw new (await import('@nestjs/common')).BadRequestException('Khoảng thời gian không hợp lệ');throw e}
+ }
  @Get('owner/dashboard')async dashboard(@Req()r:any){await this.s.authorize(r.headers.authorization);return this.s.summary()}
  @Get('owner/products')async products(@Req()r:any){await this.s.authorize(r.headers.authorization);return this.s.products()}
  @Post('owner/products')async createProduct(@Req()r:any,@Body()body:any,@Headers('idempotency-key')key:string){

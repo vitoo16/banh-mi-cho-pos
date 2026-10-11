@@ -6,7 +6,7 @@
 
 ## 0. Bối cảnh và quyết định bắt buộc
 
-- **1 cửa hàng**, **4–8 nhân viên nhận đơn đồng thời**, **1 thu ngân phụ trách 1 két tiền**, **trên 300 đơn/ngày**.
+- **1 cửa hàng**, **4–8 nhân viên nhận đơn đồng thời**, **1 thu ngân phụ trách 1 két tiền**, **số lượng đơn/ngày thay đổi theo thực tế, không đặt giới hạn cố định**.
 - **Chưa có máy POS**; đã có **tài khoản ngân hàng hộ kinh doanh/doanh nghiệp** nhận chuyển khoản.
 - Nhân viên đặt món đứng **cách khu chuẩn bị khoảng 1 mét**, **báo miệng cho người làm** như quy trình hiện tại. Không số hóa giao nhận tác vụ bếp.
 - App nhân viên chỉ cần **tên món + giá bán**, chọn số lượng, **ghi chú khi cần** và **phương thức thanh toán khách dự định dùng** trước khi lưu đơn; không cho nhân viên sửa giá niêm yết hoặc cấu hình store.
@@ -256,7 +256,7 @@ Nhân viên (4–8 điện thoại, chỉ nhận món/giá/ghi chú)
 | ACC-08 | Mất Internet, LAN còn | Nhân viên tạo đơn, POS thu cash và in bill; bank chưa được tự xác nhận |
 | ACC-09 | Chủ cập nhật giá 35k->38k | Đơn cũ giữ giá snapshot; đơn mới áp dụng giá mới |
 | ACC-10 | Chốt ca thực đếm lệch 20k | Chênh 20k; có biên bản giải trình; bank không cộng vào két |
-| ACC-11 | Quầy bán 300+ đơn/ngày | Báo cáo thống kê theo món và số đơn đúng, không suy ra tồn kho còn lại |
+| ACC-11 | Số đơn/ngày biến động thực tế, bao gồm cả ngày cao điểm 300+ | Hiển thị tổng đơn hôm nay; sản lượng bánh đã bán theo món/nhóm và kỳ ngày, tuần, tháng, quý, năm; không suy ra tồn kho còn lại |
 
 ## 11. Lộ trình triển khai
 
@@ -311,3 +311,11 @@ KHÁCH THANH TOÁN BẰNG
 - Cho phép sửa theo quyền trước khi settle; không thay thế hay xóa payment đã được xác nhận. Nếu đã có partial payment và khách đổi phương thức thì khoản còn lại có thể trả bằng nguồn khác nếu tính năng MIXED bật.
 - Feature flags: `enable_bank_transfer`, `enable_momo`, `enable_mixed_payments`; MoMo chỉ bật khi tích hợp hợp lệ. Về trạng thái MVP, `enable_bank_transfer` chỉ bật cho thanh toán thật khi có quy trình xác nhận hợp lệ.
 - Lưu audit khi cashier sửa requested/actual method; hành động này không sửa `amount_vnd` hay tự phát hành biên nhận.
+
+## 14. Owner Analytics — cập nhật từ yêu cầu chủ tiệm ngày 2026-10-11
+
+- Không giới hạn hay áp định mức 300 đơn/ngày. 300+ chỉ là dữ liệu thử tải; lượng thực tế linh hoạt.
+- Dashboard Owner hiển thị **TỔNG SỐ ĐƠN HÔM NAY**, đếm mọi đơn tạo trong ngày cửa hàng theo giờ Việt Nam, cùng phân loại đã thu/chưa thu/hủy/hoàn; không nhầm với tổng đơn đã thanh toán lũy kế.
+- Trang riêng **Sản lượng** có kỳ Ngày/Tuần/Tháng/Quý/Năm và ngày tham chiếu. Tổng hợp sản phẩm theo **nhóm bánh** và **từng món**, phục vụ dự đoán lượng chuẩn bị, không thêm định mức sản xuất hoặc tồn kho.
+- “Số bánh đã bán” là tổng số lượng các dòng của đơn COMMITTED+PAID theo **ngày tạo đơn**, không tính chưa thu/hủy/đã hoàn toàn bộ. Không coi đơn hoàn là bánh chưa được làm. Danh mục loại lấy từ catalog hiện hành; doanh thu dòng dùng giá snapshot.
+- Backend tổng hợp bằng SQLite/PostgreSQL, không tải hết đơn về Web và không đặt cap 300. Owner dùng các component React độc lập với TanStack Query `useQuery`, từng queryKey/selector cho phần dữ liệu thay đổi, refetch theo lịch và khi focus; đây là **near-real-time polling**, không hứa server-push realtime. Cloud có thể trễ so với cửa hàng.

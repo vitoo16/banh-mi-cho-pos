@@ -1,3 +1,4 @@
+import {salesWindow,type SalesPeriod,type ProductSalesReport} from '@bmc/contracts';
 import {Injectable,OnModuleInit} from '@nestjs/common';
 import {randomUUID,randomBytes,createHash,createHmac,scryptSync,timingSafeEqual} from 'node:crypto';
 import {StoreDb} from './db';
@@ -418,6 +419,49 @@ export class StoreService implements OnModuleInit {
    printer:{driver_configured:Boolean(process.env.PRINTER_HOST),waiting_copies:statusCounts.WAITING_FOR_PRINTER||0,unknown_copies:statusCounts.UNKNOWN||0,unknown_receipts:unknown},
    cloud_sync:{configured:Boolean(process.env.CLOUD_SYNC_URL),pending_events:backlog,last_delivered_at:process.env.CLOUD_SYNC_URL?last:null}
   };
+ }
+ todayOrderCounts(){
+  const window=salesWindow('day');
+  const r=this.store.row<any>(`SELECT COUNT(*) total_orders,
+    SUM(CASE WHEN status='VOIDED' THEN 1 ELSE 0 END) voided_orders,
+    SUM(CASE WHEN status='COMMITTED' AND payment_status='PAID' THEN 1 ELSE 0 END) paid_orders,
+    SUM(CASE WHEN payment_status='REFUNDED' THEN 1 ELSE 0 END) refunded_orders,
+    SUM(CASE WHEN status='COMMITTED' AND payment_status NOT IN ('PAID','REFUNDED') THEN 1 ELSE 0 END) pending_orders
+    FROM orders WHERE created_at>=? AND created_at<?`,window.start_utc,window.end_utc);
+  return {total_orders:Number(r.total_orders||0),voided_orders:Number(r.voided_orders||0),
+   paid_orders:Number(r.paid_orders||0),refunded_orders:Number(r.refunded_orders||0),
+   pending_orders:Number(r.pending_orders||0)};
+ }
+ productSales(period:SalesPeriod,date?:string):ProductSalesReport{
+  const window=salesWindow(period,date);
+  const counts=this.store.row<any>(`SELECT COUNT(*) total_orders,
+    SUM(CASE WHEN status='VOIDED' THEN 1 ELSE 0 END) voided_orders,
+    SUM(CASE WHEN status='COMMITTED' AND payment_status='PAID' THEN 1 ELSE 0 END) paid_orders,
+    SUM(CASE WHEN payment_status='REFUNDED' THEN 1 ELSE 0 END) refunded_orders,
+    SUM(CASE WHEN status='COMMITTED' AND payment_status NOT IN ('PAID','REFUNDED') THEN 1 ELSE 0 END) pending_orders
+    FROM orders WHERE created_at>=? AND created_at<?`,window.start_utc,window.end_utc);
+  const products=this.store.all<any>(`SELECT
+   json_extract(j.value,'$.product_id') product_id,
+   COALESCE(p.name,MAX(json_extract(j.value,'$.name_snapshot')),'Món đã xóa') name,
+   COALESCE(p.category,'Khác') category,
+   SUM(CAST(json_extract(j.value,'$.qty') AS INTEGER)) units_sold,
+   SUM(CAST(json_extract(j.value,'$.line_total_vnd') AS INTEGER)) gross_vnd
+   FROM orders o JOIN json_each(o.lines_json) j
+   LEFT JOIN products p ON p.id=json_extract(j.value,'$.product_id')
+   WHERE o.created_at>=? AND o.created_at<? AND o.status='COMMITTED' AND o.payment_status='PAID'
+   GROUP BY json_extract(j.value,'$.product_id'),p.name,p.category
+   ORDER BY units_sold DESC,product_id`,window.start_utc,window.end_utc)
+    .map(r=>({...r,units_sold:Number(r.units_sold),gross_vnd:Number(r.gross_vnd)}));
+  const byCategory=new Map<string,{category:string;units_sold:number;gross_vnd:number}>();
+  for(const p of products){const current=byCategory.get(p.category)||{category:p.category,units_sold:0,gross_vnd:0};
+   current.units_sold+=p.units_sold;current.gross_vnd+=p.gross_vnd;byCategory.set(p.category,current)}
+  return {...window,total_orders:Number(counts.total_orders||0),
+   voided_orders:Number(counts.voided_orders||0),paid_orders:Number(counts.paid_orders||0),
+   refunded_orders:Number(counts.refunded_orders||0),pending_orders:Number(counts.pending_orders||0),
+   total_units_sold:products.reduce((n,p)=>n+p.units_sold,0),
+   gross_vnd:products.reduce((n,p)=>n+p.gross_vnd,0),
+   products,categories:[...byCategory.values()].sort((a,b)=>b.units_sold-a.units_sold||a.category.localeCompare(b.category)),
+   sales_definition:'PAID_ONLY_BY_ORDER_CREATED_AT' as const};
  }
  summary(){
   const p=this.store.row<any>("SELECT COUNT(*) paid_orders,COALESCE(SUM(total_vnd),0) net_revenue_vnd FROM orders WHERE payment_status='PAID'");

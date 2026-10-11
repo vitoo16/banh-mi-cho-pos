@@ -87,3 +87,11 @@ A timed-out remote or local Owner product CREATE/UPDATE may already be committed
 - Cash-shift CLOSED received before delayed OPEN must remain CLOSED; Owner dashboard must not surface a phantom open drawer.
 - Missing `seq` is tolerated only for legacy events until the aggregate has advanced to a positive sequence. Missing is not the same as invalid zero/negative/float/overflow sequences, which reject the signed batch atomically.
 - Verified Cloud CI must show real PostgreSQL transaction rollback for a mixed valid/invalid batch. Hardware WAN disconnect/restore remains a separate release gate.
+
+## Owner daily orders and product sales reporting (2026-10-11)
+
+- Có thể có 0, 10, 300, 1000+ đơn/ngày, không có business cap theo ngày. Seed 300+ chỉ nhằm thử tải.
+- Đếm tổng đơn tạo trong ngày theo giờ Việt Nam (bao gồm VOIDED và UNPAID), phân biệt số đơn PAID; báo cáo sản lượng chỉ từ COMMITTED+PAID, không tính fully REFUNDED.
+- Kỳ ngày, tuần bắt đầu thứ Hai, tháng, quý, năm áp dụng cửa sổ thời gian [start,end) UTC tương ứng Asia/Ho_Chi_Minh; test biên ngày/năm và ngày nhuận.
+- Truy vấn aggregate SQLite/Postgres và group từng món/nhóm; không dựa vào API lịch sử đơn chỉ lấy 100/200 bản ghi, không suy ra tồn kho hoặc lợi nhuận.
+- Dashboard KPI và sản lượng lọc kỳ là React Query key độc lập, structural sharing/selector, component riêng; Playwright 320/390/768/1366px. Query polling không phải socket realtime. Native/hardware perf vẫn cần nghiệm thu.
