@@ -28,6 +28,10 @@ test('LAN gateway permits only session-bound paired STAFF order traffic',()=>{
   const staffAuth='Bearer '+staffLogin.token,device=staffLogin.device_token;
   const remote='192.168.10.24';
   const permit=(method,path,auth=staffAuth,token=device,body=undefined)=>gate(s,remote,method,path,auth,token,body);
+  delete process.env.PAIRING_ENFORCED;
+  assert.throws(()=>permit('GET','/v1/catalog?limit=20'),e=>e.code==='PAIRING_ENFORCEMENT_REQUIRED');
+  assert.throws(()=>permit('POST','/v1/auth/login',undefined,undefined,{user_id:'staff'}),e=>e.code==='PAIRING_ENFORCEMENT_REQUIRED');
+  process.env.PAIRING_ENFORCED='1';
   assert.doesNotThrow(()=>permit('GET','/v1/catalog?limit=20'));
   assert.doesNotThrow(()=>permit('GET','/v1/orders/history?cursor=x'));
   assert.doesNotThrow(()=>permit('POST','/v1/orders'));
