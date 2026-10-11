@@ -63,6 +63,10 @@ test('POS WCAG automated smoke: shift and cash till forms at 1024px',async({page
  await expect(page.getByText('#B00042').first()).toBeVisible();
  await page.getByRole('button',{name:'Sổ quỹ & chốt ca'}).click();
  await expect(page.getByRole('heading',{name:'Ca thu ngân'})).toBeVisible();
+ await expect(page.getByRole('textbox',{name:'Số tiền (VNĐ)'})).toBeVisible();
+ await expect(page.getByRole('textbox',{name:'Lý do'})).toBeVisible();
+ await expect(page.getByRole('textbox',{name:'Tiền thực đếm (VNĐ)'})).toBeVisible();
+ await expect(page.getByRole('textbox',{name:'Giải trình (bắt buộc nếu lệch)'})).toBeVisible();
  await audit(page);
  expect(writes).toEqual([]);
 });
