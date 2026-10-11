@@ -1,4 +1,5 @@
 import {test,expect,type Page} from '@playwright/test';
+import AxeBuilder from '@axe-core/playwright';
 
 const summary={
  paid_orders:23,net_revenue_vnd:1234567,cash_vnd:1100000,bank_vnd:134567,
@@ -262,4 +263,48 @@ test('OR-10a: React Profiler proves only the changed KPI subtree commits after i
  expect(countEvents.filter(c=>c.id==='today-orders').length,'Today count component must commit for new count').toBeGreaterThan(0);
  expect(countEvents.filter(c=>c.id==='revenue')).toHaveLength(0);
  expect(countEvents.filter(c=>c.id==='cash')).toHaveLength(0);
+});
+
+
+/**
+ * Axe smoke is an automated WCAG A/AA check, not a replacement for a manual
+ * screen-reader and 200%-zoom audit. No contrast or ARIA violations are waived.
+ */
+async function assertAccessible(page:Page){
+ const report=await new AxeBuilder({page})
+  .withTags(['wcag2a','wcag2aa','wcag21a','wcag21aa'])
+  .analyze();
+ const problems=report.violations.map(v=>({
+  id:v.id,impact:v.impact,description:v.description,
+  nodes:v.nodes.map(n=>({target:n.target,summary:n.failureSummary})),
+ }));
+ expect(problems).toEqual([]);
+}
+test('OR-08c: Owner login and operational dashboard meet automated WCAG A/AA smoke',async({page})=>{
+ await page.setViewportSize({width:1366,height:768});
+ await mockOwner(page);
+ await page.goto('http://127.0.0.1:5174/');
+ await expect(page.getByLabel('Mã PIN chủ tiệm')).toBeVisible();
+ await assertAccessible(page);
+ await page.getByLabel('Mã PIN chủ tiệm').fill('owner-pin-for-test');
+ await page.getByRole('button',{name:'Đăng nhập'}).click();
+ await expect(page.getByText('1.234.567đ')).toBeVisible();
+ await assertAccessible(page);
+});
+test('OR-08c: Catalog edit dialog meets automated WCAG A/AA smoke on a phone',async({page})=>{
+ await page.setViewportSize({width:390,height:844});
+ await mockOwner(page);await startOwner(page);
+ await page.getByRole('button',{name:'Sản phẩm'}).click();
+ await page.getByRole('button',{name:/Thêm món/}).click();
+ await expect(page.getByRole('dialog',{name:'Chỉnh sản phẩm'})).toBeVisible();
+ await assertAccessible(page);
+});
+test('OR-08c: Cloud Owner staff read-only page meets automated WCAG A/AA smoke',async({page})=>{
+ await page.setViewportSize({width:390,height:844});
+ await mockOwner(page);
+ await page.goto('http://127.0.0.1:5175/staff');
+ await page.getByLabel('Mật khẩu quản trị từ xa').fill('remote-owner-test');
+ await page.getByRole('button',{name:'Đăng nhập'}).click();
+ await expect(page.getByText('Quản lý nhân viên chỉ được thao tác từ POS nội bộ',{exact:false})).toBeVisible();
+ await assertAccessible(page);
 });
