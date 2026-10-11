@@ -23,3 +23,8 @@ coverage/
 
 # Generated synthetic aggregate-only load measurements
 artifacts/perf/
+
+# Companion metadata contains sensitive operating counts; never commit store backup files
+*.sqlite.manifest.json
+*.db.manifest.json
+store-backups/
