@@ -173,3 +173,52 @@ for(const width of [320,390,768,1366]){
   await assertNoOverflow(page,width);
  });
 }
+
+
+test('OR-08a: Catalog dialog moves focus inside, traps Shift+Tab/Tab and returns focus on Escape',async({page})=>{
+ await page.setViewportSize({width:1366,height:768});
+ await mockOwner(page);await startOwner(page);
+ await page.getByRole('button',{name:'Sản phẩm'}).click();
+ const opener=page.getByRole('button',{name:/Thêm món/});
+ await opener.click();
+ const dialog=page.getByRole('dialog',{name:'Chỉnh sản phẩm'});
+ await expect(dialog).toBeVisible();
+ await expect(dialog.getByLabel('Tên món')).toBeFocused();
+ const close=dialog.getByRole('button',{name:'Đóng'});
+ const submit=dialog.getByRole('button',{name:'Lưu sản phẩm'});
+ await page.keyboard.press('Shift+Tab');
+ await expect(close).toBeFocused();
+ await page.keyboard.press('Shift+Tab');
+ await expect(submit).toBeFocused();
+ await page.keyboard.press('Tab');
+ await expect(close).toBeFocused();
+ const bounds=await close.boundingBox();
+ expect(bounds?.height).toBeGreaterThanOrEqual(44);
+ expect(bounds?.width).toBeGreaterThanOrEqual(44);
+ await page.keyboard.press('Escape');
+ await expect(dialog).toHaveCount(0);
+ await expect(opener).toBeFocused();
+});
+test('OR-08a: 320px dialog stays keyboard-contained and returns focus after confirmed save',async({page})=>{
+ await page.setViewportSize({width:320,height:568});
+ const {created}=await mockOwner(page);await startOwner(page);
+ await page.getByRole('button',{name:'Sản phẩm'}).click();
+ const opener=page.getByRole('button',{name:/Thêm món/});
+ await opener.click();
+ const dialog=page.getByRole('dialog',{name:'Chỉnh sản phẩm'});
+ await expect(dialog.getByLabel('Tên món')).toBeFocused();
+ for(let i=0;i<12;i++){
+  await page.keyboard.press('Tab');
+  const contained=await page.evaluate(()=>Boolean(document.activeElement?.closest('[role="dialog"]')));
+  expect(contained,'Tab must never escape the open editor').toBe(true);
+ }
+ await dialog.getByLabel('Tên món').fill('Bánh mì keyboard QA');
+ await dialog.getByLabel('Nhóm món').fill('Bánh mì');
+ await dialog.getByLabel('Giá bán (VNĐ)').fill('43000');
+ await dialog.getByRole('button',{name:'Lưu sản phẩm'}).click();
+ await expect(dialog).toHaveCount(0);
+ await expect(opener).toBeFocused();
+ expect(created).toHaveLength(1);
+ expect(created[0]).toMatchObject({name:'Bánh mì keyboard QA',price_vnd:43000});
+ await assertNoOverflow(page,320);
+});
