@@ -512,3 +512,37 @@ test('OR-04a: extracted Staff and Devices keep validation gates and never send i
  await expect(employeeCreate).toBeEnabled();
  expect(f.calls.filter(x=>x.method==='POST'&&(x.path==='/v1/owner/device-pairings'||x.path==='/v1/owner/employees'))).toHaveLength(0);
 });
+
+
+test('OR-04b: Staff queries and manual refresh never fetch finance, catalog or history',async({page})=>{
+ const f=await fixture(page);await login(page);await tab(page,'Nhân viên');
+ await expect(page.getByRole('heading',{name:'Thiết bị nhân viên'})).toBeVisible();
+ await expect(page.getByRole('heading',{name:'Tài khoản tại tiệm'})).toBeVisible();
+ const reads=(path:string)=>f.calls.filter(c=>c.path===path&&c.method==='GET').length;
+ expect(reads('/v1/owner/employees')).toBe(1);
+ expect(reads('/v1/owner/devices')).toBe(1);
+ expect(reads('/v1/owner/bank-exceptions')).toBe(0);
+ expect(reads('/v1/owner/products')).toBe(0);
+ expect(reads('/v1/orders/history')).toBe(0);
+ await page.getByRole('button',{name:'Tải lại'}).click();
+ await expect.poll(()=>reads('/v1/owner/employees')).toBe(2);
+ await expect.poll(()=>reads('/v1/owner/devices')).toBe(2);
+ expect(reads('/v1/owner/bank-exceptions')).toBe(0);
+ expect(reads('/v1/owner/products')).toBe(0);
+});
+test('OR-04b: employee creation invalidates only employee query while device and finance remain stable',async({page})=>{
+ const f=await fixture(page);await login(page);await tab(page,'Nhân viên');
+ await expect(page.getByRole('heading',{name:'Tài khoản tại tiệm'})).toBeVisible();
+ const reads=(path:string)=>f.calls.filter(c=>c.path===path&&c.method==='GET').length;
+ expect(reads('/v1/owner/devices')).toBe(1);
+ expect(reads('/v1/owner/employees')).toBe(1);
+ await page.getByPlaceholder('nv01').fill('staff08');
+ await page.getByPlaceholder('Nguyễn A').fill('Nhân viên mới');
+ await page.locator('input[type="password"]').fill('1234567');
+ await page.getByRole('button',{name:'Tạo tài khoản'}).click();
+ await expect(page.getByText('Nhân viên mới')).toBeVisible();
+ await expect.poll(()=>reads('/v1/owner/employees')).toBe(2);
+ expect(reads('/v1/owner/devices')).toBe(1);
+ expect(reads('/v1/owner/bank-exceptions')).toBe(0);
+ expect(f.employees.find(e=>e.id==='staff08')?.active).toBe(true);
+});
