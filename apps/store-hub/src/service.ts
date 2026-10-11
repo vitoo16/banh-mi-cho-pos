@@ -213,10 +213,21 @@ export class StoreService implements OnModuleInit {
  }
 
   orders(a:Actor){
-  const rows=a.role==='STAFF'?
-   this.store.all<any>('SELECT * FROM orders WHERE created_by=? ORDER BY created_at DESC LIMIT 100',a.id):
-   this.store.all<any>('SELECT * FROM orders ORDER BY created_at DESC LIMIT 200');
-  return rows.map(r=>this.asOrder(r));
+  if(a.role==='STAFF'){
+   // Staff sees their own recent orders; full history is cursor-paginated.
+   return this.store.all<any>(
+    'SELECT * FROM orders WHERE created_by=? ORDER BY created_at DESC,id DESC LIMIT 100',a.id
+   ).map(r=>this.asOrder(r));
+  }
+  // Never silently hide an unpaid order when 200+ new sales happen.
+  // Oldest actionable first; non-actionable recent context stays bounded.
+  const actionable=this.store.all<any>(
+   "SELECT * FROM orders WHERE status='COMMITTED' AND payment_status IN ('UNPAID','PARTIAL') ORDER BY created_at ASC,id ASC"
+  );
+  const recent=this.store.all<any>(
+   "SELECT * FROM orders WHERE NOT (status='COMMITTED' AND payment_status IN ('UNPAID','PARTIAL')) ORDER BY created_at DESC,id DESC LIMIT 200"
+  );
+  return [...actionable,...recent].map(r=>this.asOrder(r));
  }
  history(a:Actor,cursor?:string,requestedLimit?:number){
   const limit=Math.max(1,Math.min(100,Number.isInteger(requestedLimit)?requestedLimit!:100));

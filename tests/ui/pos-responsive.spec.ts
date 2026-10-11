@@ -18,13 +18,13 @@ const operational={
  printer:{driver_configured:false,waiting_copies:0,unknown_copies:0,unknown_receipts:[]},
  cloud_sync:{configured:false,pending_events:0,last_delivered_at:null},
 };
-async function mockHub(page:Page){
+async function mockHub(page:Page,extraOrders:Array<typeof order>=[]){
  const captures:string[]=[];
  await page.route('**/v1/**',async route=>{
   const {pathname}=new URL(route.request().url()),method=route.request().method();
   let result:unknown={},status=200;
   if(pathname==='/v1/auth/login')result={token:'test-only-session',user:{id:'cashier',name:'Thu ngân',role:'CASHIER'}};
-  else if(pathname==='/v1/orders'&&method==='GET')result=[order];
+  else if(pathname==='/v1/orders'&&method==='GET')result=[order,...extraOrders];
   else if(pathname==='/v1/cash-shifts/current')result=shift;
   else if(pathname==='/v1/cashier/operational-status')result=operational;
   else if(pathname.endsWith('/receipts'))result=[];
@@ -114,5 +114,23 @@ test('BANK QR network failure keeps verified transfer details and never claims P
  await expect(page.getByText('BMC1234567890ABC')).toBeVisible();
  await expect(page.getByText('Đã ghi nhận thanh toán')).toHaveCount(0);
  await assertNoViewportOverflow(page,320);
+ expect(captures).toHaveLength(0);
+});
+
+test('REFUNDED orders never appear in Chờ thu or expose a second payment action',async({page})=>{
+ await page.setViewportSize({width:390,height:844});
+ const refunded={...order,order_id:'22222222-2222-4222-8222-222222222222',
+  display_code:'B00043',created_at:'2026-10-11T03:15:00.000Z',
+  payment_status:'REFUNDED'};
+ const {captures}=await mockHub(page,[refunded]);
+ await startCashier(page);
+ await expect(page.getByRole('button',{name:/B00043/})).toHaveCount(0);
+ await page.getByRole('button',{name:'Tất cả'}).click();
+ await page.getByRole('button',{name:/B00043/}).click();
+ await expect(page.getByText('Đơn đã hoàn tiền')).toBeVisible();
+ await expect(page.getByLabel('Khách đưa (VNĐ)')).toHaveCount(0);
+ await expect(page.getByRole('button',{name:'Tạo yêu cầu chuyển khoản'})).toHaveCount(0);
+ await expect(page.getByRole('button',{name:'Xác nhận đã nhận tiền'})).toHaveCount(0);
+ await assertNoViewportOverflow(page,390);
  expect(captures).toHaveLength(0);
 });
