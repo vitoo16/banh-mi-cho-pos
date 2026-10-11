@@ -42,7 +42,7 @@ test('LAN gateway permits only session-bound paired STAFF order traffic',()=>{
    assert.throws(()=>permit('GET',path),e=>e.code==='REMOTE_ROUTE_FORBIDDEN',path);
   assert.throws(()=>permit('POST','/v1/orders/1/payments/cash'),e=>e.code==='REMOTE_ROUTE_FORBIDDEN');
   assert.throws(()=>permit('GET','/v1/catalog','Bearer '+ownerLogin.token,device),e=>e.code==='FORBIDDEN');
-  assert.throws(()=>permit('GET','/v1/catalog',staffAuth,undefined),e=>e.code==='DEVICE_NOT_TRUSTED');
+  assert.throws(()=>permit('GET','/v1/catalog',staffAuth,null),e=>e.code==='DEVICE_NOT_TRUSTED');
   assert.throws(()=>permit('GET','/v1/catalog','Bearer wrong-session',device),e=>e.code==='SESSION_EXPIRED');
   const id=s.devices().find(d=>d.user_id==='staff').id;
   s.revokeDevice(owner,id,'Lost device','gateway-revoke-0001');
