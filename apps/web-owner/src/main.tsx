@@ -1,4 +1,4 @@
-import React,{useEffect,useState} from 'react';import {createRoot} from 'react-dom/client';import {formatVnd,type Product,type Summary,type Employee,type StaffDevice,type PairingCode} from '@bmc/contracts';import {LayoutDashboard,ClipboardList,Tags,Wallet,Settings,LogOut,ShoppingBag,AlertCircle,RefreshCcw} from 'lucide-react';import {QueryClientProvider} from '@tanstack/react-query';
+import React,{useEffect,useState} from 'react';import {createRoot} from 'react-dom/client';import {type Product,type Summary,type Employee,type StaffDevice,type PairingCode} from '@bmc/contracts';import {LayoutDashboard,ClipboardList,Tags,Wallet,Settings,LogOut,ShoppingBag,AlertCircle,RefreshCcw} from 'lucide-react';import {QueryClientProvider} from '@tanstack/react-query';
 import {hub,remote,newKey} from './api';
 import {queryClient} from './app/queryClient';
 import {useOwnerAuth} from './app/useOwnerAuth';
@@ -8,6 +8,7 @@ import {OrderHistoryPage} from './features/orders/OrderHistoryPage';
 import {CatalogPage} from './features/catalog/CatalogPage';
 import {ProductFormDialog} from './features/catalog/ProductFormDialog';
 import {StaffPage} from './features/staff/StaffPage';
+import {FinancePage,type BankExceptionRow} from './features/finance/FinancePage';
 import {employeeKey,deviceKey} from './features/staff/queries';
 import {catalogKey,commandKey} from './features/catalog/queries';
 import {catalogRetryStorageKey,readCatalogRetry,type CatalogRetry} from './features/catalog/catalog-retry';
@@ -20,7 +21,7 @@ function App(){
  const {session,login,logout}=useOwnerAuth();
  const [pin,setPin]=useState(''),[page,setPage]=useState<Page>('dashboard'),[error,setError]=useState(''),[notice,setNotice]=useState(''),[busy,setBusy]=useState(false);
  const [report,setReport]=useState<Summary|null>(null);
- const [exceptions,setExceptions]=useState<Array<{provider_tx_id:string;reference:string;amount_vnd:number;reason:string;received_at:string}>>([]);
+ const [exceptions,setExceptions]=useState<BankExceptionRow[]>([]);
  const [deviceLabel,setDeviceLabel]=useState(''),[newPairing,setNewPairing]=useState<PairingCode|null>(null);
  const [empId,setEmpId]=useState(''),[empName,setEmpName]=useState(''),[empPin,setEmpPin]=useState(''),[empRole,setEmpRole]=useState<'STAFF'|'CASHIER'>('STAFF');
  const [editing,setEditing]=useState<string|null>(null),[name,setName]=useState(''),[price,setPrice]=useState(''),[category,setCategory]=useState('Bánh mì'),[active,setActive]=useState(true);
@@ -76,7 +77,7 @@ function App(){
  {page==='dashboard'&&<OwnerDashboard onOpenSales={()=>setPage('sales')}/>}
  {page==='sales'&&<OwnerProductSalesPage/>}
  {page==='orders'&&<OrderHistoryPage/>}
- {page==='finance'&&<div className="twocol"><section className="panel"><h2>Sổ quỹ hiện tại</h2>{report?.shift?<><div className="metricrow"><span>Quỹ đầu ca</span><b>{formatVnd(report.shift.opening_float_vnd)}</b></div><div className="metricrow"><span>Tiền phải có</span><b>{formatVnd(report.shift.expected_cash_vnd)}</b></div></>:<p className="muted">Thu ngân chưa mở ca.</p>}</section><section className="panel"><h2>Đối soát ngân hàng</h2><p className="muted">Chỉ xác nhận theo sự kiện đã ký từ bộ xác minh giao dịch đáng tin cậy. Không nhận ảnh chụp.</p><div className="info">Chờ xác minh: {report?.bank_pending||0} đơn yêu cầu chuyển khoản.</div>{remote&&Boolean(report?.unallocated_bank_vnd)&&<div className="alert" role="alert"><strong>Phát hiện thu cả tiền mặt và chuyển khoản</strong><p>{report?.bank_conflict_orders||0} đơn · {formatVnd(report?.unallocated_bank_vnd||0)} tiền ngân hàng đang chờ xử lý. Khoản này được loại khỏi doanh thu chuyển khoản để không tính hai lần.</p><p>Đối chiếu giao dịch thật và hoàn/điều chỉnh có xác nhận; không tự xóa chứng từ.</p></div>}<h3>Giao dịch ngoại lệ ({exceptions.length})</h3>{exceptions.length===0?<p className="muted">Chưa phát hiện giao dịch ngân hàng bất thường.</p>:exceptions.map(x=><div className="record" key={x.provider_tx_id}><div><b>{x.reference}</b><small>{x.reason} · {new Date(x.received_at).toLocaleString('vi-VN')}</small></div><strong>{formatVnd(x.amount_vnd)}</strong></div>)}</section></div>}
+ {page==='finance'&&<FinancePage report={report} remote={remote} exceptions={exceptions}/>}
  {page==='catalog'&&<CatalogPage ownerId={session.user.id} remote={remote} onBegin={begin}/>}
  {page==='staff'&&<StaffPage remote={remote} ownerId={session.user.id}
  deviceProps={{deviceLabel,newPairing,busy,onDeviceLabelChange:setDeviceLabel,onIssuePairing:issuePairing,onRevokeDevice:revokeDevice}}
