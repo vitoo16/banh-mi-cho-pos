@@ -20,5 +20,6 @@ export default defineConfig({
   webServer:[
     {command:'npm run dev:pos',url:'http://127.0.0.1:5173',reuseExistingServer:!process.env.CI,timeout:100_000},
     {command:'npm run dev:owner',url:'http://127.0.0.1:5174',reuseExistingServer:!process.env.CI,timeout:100_000},
+    {command:'npm run dev -w @bmc/web-owner -- --port 5175 --strictPort',env:{VITE_CLOUD_API_URL:'http://127.0.0.1:5175'},url:'http://127.0.0.1:5175',reuseExistingServer:!process.env.CI,timeout:100_000},
   ],
 });
