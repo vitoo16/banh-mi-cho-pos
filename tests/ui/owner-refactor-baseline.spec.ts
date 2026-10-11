@@ -873,3 +873,19 @@ test('OR-08b: mobile Owner current-page announcements follow navigation at 320px
  const width=await page.evaluate(()=>({screen:innerWidth,content:document.documentElement.scrollWidth}));
  expect(width.content).toBeLessThanOrEqual(width.screen+1);
 });
+
+test('OR-08e: keyboard skip link bypasses Owner sidebar and focuses the main landmark',async({page})=>{
+ await fixture(page);await login(page);
+ const skip=page.getByRole('link',{name:'Đến nội dung chính'});
+ await page.keyboard.press('Tab');
+ await expect(skip).toBeFocused();
+ await expect(skip).toBeVisible();
+ const bounds=await skip.boundingBox();
+ expect(bounds?.height).toBeGreaterThanOrEqual(44);
+ await page.keyboard.press('Enter');
+ await expect(page.locator('main#owner-main')).toBeFocused();
+ await expect(page.getByRole('heading',{name:'Tổng quan'})).toBeVisible();
+ await page.getByRole('navigation',{name:'Điều hướng chính'}).getByRole('button',{name:'Sản phẩm'}).click();
+ await expect(page).toHaveURL(localUrl+'catalog');
+ await expect(page.locator('main#owner-main')).toBeVisible();
+});
