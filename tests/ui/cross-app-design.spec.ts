@@ -68,3 +68,28 @@ test('UI-00: cashier login has visible money-safe focus and 48px+ submit',async(
  const outline=await page.getByLabel('Mã PIN thu ngân').evaluate(el=>getComputedStyle(el).outlineWidth);
  expect(Number.parseFloat(outline)).toBeGreaterThanOrEqual(2);
 });
+
+test('UI-01: mobile design tokens, legible inputs and reduced motion in Owner and POS',async({page})=>{
+ await page.setViewportSize({width:390,height:844});
+ await page.emulateMedia({reducedMotion:'reduce'});
+ for(const origin of ['http://127.0.0.1:5174/','http://127.0.0.1:5173/']){
+  await page.goto(origin);
+  const design=await page.evaluate(()=>{
+   const root=getComputedStyle(document.documentElement);
+   const input=document.querySelector('input')!;
+   const inputStyle=getComputedStyle(input);
+   return {
+    space:root.getPropertyValue('--bmc-space-4').trim(),
+    dialogRadius:root.getPropertyValue('--bmc-radius-dialog').trim(),
+    fastMotion:root.getPropertyValue('--bmc-motion-fast').trim(),
+    inputPx:Number.parseFloat(inputStyle.fontSize),
+    reducedDuration:getComputedStyle(document.body).transitionDuration,
+   };
+  });
+  expect(design.space).toBe('16px');
+  expect(design.dialogRadius).toBe('20px');
+  expect(design.fastMotion).toBe('120ms');
+  expect(design.inputPx).toBeGreaterThanOrEqual(16);
+  expect(design.reducedDuration).not.toBe('180ms');
+ }
+});
