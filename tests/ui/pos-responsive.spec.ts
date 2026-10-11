@@ -110,7 +110,7 @@ test('BANK QR network failure keeps verified transfer details and never claims P
  await page.getByRole('button',{name:/Chuyển khoản/}).click();
  await page.getByRole('button',{name:'Tạo yêu cầu chuyển khoản'}).click();
  await expect(page.getByRole('status').filter({hasText:'Không tải được QR'})).toBeVisible();
- await expect(page.getByText('123456789')).toBeVisible();
+ await expect(page.getByText('123456789',{exact:true})).toBeVisible();
  await expect(page.getByText('BMC1234567890ABC')).toBeVisible();
  await expect(page.getByText('Đã ghi nhận thanh toán')).toHaveCount(0);
  await assertNoViewportOverflow(page,320);
