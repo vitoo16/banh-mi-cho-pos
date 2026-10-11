@@ -2,6 +2,63 @@ import {Injectable,OnModuleInit,OnModuleDestroy} from '@nestjs/common';
 import {createCanvas} from '@napi-rs/canvas';import {Socket} from 'node:net';import {randomUUID} from 'node:crypto';
 import {StoreService} from './service';
 const formatVnd=(v:number)=>new Intl.NumberFormat('vi-VN').format(v)+'đ';
+export type ReceiptLine={left:string;right?:string;size?:'large'};
+export type RecordedReceiptPayment={
+ method:string;
+ amount_vnd:number;
+ tendered_vnd:number|null;
+ change_vnd:number|null;
+};
+/**
+ * Receipt text uses only the ACTUAL settled payment row; requested_method
+ * from Staff is never a source of truth for tender or bank settlement.
+ * Pure formatter supports unit tests without thermal-print hardware.
+ */
+export function buildReceiptLines(
+ order:{display_code:string;created_at:string;total_vnd:number;lines_json:string},
+ receipt:{kind:'CUSTOMER'|'STORE';attempts:number},
+ payment:RecordedReceiptPayment|null,
+):ReceiptLine[]{
+ if(!payment||!Number.isSafeInteger(payment.amount_vnd)||payment.amount_vnd<0||
+  payment.amount_vnd!==order.total_vnd||
+  !['CASH','BANK'].includes(payment.method)){
+  throw new Error('RECEIPT_SETTLEMENT_INVALID');
+ }
+ if(payment.method==='CASH'&&(
+  !Number.isSafeInteger(payment.tendered_vnd)||
+  !Number.isSafeInteger(payment.change_vnd)||
+  (payment.tendered_vnd as number)<0||
+  (payment.change_vnd as number)<0||
+  (payment.tendered_vnd as number)-(payment.change_vnd as number)!==payment.amount_vnd
+ ))throw new Error('RECEIPT_CASH_LEGS_INVALID');
+
+ const lines:ReceiptLine[]=[
+  {left:'BÁNH MÌ CHỢ',size:'large'},
+  {left:receipt.kind==='CUSTOMER'?'LIÊN KHÁCH':'LIÊN TIỆM'},
+  {left:'Mã đơn: '+order.display_code},
+  {left:new Date(order.created_at).toLocaleString('vi-VN')},
+  {left:'-------------------------------------'},
+ ];
+ const items=JSON.parse(order.lines_json) as Array<{name_snapshot:string;qty:number;line_total_vnd:number;note:string}>;
+ for(const item of items){
+  lines.push({left:item.name_snapshot+' × '+item.qty,right:formatVnd(item.line_total_vnd)});
+  if(item.note&&receipt.kind==='STORE')lines.push({left:'  Ghi chú: '+item.note});
+ }
+ lines.push({left:'-------------------------------------'});
+ lines.push({left:'TỔNG',right:formatVnd(order.total_vnd),size:'large'});
+ lines.push({left:'TRẠNG THÁI: ĐÃ THANH TOÁN'});
+ lines.push({left:'Hình thức',right:payment.method==='CASH'?'Tiền mặt':'Chuyển khoản'});
+ if(payment.method==='CASH'&&receipt.kind==='STORE'){
+  lines.push({left:'Khách đưa',right:formatVnd(payment.tendered_vnd as number)});
+  lines.push({left:'Tiền thối',right:formatVnd(payment.change_vnd as number)});
+ }else if(payment.method==='BANK'){
+  lines.push({left:'Chuyển khoản xác minh',right:formatVnd(payment.amount_vnd)});
+ }
+ if(receipt.attempts>0)lines.push({left:'*** BẢN IN LẠI ***',size:'large'});
+ lines.push({left:'Cảm ơn quý khách!'});
+ return lines;
+}
+
 /** Pilot ESC/POS over TCP: sends bitmapped Vietnamese text to configured 80mm printer.
  * SENT only means bytes were sent over socket, NOT physical paper acknowledged.
  * UNKNOWN after crash/connection loss is never auto-resubmitted.
@@ -20,7 +77,7 @@ export class ReceiptPrinter implements OnModuleInit,OnModuleDestroy{
    if(!r)return;
    const o=db.row<any>('SELECT * FROM orders WHERE id=?',r.order_id);
    if(!o)return;
-   const p=db.row<any>("SELECT tendered_vnd,change_vnd FROM payments WHERE order_id=? ORDER BY created_at LIMIT 1",r.order_id);
+   const p=db.row<any>("SELECT method,amount_vnd,tendered_vnd,change_vnd FROM payments WHERE order_id=? ORDER BY created_at,id LIMIT 1",r.order_id);
    // Claim and journal before I/O. A crash leaves a durable UNKNOWN attempt,
    // which must never be retried without an explicit cashier reprint request.
    const attemptId=randomUUID(),started=new Date().toISOString(),attemptNo=r.attempts+1;
@@ -47,20 +104,7 @@ export class ReceiptPrinter implements OnModuleInit,OnModuleDestroy{
   }finally{this.running=false}
  }
  private render(o:any,r:any,p:any):Buffer{
-  const lines:{left:string;right?:string;size?:'large'}[]=[
-   {left:'BÁNH MÌ CHỢ',size:'large'},{left:r.kind==='CUSTOMER'?'LIÊN KHÁCH':'LIÊN TIỆM'},
-   {left:'Mã đơn: '+o.display_code},{left:new Date(o.created_at).toLocaleString('vi-VN')},
-   {left:'-------------------------------------'}];
-  for(const item of JSON.parse(o.lines_json) as Array<{name_snapshot:string;qty:number;line_total_vnd:number;note:string}>){
-   lines.push({left:item.name_snapshot+' × '+item.qty,right:formatVnd(item.line_total_vnd)});
-   if(item.note&&r.kind==='STORE')lines.push({left:'  Ghi chú: '+item.note});
-  }
-  lines.push({left:'-------------------------------------'});
-  lines.push({left:'TỔNG',right:formatVnd(o.total_vnd),size:'large'});
-  lines.push({left:'TRẠNG THÁI: ĐÃ THANH TOÁN'});
-  if(r.kind==='STORE'&&p){lines.push({left:'Khách đưa',right:formatVnd(p.tendered_vnd)},{left:'Tiền thối',right:formatVnd(p.change_vnd)})}
-  if(r.attempts>0)lines.push({left:'*** BẢN IN LẠI ***',size:'large'});
-  lines.push({left:'Cảm ơn quý khách!'});
+  const lines=buildReceiptLines(o,r,p);
   const width=576,left=16,lineHeight=29;const wrapped:{left:string;right?:string;size?:'large'}[]=[];
   for(const line of lines){
    if(line.left.length>42&&!line.right){
