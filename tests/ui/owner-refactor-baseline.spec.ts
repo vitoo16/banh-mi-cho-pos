@@ -326,3 +326,25 @@ test('OR-02: navigating the Owner dashboard does not fetch order history until O
  await expect(page.getByText('#B00002')).toBeVisible();
  expect(requests()).toHaveLength(1,'Typing in client filter must not hit server');
 });
+
+
+test('OR-03: after lost catalog ACK and reload, retry uses exact persisted key and original JSON',async({page})=>{
+ const f=await fixture(page);
+ const pending={
+  key:'existing-idempotency-key-ack-loss-001',
+  draft:{remote:false,target:'bm-thit',name:'Bánh mì sửa sau mất ACK',category:'Bánh mì',price_vnd:42000,is_active:true},
+  payload:{name:'Bánh mì sửa sau mất ACK',price_vnd:42000,is_active:true},
+ };
+ await page.addInitScript(value=>sessionStorage.setItem('bmc_owner_pending_catalog_v1',JSON.stringify(value)),pending);
+ await login(page);
+ await expect(page.getByRole('dialog',{name:'Chỉnh sản phẩm'})).toBeVisible();
+ const dlg=page.getByRole('dialog',{name:'Chỉnh sản phẩm'});
+ await expect(dlg.getByLabel('Giá bán (VNĐ)')).toHaveValue('42000');
+ await dlg.getByRole('button',{name:'Lưu sản phẩm'}).click();
+ await expect(dlg).toHaveCount(0);
+ const changes=f.calls.filter(x=>x.path==='/v1/owner/products/bm-thit'&&x.method==='PATCH');
+ expect(changes).toHaveLength(1);
+ expect(changes[0].key).toBe(pending.key);
+ expect(changes[0].body).toEqual(pending.payload);
+ expect(await page.evaluate(()=>sessionStorage.getItem('bmc_owner_pending_catalog_v1'))).toBeNull();
+});
