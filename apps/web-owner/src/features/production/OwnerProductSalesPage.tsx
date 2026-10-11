@@ -63,7 +63,7 @@ export const OwnerProductSalesPage=memo(function OwnerProductSalesPage(){
    <div className="analytics-controls"><div className="period-selector" role="group" aria-label="Xem theo kỳ">
     {periods.map(([value,title])=><button type="button" key={value} className={period===value?'active':''} aria-pressed={period===value} onClick={()=>setPeriod(value)}>{title}</button>)}
    </div><label className="analytics-date">Chọn ngày tham chiếu <input type="date" value={date} min="2000-01-01" max="2100-12-31" onChange={e=>{if(e.target.value){setDate(e.target.value);setFollowToday(false)}}}/></label>
-   <button type="button" className="textbutton" onClick={()=>{setFollowToday(true);setDate(today)}}>Về hôm nay</button>
+   <button type="button" className="textbutton analytics-today" onClick={()=>{setFollowToday(true);setDate(today)}}>Về hôm nay</button>
    <button className="textbutton" onClick={()=>void qc.invalidateQueries({queryKey:['owner','product-sales',period,date]})}>Làm mới báo cáo</button></div>
   </section>
   <SalesOverview period={period} date={date}/>
