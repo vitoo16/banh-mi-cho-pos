@@ -1,0 +1,33 @@
+/* Bánh Mì Chợ operational visual system — offline-first, one visual identity. */
+:root {
+ color-scheme: light;
+ --bmc-font: system-ui,-apple-system,'Segoe UI','Noto Sans',Arial,sans-serif;
+ --bmc-canvas: #FAF9F6;
+ --bmc-surface: #FFFFFF;
+ --bmc-ink: #1E2420;
+ --bmc-muted: #5D6760;
+ --bmc-border: #D9DFD8;
+ --bmc-accent: #A84F10;
+ --bmc-accent-soft: #FFF0E3;
+ --bmc-success: #166534;
+ --bmc-warning: #795100;
+ --bmc-danger: #B42318;
+ --bmc-focus: #2563EB;
+ --bmc-radius-control: 10px;
+ --bmc-radius-card: 16px;
+ --bmc-shadow-dialog: 0 22px 62px #172b1a24;
+ font-family:var(--bmc-font);
+ background:var(--bmc-canvas);
+ color:var(--bmc-ink);
+ font-variant-numeric:tabular-nums;
+}
+button,input,select,textarea{font:inherit}
+button{touch-action:manipulation}
+button:focus-visible,input:focus-visible,select:focus-visible,
+textarea:focus-visible,a:focus-visible,summary:focus-visible {
+ outline:3px solid var(--bmc-focus);outline-offset:3px;
+}
+button:disabled{cursor:not-allowed}
+@media(prefers-reduced-motion:reduce){
+ *,*::before,*::after{animation-duration:.01ms!important;transition-duration:.01ms!important;scroll-behavior:auto!important}
+}
