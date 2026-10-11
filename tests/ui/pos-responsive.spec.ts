@@ -134,3 +134,41 @@ test('REFUNDED orders never appear in Chờ thu or expose a second payment actio
  await assertNoViewportOverflow(page,390);
  expect(captures).toHaveLength(0);
 });
+
+test('POS keyboard skip link bypasses toolbar while cash actions remain untouched',async({page})=>{
+ await page.setViewportSize({width:1024,height:768});
+ const {captures}=await mockHub(page);
+ await startCashier(page);
+ const skip=page.getByRole('link',{name:'Đến nội dung thu ngân'});
+ await page.keyboard.press('Tab');
+ await expect(skip).toBeFocused();
+ await expect(skip).toBeVisible();
+ const box=await skip.boundingBox();
+ expect(box?.height).toBeGreaterThanOrEqual(48);
+ await page.keyboard.press('Enter');
+ await expect(page.locator('main#pos-main')).toBeFocused();
+ await expect(page.getByRole('heading',{name:/Hàng đợi/})).toBeVisible();
+ expect(captures).toHaveLength(0);
+ await assertNoViewportOverflow(page,1024);
+});
+test('POS keyboard navigation announces Orders vs Shift and does not collect payment',async({page})=>{
+ await page.setViewportSize({width:1024,height:768});
+ const {captures}=await mockHub(page);
+ await startCashier(page);
+ const nav=page.getByRole('navigation',{name:'Chế độ thu ngân'});
+ const orders=nav.getByRole('button',{name:'Đơn hàng'});
+ const shiftButton=nav.getByRole('button',{name:'Sổ quỹ & chốt ca'});
+ await expect(orders).toHaveAttribute('aria-pressed','true');
+ await expect(shiftButton).toHaveAttribute('aria-pressed','false');
+ await shiftButton.focus();
+ await page.keyboard.press('Enter');
+ await expect(shiftButton).toHaveAttribute('aria-pressed','true');
+ await expect(orders).toHaveAttribute('aria-pressed','false');
+ await expect(page.getByRole('heading',{name:'Ca thu ngân'})).toBeVisible();
+ await orders.focus();
+ await page.keyboard.press('Enter');
+ await expect(orders).toHaveAttribute('aria-pressed','true');
+ await expect(page.getByText('#B00042').first()).toBeVisible();
+ expect(captures).toHaveLength(0);
+ await assertNoViewportOverflow(page,1024);
+});
