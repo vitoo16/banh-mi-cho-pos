@@ -176,7 +176,7 @@ test('Q-12 software rehearsal: live WAL backup restores a fresh HTTP Hub without
   const db=new DatabaseSync(restored,{readOnly:true});
   const liveDb=new DatabaseSync(live,{readOnly:true});
   try{
-   assert.deepEqual(db.prepare('PRAGMA integrity_check').all(),[{integrity_check:'ok'}]);
+   assert.deepEqual(db.prepare('PRAGMA integrity_check').all().map(row=>row.integrity_check),['ok']);
    assert.equal(count(db,'orders'),1);
    assert.equal(count(liveDb,'orders'),2);
    assert.equal(count(db,'payments'),1);
