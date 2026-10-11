@@ -20,3 +20,6 @@ coverage/
 .idea/
 .vscode/
 *.log
+
+# Generated synthetic aggregate-only load measurements
+artifacts/perf/
