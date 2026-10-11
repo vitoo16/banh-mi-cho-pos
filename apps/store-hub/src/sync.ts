@@ -103,7 +103,8 @@ export class CloudSyncWorker implements OnModuleInit,OnModuleDestroy {
    });
    if(!ack.ok)throw Error('Cloud command ACK HTTP '+ack.status);
    const parsed=await ack.json() as {accepted?:unknown};
-   if(!Array.isArray(parsed.accepted)||results.some(x=>!parsed.accepted?.includes(x.id)))
+   const accepted=parsed.accepted;
+   if(!Array.isArray(accepted)||results.some(x=>!accepted.includes(x.id)))
     throw Error('Cloud failed to acknowledge all product commands');
   }finally{this.pollingProducts=false}
  }
