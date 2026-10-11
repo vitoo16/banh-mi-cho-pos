@@ -40,3 +40,19 @@ After each backup and encrypted off-host copy, run `npm run check:backup-freshne
 The command scans every `*.sqlite` and its `*.sqlite.manifest.json`, invoking the existing full integrity/foreign-key/row-count/SHA verifier for each pair. It fails nonzero when a sidecar or SQLite is missing, corrupted, renamed, invalid, more than two minutes future-dated, or when the newest *verified* snapshot exceeds the threshold. Older retained archives are fine so long as every pair is valid and a fresh backup exists. The check prints aggregate counts/age and filenames, never the database contents, customer names or credentials. Configure the job scheduler/monitoring system to treat any nonzero exit as a **backup incident requiring operator attention**, not to switch the ledger or initiate a restore. Run checks after the backup's manifest has been fully published; do not scan directories in the middle of a backup.
 
 **Not deployed:** No Windows Task Scheduler job has been installed and no proof of BitLocker/encrypted remote destination, retention, or off-host transfer exists. Schedule creation and credentials require on-site approval and service-account privileges. The script neither creates backups nor deletes old files; a separately supervised backup job must call `backup:store` and copy **both** files to protected storage, without logging file contents. A manifest is not a trusted clock or signed authenticity proof if an attacker can edit both files. The actual RPO/RTO and alert delivery must be demonstrated on site.
+
+## Optional Windows one-shot backup job (operator opt-in, NOT installed)
+
+After a Windows POS and **approved encrypted/off-host backup target** are available, an authorized operator can invoke:
+
+```powershell
+pwsh -NoProfile -NonInteractive -File .\scripts\windows\run-store-backup.ps1 `
+  -StoreDbPath "C:\BMC\store-data\bmc.sqlite" `
+  -BackupDirectory "E:\ApprovedEncryptedStoreBackups" `
+  -MaxAgeMinutes 15 `
+  -AcknowledgedEncryptedDestination
+```
+
+The opt-in switch is an **operator acknowledgement**, not a BitLocker/encryption probe. The script fails if approval is omitted, the source is missing, the destination is not already provisioned, or the destination is the same folder as the live ledger. It calls `VACUUM INTO` + paired SHA manifest, generates a collision-resistant timestamp/UUID filename, and audits **every** backup pair against the age target. It exits nonzero when verification/freshness fails, without deleting existing backups or altering the live DB. Successful runs still produce **PLAINTEXT** files: encryption, access policy, off-host replication, retention, monitoring and incident alerting are separate operator-managed prerequisites.
+
+To approach the **proposed** RPO ≤15 minutes, an authorized Windows operator may install a least-privilege Task Scheduler task at an approved cadence, **only after** the encrypted backup destination, reliable alerting of nonzero exit, off-host transfer of **both** SQLite+manifest files, and spare-host restore have been verified. The script is a one-shot building block; it does not install a task or establish unattended backup reliability.
