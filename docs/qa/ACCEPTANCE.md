@@ -64,3 +64,7 @@ The CUSTOMER and STORE receipt copies must show the tender **recorded in settled
 - Hub must atomically compare `expected_price_vnd` against the **live** product price; local edit wins and cloud edit moves to CONFLICT, not silent overwrite. New order uses updated catalog; existing orders retain original price snapshot.
 - After a lost Cloud acknowledgement, repeated signed poll replays the original Hub idempotency key, with only one product update and one audit. Cloud shows APPLIED only after signed Hub result; mirror may remain stale until outbound sync.
 - UI must show PENDING/CONFLICT/APPLIED, responsive at 320px and no false optimistic success. Physical network outage/reconnect test remains a separate acceptance gate.
+
+## Staff app lost-ACK classification gate (2026-10-11)
+
+A 409 HTTP status is NOT sufficient evidence an order was never committed: `IDEMPOTENCY_LEGACY_REVIEW` and `IDEMPOTENCY_PAYLOAD_MISMATCH` require preserving the durable original request and stable key for manual reconciliation. Only known pre-commit `CATALOG_CHANGED` / `PRODUCT_UNAVAILABLE` refresh prices, and explicit validation errors allow edited review. Unknown error codes, network aborts and server errors keep the staged request immutable and route to Recovery, not to a fresh order. The device SQLite pending row must never be overwritten with a changed body even if a caller reuses the key. Native phone kill/restart POC remains a required acceptance step.

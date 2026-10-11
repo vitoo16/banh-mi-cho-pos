@@ -3,7 +3,7 @@ import {ActivityIndicator,FlatList,KeyboardAvoidingView,Platform,Pressable,Scrol
 import {SafeAreaProvider,useSafeAreaInsets} from 'react-native-safe-area-context';
 import * as SecureStore from 'expo-secure-store';
 import {loadPending,stagePending,clearPending,type PendingOrder} from './src/pendingOrders';
-import {HubClient,formatVnd,type Product,type Catalog,type PaymentMethod,type Order,type Session} from '@bmc/contracts';
+import {HubClient,formatVnd,classifyOrderCreateFailure,type Product,type Catalog,type PaymentMethod,type Order,type Session} from '@bmc/contracts';
 const colors={bg:'#FAF9F6',paper:'#FFFFFF',ink:'#1E2420',sub:'#5D6760',line:'#D9DFD8',accent:'#A84F10',pale:'#FFF0E3',green:'#166534',bad:'#B42318'};
 const url=process.env.EXPO_PUBLIC_HUB_URL||'';
 const tokenRef:{current:string|null}={current:null};
@@ -59,15 +59,22 @@ function Staff(){
    setConfirmed(o);setScreen('saved');setCart({});setOrderNote('');setMethod('CASH');
    if(cleanupWarning)setError(cleanupWarning);
   }catch(e){
-   const status=(e as {status?:number}).status;
-   if(status===400||status===404||status===409||status===422){
-    try{await clearPending(draft.key)}catch{setUnknown(true);setScreen('recovery');setError('Không thể xóa bản nháp chưa xác nhận. Không tạo đơn mới; hãy kiểm tra lại trên POS.');return}
+   const disposition=classifyOrderCreateFailure(e);
+   if(disposition!=='UNKNOWN_KEEP_DRAFT'){
+    try{await clearPending(draft.key)}catch{
+     setUnknown(true);setScreen('recovery');
+     setError('Không xóa được bản nháp an toàn. Đừng tạo đơn khác; hãy kiểm tra lại trên POS.');
+     return;
+    }
     setPending(null);pendingKey.current=null;setUnknown(false);
-    if(status===409){await load();setPriceChanged(true)}
+    if(disposition==='PRICE_REFRESH'){await load();setPriceChanged(true)}
     setScreen('review');setError((e as Error).message);
    }else{
+    // A 409 is NOT necessarily a stale catalog. It may mean an older
+    // idempotency record whose order was already committed before migration.
+    // Preserve the exact persisted request and key for human reconciliation.
     setUnknown(true);setScreen('recovery');
-    setError('Chưa biết POS đã nhận đơn hay chưa. Giữ nguyên mã yêu cầu trên máy, kiểm tra lại khi kết nối phục hồi.');
+    setError('Không chắc đơn đã được lưu. Giữ nguyên bản ghi và mã chống trùng; kiểm tra cùng mã đơn trên POS trước khi thử lại.');
    }
   }finally{requestLock.current=false;setBusy(false)}
  }
@@ -95,7 +102,7 @@ function Staff(){
    return <View style={s.center}><Text style={s.heading}>Cần HTTPS để kết nối POS</Text><Text style={s.desc}>Liên hệ chủ tiệm để sử dụng địa chỉ Store Hub HTTPS có chứng chỉ được điện thoại tin cậy. HTTP chỉ dành cho development có bật cờ rõ ràng.</Text></View>;
  if(!session)return <KeyboardAvoidingView style={s.login} behavior={Platform.OS==='ios'?'padding':undefined}><StatusBar barStyle="dark-content"/><View style={s.logo}><Text style={s.logoText}>BMC</Text></View><Text style={s.kicker}>BÁNH MÌ CHỢ</Text><Text style={s.loginTitle}>Bắt đầu nhận đơn</Text><Text style={s.desc}>Nhập mã PIN do chủ tiệm cấp.</Text><Text style={s.label}>Mã nhân viên</Text><TextInput accessibilityLabel="Mã nhân viên" autoCapitalize="none" autoCorrect={false} value={staffId} onChangeText={setStaffId} style={s.input}/><Text style={s.label}>Mã PIN nhân viên</Text><TextInput accessibilityLabel="Mã PIN nhân viên" secureTextEntry value={pin} onChangeText={setPin} style={s.input} autoCorrect={false} keyboardType="numeric"/><Text style={s.label}>Mã ghép thiết bị (chỉ nhập lần đầu hoặc sau khi bị thu hồi)</Text><TextInput accessibilityLabel="Mã ghép thiết bị" autoCapitalize="characters" autoCorrect={false} value={pairingCode} onChangeText={setPairingCode} maxLength={16} style={s.input} placeholder="16 ký tự do chủ tiệm cung cấp"/><Pressable style={s.primary} disabled={busy||!credentialsReady||pin.length<6} onPress={()=>void login()}><Text style={s.primaryText}>Đăng nhập</Text></Pressable>{error&&<Text style={s.error}>{error}</Text>}</KeyboardAvoidingView>;
  const body=<View style={s.root}>
-  <View style={s.header}><View><Text style={s.kicker}>BÁNH MÌ CHỢ</Text><Text style={s.title}>{screenName==='menu'?'Nhận đơn mới':screenName==='review'?'Kiểm tra đơn':screenName==='saved'?'Đã lưu đơn':screenName==='recovery'?'Kiểm tra đơn đang gửi':'Đơn của tôi'}</Text></View><Pressable accessibilityRole="button" onPress={()=>screenName==='menu'?void showHistory():setScreen('menu')} style={s.historyButton}><Text style={s.historyLabel}>{screenName==='menu'?'Đơn của tôi':'← Trở lại'}</Text></Pressable><Pressable accessibilityRole="button" accessibilityLabel="Đăng xuất" onPress={()=>void logout()} style={s.historyButton}><Text style={s.historyLabel}>Thoát</Text></Pressable></View>
+  <View style={s.header}><View><Text style={s.kicker}>BÁNH MÌ CHỢ</Text><Text style={s.title}>{screenName==='menu'?'Nhận đơn mới':screenName==='review'?'Kiểm tra đơn':screenName==='saved'?'Đã lưu đơn':screenName==='recovery'?'Kiểm tra đơn đang gửi':'Đơn của tôi'}</Text></View><Pressable accessibilityRole="button" onPress={()=>screenName==='menu'?void showHistory():pending?setScreen('recovery'):setScreen('menu')} style={s.historyButton}><Text style={s.historyLabel}>{screenName==='menu'?'Đơn của tôi':pending?'Đơn đang chờ':'← Trở lại'}</Text></Pressable><Pressable accessibilityRole="button" accessibilityLabel="Đăng xuất" onPress={()=>void logout()} style={s.historyButton}><Text style={s.historyLabel}>Thoát</Text></Pressable></View>
   {screenName==='menu'&&<><View style={s.searchWrap}><TextInput placeholder="Tìm tên món…" placeholderTextColor="#849085" value={search} onChangeText={setSearch} style={s.searchInput}/></View>
     <FlatList data={products} keyExtractor={p=>p.id} keyboardShouldPersistTaps="handled" contentContainerStyle={{paddingHorizontal:16,paddingBottom:100}} ListEmptyComponent={<Text style={s.desc}>Chưa có món. Chủ tiệm cần thêm món vào danh mục.</Text>} renderItem={({item})=><ProductRow item={item} qty={cart[item.id]?.qty||0} adjust={adjust}/>}/>
     <View style={[s.footer,{paddingBottom:rootPadding}]}><View style={{flex:1,minWidth:0}}><Text style={s.footerLabel}>{count} món</Text><Text style={s.footerAmount}>{formatVnd(total)}</Text></View><Pressable accessibilityRole="button" disabled={count===0} onPress={()=>setScreen('review')} style={[s.footerAction,count===0&&{opacity:.45}]}><Text style={s.footerActionText}>Xem đơn →</Text></Pressable></View>

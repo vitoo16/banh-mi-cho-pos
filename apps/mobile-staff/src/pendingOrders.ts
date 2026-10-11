@@ -1,5 +1,5 @@
 import * as SQLite from 'expo-sqlite';
-import type {CreateOrderInput} from '@bmc/contracts';
+import {sameStagedCreateCommand,type CreateOrderInput} from '@bmc/contracts';
 
 /** One durable in-flight create command per device. The Hub remains the authority.
  * The exact immutable body + idempotency key survive app termination and network loss.
@@ -37,9 +37,13 @@ export async function loadPending():Promise<PendingOrder|null>{
 export async function stagePending(p:PendingOrder):Promise<void>{
   if(!p.key||!p.staff_id||!p.body.items.length)throw Error('Invalid pending command');
   const db=await database();
-  const existing=await db.getFirstAsync<{key:string}>('SELECT key FROM pending_order WHERE slot=1');
-  if(existing&&existing.key!==p.key)throw new Error('Thiết bị đã có đơn chưa xác nhận. Phải kiểm tra đơn trước khi tạo mới.');
-  await db.runAsync('INSERT INTO pending_order(slot,key,staff_id,body_json,created_at) VALUES(1,?,?,?,?) ON CONFLICT(slot) DO UPDATE SET key=excluded.key,staff_id=excluded.staff_id,body_json=excluded.body_json,created_at=excluded.created_at',
+  const existing=await db.getFirstAsync<{key:string;staff_id:string;body_json:string}>('SELECT key,staff_id,body_json FROM pending_order WHERE slot=1');
+  if(existing){
+    if(!sameStagedCreateCommand(existing,p))
+      throw new Error('Máy đang giữ một yêu cầu chưa xác nhận. Không thể ghi đè mã chống trùng hoặc nội dung đơn.');
+    return; // Exact retry does not rewrite durable payload/creation time.
+  }
+  await db.runAsync('INSERT INTO pending_order(slot,key,staff_id,body_json,created_at) VALUES(1,?,?,?,?)',
     [p.key,p.staff_id,JSON.stringify(p.body),p.created_at]);
 }
 export async function clearPending(key:string):Promise<void>{

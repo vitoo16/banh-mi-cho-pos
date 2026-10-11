@@ -42,3 +42,7 @@ Expo project bootstrapped and reproducible in CI; RN app links to shared generat
 ## Detailed UI execution overlay (P0, 2026-10-10)
 
 Before any RN UI task read `docs/ui/UI_IMPLEMENTATION_MASTER_PLAN.md`, `docs/ui/SCREEN_SPECS.md` (RN-00..RN-04), `docs/ui/DESIGN_SYSTEM.md`, `docs/ui/UI_QA_MATRIX.md`, and `docs/ui/AGENT_UI_WORKFLOW.md`. UI-01A implements Menu + Review + requested CASH/BANK, UI-01B implements verified Hub ACK and recent orders. No new kitchen/inventory or staff financial authority. Agents use local `expo-react-native`, `mobile-first-operational-ui` skills and current reviewed Vercel RN + Taste references. RN screen baseline 320dp with keyboard + safe area; signed off only with real Android handset measurements.
+
+## Durable failed-create handling (2026-10-11)
+
+The shared `classifyOrderCreateFailure` uses actual Hub error **codes**, not numeric HTTP status, to decide if local staged draft can be safely cleared. Unknown results including legacy idempotency 409 preserve the original key+payload and show Recovery; staged SQLite records are immutable for a given key. Only confirmed explicitly pre-commit validation errors clear the staging record for user editing. See `tests/order-create-recovery.test.mjs` for server error classification fixtures. This does not substitute for real Android/iOS process-termination tests.

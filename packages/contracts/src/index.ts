@@ -26,6 +26,28 @@ export interface CreateOrderInput {catalog_version:number;requested_payment_meth
 export function formatVnd(value:number):string {return new Intl.NumberFormat('vi-VN').format(value)+'đ'}
 export const money = (x:unknown):number=>{if(typeof x!=='number'||!Number.isSafeInteger(x)||x<0||x>1_000_000_000)throw new Error('Số tiền không hợp lệ');return x};
 export class ApiError extends Error {constructor(public status:number,public code:string,message:string){super(message)}}
+
+/**
+ * The Hub returns 409 for both pre-commit catalog conflicts and ambiguous
+ * idempotency migrations. Never erase a durable phone draft on HTTP status alone.
+ */
+export type OrderCreateDisposition='PRICE_REFRESH'|'EDIT_REVIEW'|'UNKNOWN_KEEP_DRAFT';
+export function classifyOrderCreateFailure(error:unknown):OrderCreateDisposition{
+ const code=error&&typeof error==='object'&&'code' in error?(error as {code:unknown}).code:undefined;
+ if(code==='CATALOG_CHANGED'||code==='PRODUCT_UNAVAILABLE')return 'PRICE_REFRESH';
+ if(['METHOD_DISABLED','EMPTY_ORDER','INVALID_PRODUCT','INVALID_QUANTITY','INVALID_TOTAL','INVALID_MONEY','INVALID_TEXT'].includes(String(code)))
+  return 'EDIT_REVIEW';
+ // Includes IDEMPOTENCY_LEGACY_REVIEW / IDEMPOTENCY_PAYLOAD_MISMATCH,
+ // network aborts, HTTP 5xx, unrecognized 409, auth failures and unknown ACKs.
+ return 'UNKNOWN_KEEP_DRAFT';
+}
+export function sameStagedCreateCommand(
+ existing:{key:string;staff_id:string;body_json:string},
+ next:{key:string;staff_id:string;body:CreateOrderInput}
+):boolean{
+ return existing.key===next.key&&existing.staff_id===next.staff_id&&existing.body_json===JSON.stringify(next.body);
+}
+
 export class HubClient {
   constructor(public readonly baseUrl:string,private getToken:()=>string|undefined,private getDeviceToken:()=>string|undefined=()=>undefined){}
   async request<T>(path:string,init:RequestInit={},key?:string):Promise<T>{
