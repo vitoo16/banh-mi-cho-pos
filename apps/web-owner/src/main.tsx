@@ -18,10 +18,12 @@ import {submitCatalogChange} from './features/catalog/mutations';
 import './styles.css';
 
 import {AppShell,type OwnerPage as Page} from './app/AppShell';
+import {useOwnerRoute} from './app/router';
 
 function App(){
  const {session,login,logout}=useOwnerAuth();
- const [pin,setPin]=useState(''),[page,setPage]=useState<Page>('dashboard'),[error,setError]=useState(''),[notice,setNotice]=useState(''),[busy,setBusy]=useState(false);
+ const {page,navigate}=useOwnerRoute();
+ const [pin,setPin]=useState(''),[error,setError]=useState(''),[notice,setNotice]=useState(''),[busy,setBusy]=useState(false);
  const [deviceLabel,setDeviceLabel]=useState(''),[newPairing,setNewPairing]=useState<PairingCode|null>(null);
  const [empId,setEmpId]=useState(''),[empName,setEmpName]=useState(''),[empPin,setEmpPin]=useState(''),[empRole,setEmpRole]=useState<'STAFF'|'CASHIER'>('STAFF');
  const [editing,setEditing]=useState<string|null>(null),[name,setName]=useState(''),[price,setPrice]=useState(''),[category,setCategory]=useState('Bánh mì'),[active,setActive]=useState(true);
@@ -56,7 +58,7 @@ function App(){
  const restoreCatalogRetry=(item:CatalogRetry)=>{
   setEditing(item.draft.target);setName(item.draft.name);
   setCategory(item.draft.category);setPrice(String(item.draft.price_vnd));
-  setActive(item.draft.is_active);setPage('catalog');
+  setActive(item.draft.is_active);navigate('catalog',{replace:true});
   setNotice('Có yêu cầu menu chưa xác nhận. Gửi lại chính nội dung cũ để tra cứu, không tạo món trùng.');
  };
  useEffect(()=>{
@@ -70,7 +72,7 @@ function App(){
   setEditing(p?.id||'new');setName(p?.name||'');setCategory(p?.category||'Bánh mì');
   setPrice(String(p?.price_vnd??''));setActive(p?.is_active??true);setNotice('');
  };
- function navigateSidebar(target:Page){setPage(target);setError('');setNotice('')}
+ function navigateSidebar(target:Page){navigate(target);setError('');setNotice('')}
  function refreshPage(){
   if(!session)return;
   if(page==='dashboard'||page==='sales')void queryClient.invalidateQueries({queryKey:page==='dashboard'?['owner']:['owner','product-sales']});
@@ -89,8 +91,8 @@ function App(){
  }
  if(!session)return <OwnerLogin remote={remote} pin={pin} busy={busy} error={error} onPinChange={setPin} onSignIn={signIn}/>;
  return <AppShell userName={session.user.name} page={page} remote={remote}
- onSidebarNavigate={navigateSidebar} onBottomNavigate={setPage} onLogout={logout} onRefresh={refreshPage}>
- {page==='dashboard'&&<OwnerDashboard onOpenSales={()=>setPage('sales')}/>}
+ onSidebarNavigate={navigateSidebar} onBottomNavigate={navigate} onLogout={logout} onRefresh={refreshPage}>
+ {page==='dashboard'&&<OwnerDashboard onOpenSales={()=>navigate('sales')}/>}
  {page==='sales'&&<OwnerProductSalesPage/>}
  {page==='orders'&&<OrderHistoryPage/>}
  {page==='finance'&&<FinancePage ownerId={session.user.id} remote={remote}/>}
