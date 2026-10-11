@@ -80,3 +80,10 @@ A 409 HTTP status is NOT sufficient evidence an order was never committed: `IDEM
 ## Owner catalog lost-response retry (2026-10-11)
 
 A timed-out remote or local Owner product CREATE/UPDATE may already be committed. Owner Web now writes its immutable command payload and idempotency key into sessionStorage BEFORE HTTP, reuses the exact key/body after error and even after a reload, and only clears it after a positive ACK or clearly rejected 400/404/422. On next login it restores the pending catalog form; attempting a different edit while an uncertain mutation remains triggers a clear blocking error. Playwright simulates a successful server-side create with HTTP 503 response loss, reloads, retries, and confirms identical keys and one server-side mutation. This does not substitute for real WAN-down testing or a merchant/hardware acceptance.
+
+## Cloud delayed/out-of-order product and shift outbox (2026-10-11)
+
+- Product events in reverse arrival order must leave Owner mirror at the highest signed SQLite `seq` (price, name, enabled flag). Replayed old ID/new ID at lower/equal seq must never revert the mirror.
+- Cash-shift CLOSED received before delayed OPEN must remain CLOSED; Owner dashboard must not surface a phantom open drawer.
+- Missing `seq` is tolerated only for legacy events until the aggregate has advanced to a positive sequence. Missing is not the same as invalid zero/negative/float/overflow sequences, which reject the signed batch atomically.
+- Verified Cloud CI must show real PostgreSQL transaction rollback for a mixed valid/invalid batch. Hardware WAN disconnect/restore remains a separate release gate.

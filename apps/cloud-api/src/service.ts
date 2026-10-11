@@ -2,7 +2,7 @@ import {Injectable,UnauthorizedException,BadRequestException,HttpException} from
 import {createHash,createHmac,timingSafeEqual,randomBytes} from 'node:crypto';
 import {SePayService} from './sepay';
 import {CloudDb} from './db';
-type Event={id:string;entity:string;payload:Record<string,unknown>};
+type Event={id:string;seq?:number;entity:string;payload:Record<string,unknown>};
 const digest=(input:string)=>createHash('sha256').update(input).digest();
 function same(a:Buffer,b:Buffer){return a.length===b.length&&timingSafeEqual(a,b)}
 function secretMatch(a:string,b:string){return same(digest(a),digest(b))}
@@ -71,7 +71,11 @@ RETURNING blocked_until`,[bucket]);
    for(const event of events as Event[]){
     if(!event||typeof event!=='object'||!['order','payment','refund','product','shift','cash_movement','bank_exception','bank_intent'].includes(event.entity))throw new BadRequestException('Unknown event');
     const id=str(event.id,80),p=event.payload;
-    if(!p||typeof p!=='object')throw new BadRequestException('Invalid event body');
+    if(!p||typeof p!=='object'||Array.isArray(p))throw new BadRequestException('Invalid event body');
+    // Signed SQLite outbox sequence; missing field is supported for legacy Hub senders.
+    if(event.seq!==undefined&&(!Number.isSafeInteger(event.seq)||event.seq<=0))
+     throw new BadRequestException('Invalid outbox sequence');
+    const sourceSeq=event.seq??0;
     const inserted=await c.query('INSERT INTO synced_events(store_id,event_id,entity) VALUES($1,$2,$3) ON CONFLICT DO NOTHING RETURNING event_id',[storeId,id,event.entity]);
     if(!inserted.rowCount){received.push(id);continue}
     if(event.entity==='order'){
@@ -97,9 +101,24 @@ RETURNING blocked_until`,[bucket]);
      const placeholders=args.map((_,i)=>'$'+(i+1)).join(',');
      await c.query('INSERT INTO '+table+'('+fields+') VALUES('+placeholders+') ON CONFLICT DO NOTHING',args);
     }else if(event.entity==='product'){
-     await c.query(`INSERT INTO mirror_products(store_id,id,name,category,price_vnd,is_active) VALUES($1,$2,$3,$4,$5,$6) ON CONFLICT(store_id,id) DO UPDATE SET name=EXCLUDED.name,category=EXCLUDED.category,price_vnd=EXCLUDED.price_vnd,is_active=EXCLUDED.is_active`,[storeId,str(p.id),str(p.name),str(p.category),vnd(p.price_vnd),Boolean(p.is_active)]);
+     await c.query(`INSERT INTO mirror_products(store_id,id,name,category,price_vnd,is_active,source_seq)
+ VALUES($1,$2,$3,$4,$5,$6,$7)
+ ON CONFLICT(store_id,id) DO UPDATE SET
+ name=EXCLUDED.name,category=EXCLUDED.category,price_vnd=EXCLUDED.price_vnd,
+ is_active=EXCLUDED.is_active,source_seq=EXCLUDED.source_seq
+ WHERE EXCLUDED.source_seq>mirror_products.source_seq
+ OR (EXCLUDED.source_seq=0 AND mirror_products.source_seq=0)`,
+ [storeId,str(p.id),str(p.name),str(p.category),vnd(p.price_vnd),Boolean(p.is_active),sourceSeq]);
     }else if(event.entity==='shift'){
-     await c.query(`INSERT INTO mirror_shifts(store_id,id,cashier_id,opening_float_vnd,status,opened_at,closed_at,counted_cash_vnd,variance_vnd) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9) ON CONFLICT(store_id,id) DO UPDATE SET status=EXCLUDED.status,closed_at=EXCLUDED.closed_at,counted_cash_vnd=EXCLUDED.counted_cash_vnd,variance_vnd=EXCLUDED.variance_vnd`,[storeId,str(p.id),str(p.cashier_id),vnd(p.opening_float_vnd),str(p.status),str(p.opened_at),p.closed_at||null,p.counted_cash_vnd??null,p.variance_vnd??null]);
+     await c.query(`INSERT INTO mirror_shifts(store_id,id,cashier_id,opening_float_vnd,status,opened_at,closed_at,counted_cash_vnd,variance_vnd,source_seq)
+ VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
+ ON CONFLICT(store_id,id) DO UPDATE SET
+ status=EXCLUDED.status,closed_at=EXCLUDED.closed_at,
+ counted_cash_vnd=EXCLUDED.counted_cash_vnd,variance_vnd=EXCLUDED.variance_vnd,
+ source_seq=EXCLUDED.source_seq
+ WHERE EXCLUDED.source_seq>mirror_shifts.source_seq
+ OR (EXCLUDED.source_seq=0 AND mirror_shifts.source_seq=0)`,
+ [storeId,str(p.id),str(p.cashier_id),vnd(p.opening_float_vnd),str(p.status),str(p.opened_at),p.closed_at||null,p.counted_cash_vnd??null,p.variance_vnd??null,sourceSeq]);
     }
     received.push(id);
    }

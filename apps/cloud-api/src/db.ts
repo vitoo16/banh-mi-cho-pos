@@ -38,6 +38,10 @@ ALTER TABLE remote_product_commands ADD COLUMN IF NOT EXISTS operation text NOT 
 ALTER TABLE remote_product_commands ADD COLUMN IF NOT EXISTS category text NOT NULL DEFAULT 'Khác';
 
 CREATE TABLE IF NOT EXISTS mirror_shifts(store_id text NOT NULL,id text NOT NULL,cashier_id text NOT NULL,opening_float_vnd bigint NOT NULL,status text NOT NULL,opened_at timestamptz NOT NULL,closed_at timestamptz,counted_cash_vnd bigint,variance_vnd bigint,PRIMARY KEY(store_id,id));
+-- Additive monotonic projection checkpoint. Legacy rows start with sequence 0;
+-- a delayed old batch must never revert a higher-sequence projection.
+ALTER TABLE mirror_products ADD COLUMN IF NOT EXISTS source_seq bigint NOT NULL DEFAULT 0;
+ALTER TABLE mirror_shifts ADD COLUMN IF NOT EXISTS source_seq bigint NOT NULL DEFAULT 0;
 `);
  }
  async transaction<T>(fn:(client:PoolClient)=>Promise<T>):Promise<T>{

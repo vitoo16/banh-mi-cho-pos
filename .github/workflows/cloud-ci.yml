@@ -1,7 +1,7 @@
 name: Cloud Postgres contract and sync tests
 on:
   pull_request:
-    paths: ['apps/cloud-api/**','apps/store-hub/src/sync.ts','apps/store-hub/src/db.ts','tests/cloud.test.mjs','tests/remote-product-commands.test.mjs','apps/store-hub/src/service.ts','.github/workflows/cloud-ci.yml']
+    paths: ['apps/cloud-api/**','apps/store-hub/src/sync.ts','apps/store-hub/src/db.ts','tests/cloud.test.mjs','tests/remote-product-commands.test.mjs','tests/cloud-projection-order.test.mjs','apps/store-hub/src/service.ts','.github/workflows/cloud-ci.yml']
   push:
     branches: [main]
 permissions:
@@ -34,4 +34,4 @@ jobs:
       - run: npm run build -w @bmc/contracts
       - run: npm run build -w @bmc/store-hub
       - run: npm run build -w @bmc/cloud-api
-      - run: node --test --test-concurrency=1 tests/cloud.test.mjs tests/sepay.test.mjs tests/remote-product-commands.test.mjs
+      - run: node --test --test-concurrency=1 tests/cloud.test.mjs tests/sepay.test.mjs tests/remote-product-commands.test.mjs tests/cloud-projection-order.test.mjs
