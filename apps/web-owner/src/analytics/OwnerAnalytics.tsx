@@ -3,6 +3,7 @@ import {useQuery} from '@tanstack/react-query';
 import {formatVnd} from '@bmc/contracts';
 import {hub,remote} from '../api';
 import {summaryOptions} from '../features/finance/queries';
+import {useShopToday} from '../app/useShopToday';
 
 const fmt=(x:number|undefined)=>new Intl.NumberFormat('vi-VN').format(x??0);
 function ErrorMessage({error}:{error:unknown}){return <p className="alert" role="alert">{error instanceof Error?error.message:'Không tải được dữ liệu. Thử tải lại.'}</p>}
@@ -15,8 +16,9 @@ const CashCard=memo(function CashCard(){
  return <div className="kpi"><span>TIỀN MẶT ĐÃ THU</span><strong>{isPending?'…':formatVnd(data??0)}</strong><small>{error?'Dữ liệu tạm thời gián đoạn':'Không gồm tiền quỹ đầu ca'}</small></div>
 });
 export const TodayOrdersCard=memo(function TodayOrdersCard({onOpen}:{onOpen:()=>void}){
- const {data,isPending,error}=useQuery({queryKey:['owner','orders-today'],queryFn:()=>hub.ownerTodayCounts(),refetchInterval:10_000,staleTime:4_000});
- return <div className="kpi"><span>TỔNG SỐ ĐƠN HÔM NAY</span><strong aria-label="Tổng số đơn hôm nay">{isPending?'…':fmt(data?.total_orders)}</strong><small>Bao gồm đơn chưa thu và đã hủy; {fmt(data?.paid_orders)} đơn đã thu</small><button className="textbutton analytics-link" onClick={onOpen}>Xem số bánh bán theo loại →</button>{error&&<small role="alert">Không cập nhật được số đơn</small>}</div>
+ const shopDate=useShopToday();
+ const {data,isPending,error}=useQuery({queryKey:['owner','orders-today',shopDate],queryFn:()=>hub.ownerTodayCounts(),refetchInterval:10_000,staleTime:4_000});
+ return <div className="kpi"><span>TỔNG SỐ ĐƠN HÔM NAY</span><strong aria-label="Tổng số đơn hôm nay">{isPending?'…':fmt(data?.total_orders)}</strong><small>Ngày {shopDate.slice(8,10)}/{shopDate.slice(5,7)}/{shopDate.slice(0,4)} · Bao gồm đơn chưa thu và đã hủy; {fmt(data?.paid_orders)} đơn đã thu</small><button className="textbutton analytics-link" onClick={onOpen}>Xem số bánh bán theo loại →</button>{error&&<small role="alert">Không cập nhật được số đơn</small>}</div>
 });
 const PaidOrdersCard=memo(function PaidOrdersCard(){
  const {data,isPending}=useQuery({...summaryOptions(),select:r=>r.paid_orders});

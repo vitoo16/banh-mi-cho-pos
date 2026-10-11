@@ -34,6 +34,7 @@
 .period-selector button.active{background:#fff;box-shadow:0 1px 4px #152b1b1f;color:#8c3d06}
 .analytics-date{display:flex;flex-direction:column;gap:5px;font-size:13px;color:#38453b}
 .analytics-date input{min-height:44px;padding:8px;border:1px solid #bec7bc;border-radius:9px;max-width:100%}
+.analytics-controls .analytics-today{min-height:44px;margin-top:0;align-self:flex-end;}
 .analytics-controls button:focus-visible,.analytics-controls input:focus-visible{outline:3px solid var(--bmc-accent);outline-offset:2px}
 .sales-stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
 .sales-stats>div{display:grid;gap:8px;padding:13px;border:1px solid #e7ebe2;border-radius:11px}

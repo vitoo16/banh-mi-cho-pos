@@ -628,3 +628,37 @@ test('OR-06a: extracted production period and date controls share one query acro
  expect(requested[3]).toContain('date=2026-01-01');
  expect(f.calls.filter(c=>['/v1/orders/history','/v1/owner/products','/v1/owner/employees'].includes(c.path))).toHaveLength(0);
 });
+
+
+test('OR-06b: today order KPI crosses shop midnight without full page reload',async({page})=>{
+ await page.clock.install({time:new Date('2026-10-12T16:59:45.000Z')});
+ const f=await fixture(page);
+ await login(page);
+ await expect(page.getByText('Ngày 12/10/2026',{exact:false})).toBeVisible();
+ await expect(page.getByLabel('Tổng số đơn hôm nay')).toHaveText('4');
+ const before=f.calls.filter(x=>x.path==='/v1/owner/analytics/today').length;
+ f.setToday(9);
+ await page.clock.fastForward(35_000);
+ await expect(page.getByText('Ngày 13/10/2026',{exact:false})).toBeVisible();
+ await expect(page.getByLabel('Tổng số đơn hôm nay')).toHaveText('9');
+ expect(f.calls.filter(x=>x.path==='/v1/owner/analytics/today').length).toBeGreaterThan(before);
+ expect(f.calls.filter(x=>x.path==='/v1/orders/history')).toHaveLength(0);
+});
+test('OR-06b: production follows today over midnight until operator chooses historical date',async({page})=>{
+ await page.clock.install({time:new Date('2026-10-12T16:59:45.000Z')});
+ await fixture(page);await login(page);await tab(page,'Sản lượng');
+ const input=page.getByLabel('Chọn ngày tham chiếu');
+ await expect(input).toHaveValue('2026-10-12');
+ await page.clock.fastForward(35_000);
+ await expect(input).toHaveValue('2026-10-13');
+ await input.fill('2026-10-01');
+ await expect(input).toHaveValue('2026-10-01');
+ await page.clock.fastForward(86_400_000);
+ await expect(input).toHaveValue('2026-10-01','Manual historical date must not jump across the next midnight');
+ const today=page.getByRole('button',{name:'Về hôm nay'});
+ await expect(today).toBeVisible();
+ const bounds=await today.boundingBox();
+ expect(bounds?.height).toBeGreaterThanOrEqual(44);
+ await today.click();
+ await expect(input).toHaveValue('2026-10-14');
+});
