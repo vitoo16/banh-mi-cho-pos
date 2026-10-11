@@ -53,7 +53,9 @@ async function sha256(file){
  return digest.digest('hex');
 }
 function fsyncFile(file){
- const handle=openSync(file,'r');
+ // Windows FlushFileBuffers requires a write-capable handle. All calls are
+ // for files this command just created, never the live store or a source backup.
+ const handle=openSync(file,'r+');
  try{fsyncSync(handle)}finally{closeSync(handle)}
 }
 function privateMode(file){
