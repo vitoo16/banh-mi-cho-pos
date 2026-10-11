@@ -50,3 +50,11 @@
 .due strong,.change strong,.cash-panel input.tender{font-variant-numeric:tabular-nums}
 .receipt-row small{color:var(--bmc-warning)}
 .orders-scroll{overscroll-behavior:contain}
+
+/* POS keyboard: skip navigation without hiding cash totals or alert banners. */
+.pos-skip-link{position:fixed;z-index:60;top:12px;left:12px;transform:translateY(-170%);
+ display:flex;align-items:center;min-height:48px;padding:10px 16px;
+ background:#fff;color:var(--bmc-ink);border:3px solid var(--bmc-focus);
+ border-radius:10px;font-weight:800;box-shadow:0 8px 25px #1d281d24}
+.pos-skip-link:focus-visible{transform:none}
+#pos-main:focus{outline:none}
