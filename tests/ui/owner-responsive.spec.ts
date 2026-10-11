@@ -184,8 +184,14 @@ test('OR-08a: Catalog dialog moves focus inside, traps Shift+Tab/Tab and returns
  const dialog=page.getByRole('dialog',{name:'Chỉnh sản phẩm'});
  await expect(dialog).toBeVisible();
  await expect(dialog.getByLabel('Tên món')).toBeFocused();
+ // Disabled submit is intentionally skipped by keyboard. Enable it before
+ // verifying wrap-around between first and last focusable controls.
+ await dialog.getByLabel('Tên món').fill('Bánh mì kiểm thử focus');
+ await dialog.getByLabel('Giá bán (VNĐ)').fill('43000');
+ await dialog.getByLabel('Tên món').focus();
  const close=dialog.getByRole('button',{name:'Đóng'});
  const submit=dialog.getByRole('button',{name:'Lưu sản phẩm'});
+ await expect(submit).toBeEnabled();
  await page.keyboard.press('Shift+Tab');
  await expect(close).toBeFocused();
  await page.keyboard.press('Shift+Tab');
