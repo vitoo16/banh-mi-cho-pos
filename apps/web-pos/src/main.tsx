@@ -3,6 +3,7 @@ import {createRoot} from 'react-dom/client';
 import {HubClient,formatVnd,type Order,type Shift,type ReceiptCopy,type Session,type OperationalStatus} from '@bmc/contracts';
 import {ShoppingBag,Wallet,Search,LogOut,Wifi,WifiOff,CheckCircle2,Clock,Printer,Plus,ArrowDownLeft,History,ShieldAlert,RefreshCcw} from 'lucide-react';
 import './styles.css';
+import {vietQrImageUrl} from './vietQr';
 import {readPendingCash,stagePendingCash,clearPendingCash,type PendingCashCapture} from './pendingCash';
 const tokenKey='bmc_cashier_token';
 const hub=new HubClient('',()=>sessionStorage.getItem(tokenKey)||undefined);
@@ -19,7 +20,8 @@ function App(){
  const [connectionError,setConnectionError]=useState(''),[historicalOrder,setHistoricalOrder]=useState<Order|null>(null);
  const [bankIntent,setBankIntent]=useState<{reference:string;amount_vnd:number;account_number:string;bank_code:string;status:string}|null>(null);
  const [bankBusy,setBankBusy]=useState(false);
- const createBank=async()=>{if(!current||bankBusy)return;setBankBusy(true);setError('');try{const b=await hub.bankIntent(current.order_id,nonce());setBankIntent(b)}catch(e){setError((e as Error).message)}finally{setBankBusy(false)}};
+ const [qrFailed,setQrFailed]=useState(false);
+ const createBank=async()=>{if(!current||bankBusy)return;setBankBusy(true);setError('');try{const b=await hub.bankIntent(current.order_id,nonce());setQrFailed(false);setBankIntent(b)}catch(e){setError((e as Error).message)}finally{setBankBusy(false)}};
  const [moveKind,setMoveKind]=useState<'ADD'|'WITHDRAW'|'EXPENSE'>('ADD'),[moveAmount,setMoveAmount]=useState('');
  const keyRef=useRef<string|null>(null);
  const cashRequestLock=useRef(false);
@@ -27,6 +29,7 @@ function App(){
  const [pendingCashError,setPendingCashError]=useState(()=>{try{readPendingCash(localStorage);return ''}catch(e){return (e as Error).message}});
 
  const current=useMemo(()=>orders.find(o=>o.order_id===selected)||(historicalOrder?.order_id===selected?historicalOrder:undefined),[orders,selected,historicalOrder]);
+ const qrImageUrl=bankIntent?vietQrImageUrl(bankIntent):null;
  const due=current?.total_vnd||0;const paid=current?.payment_status==='PAID';const cashGiven=moneyInput(tender);const change=Math.max(0,cashGiven-due);
  const refresh=async()=>{
   try{const [os,sh]=await Promise.all([hub.orders(),hub.shift()]);setOrders(os);setShift(sh);setOnline(true);setConnectionError('')}
@@ -35,7 +38,7 @@ function App(){
   try{setOperations(await hub.operationalStatus())}catch{setOperations(null)}
  };
  useEffect(()=>{if(!session)return;void refresh();const id=setInterval(()=>void refresh(),2500);return ()=>clearInterval(id)},[session]);
- useEffect(()=>{if(!current)return;setMethod(current.requested_payment_method==='BANK'?'BANK':'CASH');setCopies([]);setBankIntent(null);setTender('');setMessage('');keyRef.current=null;},[selected]);
+ useEffect(()=>{if(!current)return;setMethod(current.requested_payment_method==='BANK'?'BANK':'CASH');setCopies([]);setBankIntent(null);setQrFailed(false);setTender('');setMessage('');keyRef.current=null;},[selected]);
  useEffect(()=>{
   if(!selected)return;
   let live=true;
@@ -125,7 +128,16 @@ function App(){
     <div className="lineitems">{current.items.map((it,i)=><div className="item" key={i}><div><b>{it.name_snapshot} <span className="muted">× {it.qty}</span></b>{it.note&&<small>Ghi chú: {it.note}</small>}</div><strong>{formatVnd(it.line_total_vnd)}</strong></div>)}</div>
     <div className="due"><span>TỔNG CẦN THU</span><strong>{formatVnd(due)}</strong></div>
     {!paid&&current.status==='COMMITTED'? <><div className="method-row"><button onClick={()=>setMethod('CASH')} className={method==='CASH'?'chosen':''}><Wallet size={17}/> Tiền mặt</button><button onClick={()=>setMethod('BANK')} className={method==='BANK'?'chosen':''}>▦ Chuyển khoản</button></div>
-    {method==='CASH'?<div className="cash-panel"><label htmlFor="tender">Khách đưa (VNĐ)</label><input id="tender" inputMode="numeric" className="tender" value={tender} onChange={e=>setTender(e.target.value)} placeholder="0"/><div className="denominations">{[50000,100000,200000,500000].map(n=><button key={n} onClick={()=>setTender(String(n))}>{n/1000}k</button>)}</div><div className="change"><span>{cashGiven>=due?'TIỀN THỐI':'CÒN THIẾU'}</span><strong className={cashGiven<due?'negative':''}>{formatVnd(Math.abs(cashGiven-due))}</strong></div><button className="primary full big" disabled={busy||!online||!shift||cashGiven<due||!!pendingCash||!!pendingCashError} onClick={settle}>{busy?'Đang xử lý…':'Xác nhận đã nhận tiền'}</button>{!shift&&<p className="hint">Cần mở ca trước khi thu tiền mặt.</p>}</div>:<div className="bank-panel"><Clock size={24}/><h3>{bankIntent?'Đang chờ xác nhận ngân hàng':'Chuyển khoản'}</h3>{bankIntent?<><p>Ngân hàng: <b>{bankIntent.bank_code}</b></p><p>Tài khoản nhận: <b>{bankIntent.account_number}</b></p><p>Số tiền chính xác: <b>{formatVnd(bankIntent.amount_vnd)}</b></p><p>Nội dung chuyển khoản: <b>{bankIntent.reference}</b></p><p className="hint">Chỉ đánh dấu đã thanh toán khi hệ thống nhận sự kiện giao dịch đã xác minh. Không nhận ảnh chụp làm bằng chứng tự động.</p></>:<p>Hệ thống chỉ tạo mã tham chiếu khi bộ xác minh giao dịch ngân hàng đã được cấu hình. Không được coi lựa chọn của nhân viên là đã thanh toán.</p>}<button className="secondary" disabled={bankBusy} onClick={()=>void createBank()}>{bankBusy?'Đang tạo…':bankIntent?'Kiểm tra thông tin':'Tạo yêu cầu chuyển khoản'}</button><button className="secondary" onClick={()=>{setBankIntent(null);setMethod('CASH')}}>Thu tiền mặt thay thế</button></div>}
+    {method==='CASH'?<div className="cash-panel"><label htmlFor="tender">Khách đưa (VNĐ)</label><input id="tender" inputMode="numeric" className="tender" value={tender} onChange={e=>setTender(e.target.value)} placeholder="0"/><div className="denominations">{[50000,100000,200000,500000].map(n=><button key={n} onClick={()=>setTender(String(n))}>{n/1000}k</button>)}</div><div className="change"><span>{cashGiven>=due?'TIỀN THỐI':'CÒN THIẾU'}</span><strong className={cashGiven<due?'negative':''}>{formatVnd(Math.abs(cashGiven-due))}</strong></div><button className="primary full big" disabled={busy||!online||!shift||cashGiven<due||!!pendingCash||!!pendingCashError} onClick={settle}>{busy?'Đang xử lý…':'Xác nhận đã nhận tiền'}</button>{!shift&&<p className="hint">Cần mở ca trước khi thu tiền mặt.</p>}</div>:<div className="bank-panel"><Clock size={24}/><h3>{bankIntent?'Đang chờ xác nhận ngân hàng':'Chuyển khoản'}</h3>{bankIntent?<><p>Ngân hàng: <b>{bankIntent.bank_code}</b></p><p>Tài khoản nhận: <b>{bankIntent.account_number}</b></p><p>Số tiền chính xác: <b>{formatVnd(bankIntent.amount_vnd)}</b></p><p>Nội dung chuyển khoản: <b>{bankIntent.reference}</b></p>
+     {qrImageUrl&&!qrFailed?
+      <div className="vietqr-block">
+       <img src={qrImageUrl} alt={'VietQR chuyển khoản '+formatVnd(bankIntent.amount_vnd)+' với mã '+bankIntent.reference}
+        width={256} height={256} decoding="async" referrerPolicy="no-referrer"
+        onError={()=>setQrFailed(true)}/>
+       <small>Khách quét bằng ứng dụng ngân hàng. Kiểm tra lại tài khoản nhận và số tiền.</small>
+      </div>
+      :<p className="vietqr-fallback" role="status">Không tải được QR hoặc ngân hàng chưa hỗ trợ định dạng mã hiện tại. Thu ngân hướng dẫn khách nhập chính xác thông tin chuyển khoản ở trên.</p>}
+     <p className="hint">QR chỉ giúp điền thông tin, không phải xác nhận khách đã chuyển tiền. Chỉ đánh dấu đã thanh toán khi hệ thống nhận sự kiện giao dịch đã xác minh. Không nhận ảnh chụp làm bằng chứng tự động.</p></>:<p>Hệ thống chỉ tạo mã tham chiếu khi bộ xác minh giao dịch ngân hàng đã được cấu hình. Không được coi lựa chọn của nhân viên là đã thanh toán.</p>}<button className="secondary" disabled={bankBusy} onClick={()=>void createBank()}>{bankBusy?'Đang tạo…':bankIntent?'Kiểm tra thông tin':'Tạo yêu cầu chuyển khoản'}</button><button className="secondary" onClick={()=>{setBankIntent(null);setMethod('CASH')}}>Thu tiền mặt thay thế</button></div>}
     </>:current.status==='VOIDED'?<section className="paid-panel"><ShieldAlert size={22}/><div><b>Đơn đã hủy</b><p className="muted">Không ghi doanh thu hay thu tiền cho đơn này.</p></div></section>:<section className="paid-panel"><CheckCircle2 size={26}/><div><b>Đã ghi nhận thanh toán</b><p className="muted">Doanh thu ghi một lần. Trạng thái giấy in được quản lý riêng.</p></div></section>}
     {!paid&&current.status==='COMMITTED'&&<button className="ghost" disabled={busy} onClick={()=>{const reason=window.prompt('Lý do hủy đơn chưa thu tiền?');if(reason&&reason.trim().length>=3&&window.confirm('Xác nhận hủy đơn '+current.display_code+'?'))void execute(()=>hub.voidOrder(current.order_id,reason,nonce()),'Đã hủy đơn')}}>Hủy đơn chưa thu tiền</button>}
     {paid&&shift&&<button className="ghost" disabled={busy} onClick={()=>{const reason=window.prompt('Lý do hoàn tiền mặt toàn bộ đơn?');if(reason&&reason.trim().length>=3&&window.confirm('Xác nhận hoàn '+formatVnd(current.total_vnd)+' tiền mặt, giảm tiền két và ghi lịch sử?'))void execute(()=>hub.refundCash(current.order_id,shift.id,reason,nonce()),'Đã ghi nhận hoàn tiền mặt và trừ sổ quỹ')}}>Hoàn toàn bộ tiền mặt</button>}
