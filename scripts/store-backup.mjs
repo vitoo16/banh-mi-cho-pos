@@ -132,9 +132,11 @@ if(mode==='backup'){
  mkdirSync(dirname(first),{recursive:true});
  inspect(live);
  const connection=new DatabaseSync(live);
+ let created=false;
  try{
   // Produces a standalone, transactional snapshot while WAL may be active.
   connection.exec("VACUUM INTO '"+first.replaceAll("'","''")+"'");
+  created=true;
   privateMode(first);
   const info=inspect(first);
   fsyncFile(first); // persist the payload before publishing its checksum metadata
@@ -143,9 +145,8 @@ if(mode==='backup'){
   console.log('Verified SQLite backup + manifest:',first,JSON.stringify(checked.counts));
   console.warn(warning);
  }catch(error){
-  // Preflight refused existing paths: only our own new files may be cleaned here.
-  rmSync(manifestPath(first),{force:true});
-  rmSync(first,{force:true});
+  // Never delete another process's file if VACUUM INTO lost a creation race.
+  if(created){rmSync(manifestPath(first),{force:true});rmSync(first,{force:true})}
   throw error;
  }finally{connection.close()}
 }else if(mode==='verify'){
@@ -159,8 +160,10 @@ if(mode==='backup'){
  // All checks must pass BEFORE a destination can be created.
  const original=await verifySnapshot(first);
  mkdirSync(dirname(second),{recursive:true});
+ let created=false;
  try{
   copyFileSync(first,second,constants.COPYFILE_EXCL);
+  created=true;
   privateMode(second);
   fsyncFile(second);
   const info=inspect(second);
@@ -172,8 +175,7 @@ if(mode==='backup'){
   console.warn('This is NOT an in-place restore. Stop Hub, preserve original -wal/-shm, and reconcile after-snapshot transactions before cutover.');
   console.warn(warning);
  }catch(error){
-  rmSync(manifestPath(second),{force:true});
-  rmSync(second,{force:true});
+  if(created){rmSync(manifestPath(second),{force:true});rmSync(second,{force:true})}
   throw error;
  }
 }
