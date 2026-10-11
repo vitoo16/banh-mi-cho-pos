@@ -546,3 +546,18 @@ test('OR-04b: employee creation invalidates only employee query while device and
  expect(reads('/v1/owner/bank-exceptions')).toBe(0);
  expect(f.employees.find(e=>e.id==='staff08')?.active).toBe(true);
 });
+
+
+test('OR-05a: extracted remote Finance panels never send a payment mutation on display or refresh',async({page})=>{
+ const f=await fixture(page,{remote:true});await login(page,true);await tab(page,'Tài chính');
+ await expect(page.getByRole('heading',{name:'Sổ quỹ hiện tại'})).toBeVisible();
+ await expect(page.getByRole('heading',{name:'Đối soát ngân hàng'})).toBeVisible();
+ await expect(page.getByText('Phát hiện thu cả tiền mặt và chuyển khoản')).toBeVisible();
+ await expect(page.getByText('BANK-UNKNOWN-01')).toBeVisible();
+ await expect(page.getByText('375.000đ')).toBeVisible();
+ await page.getByRole('button',{name:'Tải lại'}).click();
+ await expect(page.getByText('45.000đ')).toBeVisible();
+ const writes=f.calls.filter(c=>c.method!=='GET'&&c.path!=='/v1/auth/login');
+ expect(writes).toHaveLength(0,'Finance render and refresh must never mutate paid/bank state');
+ await expect(page.getByRole('button',{name:/Xác nhận đã thanh toán|Đã nhận tiền/})).toHaveCount(0);
+});
