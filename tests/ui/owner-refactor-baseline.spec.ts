@@ -693,3 +693,97 @@ test('OR-07a: mobile AppShell bottom nav remains active and never overflows at 3
  const sizes=await page.evaluate(()=>({view:innerWidth,doc:document.documentElement.scrollWidth}));
  expect(sizes.doc).toBeLessThanOrEqual(sizes.view+1);
 });
+
+
+test('OR-07b: desktop links, Back and Forward preserve page and do not reauthenticate',async({page})=>{
+ const f=await fixture(page);await login(page);
+ await expect(page).toHaveURL(localUrl);
+ await tab(page,'Sản phẩm');
+ await expect(page).toHaveURL(localUrl+'catalog');
+ await expect(page.getByText('Bánh mì thịt nguội')).toBeVisible();
+ await tab(page,'Tài chính');
+ await expect(page).toHaveURL(localUrl+'finance');
+ await expect(page.getByText('BANK-UNKNOWN-01')).toBeVisible();
+ await page.goBack();
+ await expect(page).toHaveURL(localUrl+'catalog');
+ await expect(page.getByText('Bánh mì thịt nguội')).toBeVisible();
+ await page.goBack();
+ await expect(page).toHaveURL(localUrl);
+ await expect(page.getByText('DOANH THU ĐÃ XÁC NHẬN')).toBeVisible();
+ await page.goForward();
+ await expect(page).toHaveURL(localUrl+'catalog');
+ await expect(page.getByText('Bánh mì thịt nguội')).toBeVisible();
+ await tab(page,'Sản phẩm');
+ await expect(page).toHaveURL(localUrl+'catalog');
+ await page.goBack();
+ await expect(page).toHaveURL(localUrl);
+ expect(f.calls.filter(x=>x.path==='/v1/auth/login'&&x.method==='POST')).toHaveLength(1);
+});
+test('OR-07b: direct Finance deep link requires login, remains after reload and never mutates bank state',async({page})=>{
+ const f=await fixture(page);
+ await page.goto(localUrl+'finance');
+ await expect(page.getByLabel('Mã PIN chủ tiệm')).toBeVisible();
+ await expect(page.getByText('Sổ quỹ hiện tại')).toHaveCount(0);
+ await page.getByLabel('Mã PIN chủ tiệm').fill('owner-pin-test');
+ await page.getByRole('button',{name:'Đăng nhập'}).click();
+ await expect(page).toHaveURL(localUrl+'finance');
+ await expect(page.getByText('Sổ quỹ hiện tại')).toBeVisible();
+ await expect(page.getByText('BANK-UNKNOWN-01')).toBeVisible();
+ await page.reload();
+ await expect(page.getByLabel('Mã PIN chủ tiệm')).toBeVisible();
+ await expect(page).toHaveURL(localUrl+'finance');
+ await page.getByLabel('Mã PIN chủ tiệm').fill('owner-pin-test');
+ await page.getByRole('button',{name:'Đăng nhập'}).click();
+ await expect(page.getByText('BANK-UNKNOWN-01')).toBeVisible();
+ const writes=f.calls.filter(x=>x.method!=='GET'&&x.path!=='/v1/auth/login');
+ expect(writes).toHaveLength(0);
+});
+test('OR-07b: unknown or old dashboard route canonicalizes safely without leaking protected data',async({page})=>{
+ await fixture(page);
+ await page.goto(localUrl+'totally-unknown?token=must-not-stay');
+ await expect(page).toHaveURL(localUrl);
+ await expect(page.getByLabel('Mã PIN chủ tiệm')).toBeVisible();
+ await page.getByLabel('Mã PIN chủ tiệm').fill('owner-pin-test');
+ await page.getByRole('button',{name:'Đăng nhập'}).click();
+ await expect(page.getByText('DOANH THU ĐÃ XÁC NHẬN')).toBeVisible();
+ await page.goto(localUrl+'dashboard/');
+ await expect(page).toHaveURL(localUrl);
+ await expect(page.getByLabel('Mã PIN chủ tiệm')).toBeVisible();
+});
+test('OR-07b: Cloud Staff deep link stays read only on reload and mobile navigation',async({page})=>{
+ await page.setViewportSize({width:320,height:568});
+ const f=await fixture(page,{remote:true});
+ await page.goto(remoteUrl+'staff');
+ await expect(page.getByLabel('Mật khẩu quản trị từ xa')).toBeVisible();
+ await page.getByLabel('Mật khẩu quản trị từ xa').fill('cloud-password-mock-long');
+ await page.getByRole('button',{name:'Đăng nhập'}).click();
+ await expect(page).toHaveURL(remoteUrl+'staff');
+ await expect(page.getByText('Quản lý nhân viên chỉ được thao tác từ POS nội bộ',{exact:false})).toBeVisible();
+ await expect(page.getByRole('button',{name:'Tạo tài khoản'})).toHaveCount(0);
+ await tab(page,'Sản phẩm');
+ await expect(page).toHaveURL(remoteUrl+'catalog');
+ await page.goBack();
+ await expect(page).toHaveURL(remoteUrl+'staff');
+ await expect(page.getByRole('button',{name:'Tạo mã ghép'})).toHaveCount(0);
+ expect(f.calls.filter(x=>x.path==='/v1/owner/employees'||x.path==='/v1/owner/devices')).toHaveLength(0);
+});
+test('OR-07b: uncertain Catalog request overrides deep link without rotating its key',async({page})=>{
+ const f=await fixture(page);
+ const pending={key:'deep-link-ack-recovery-key-001',
+  draft:{remote:false,target:'bm-thit',name:'Bánh mì khôi phục',category:'Bánh mì',price_vnd:43000,is_active:true},
+  payload:{name:'Bánh mì khôi phục',price_vnd:43000,is_active:true}};
+ await page.addInitScript(value=>sessionStorage.setItem('bmc_owner_pending_catalog_v1',JSON.stringify(value)),pending);
+ await page.goto(localUrl+'finance');
+ await page.getByLabel('Mã PIN chủ tiệm').fill('owner-pin-test');
+ await page.getByRole('button',{name:'Đăng nhập'}).click();
+ await expect(page).toHaveURL(localUrl+'catalog');
+ const dialog=page.getByRole('dialog',{name:'Chỉnh sản phẩm'});
+ await expect(dialog.getByLabel('Giá bán (VNĐ)')).toHaveValue('43000');
+ await dialog.getByRole('button',{name:'Lưu sản phẩm'}).click();
+ await expect(dialog).toHaveCount(0);
+ const patches=f.calls.filter(x=>x.path==='/v1/owner/products/bm-thit'&&x.method==='PATCH');
+ expect(patches).toHaveLength(1);
+ expect(patches[0].key).toBe(pending.key);
+ expect(patches[0].body).toEqual(pending.payload);
+ expect(await page.evaluate(()=>sessionStorage.getItem('bmc_owner_pending_catalog_v1'))).toBeNull();
+});
