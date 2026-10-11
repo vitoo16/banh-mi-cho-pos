@@ -8,3 +8,16 @@
 .bottomnav button small{overflow-wrap:anywhere;text-align:center}
 .record strong,.metricrow b{overflow-wrap:anywhere}
 @media(max-width:470px){.panelhead input{min-width:0;max-width:100%}.modal{padding:clamp(16px,4vw,24px)}}
+
+/* Remote Owner price update lifecycle: informational, never optimistic success. */
+.command-log{margin-bottom:20px;padding:14px 16px;border:1px solid #e7e9e1;border-radius:12px;background:#fafbf8;min-width:0}
+.command-log h3{font-size:15px;margin:0 0 8px}
+.command-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 0;border-top:1px solid #e8ebe6;min-width:0}
+.command-row>div{min-width:0}
+.command-row strong,.command-row small{display:block;overflow-wrap:anywhere;font-size:13px}
+.command-row small{color:#69756d;margin-top:5px}
+.command-row span{font-size:12px;flex-shrink:0;font-weight:700;padding:5px 9px;border-radius:9px;text-align:center}
+.command-pending{background:#fff2d4;color:#815600}
+.command-applied{background:#e6f6e8;color:#176a38}
+.command-conflict{background:#ffefeb;color:#a52719}
+@media(max-width:470px){.command-row{align-items:flex-start;flex-direction:column;gap:6px}.command-row span{flex-shrink:1}}

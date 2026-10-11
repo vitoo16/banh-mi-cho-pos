@@ -3,6 +3,7 @@ export type PaymentMethod='CASH'|'BANK'|'MOMO'|'MIXED';
 export type PaymentStatus='UNPAID'|'PARTIAL'|'PAID'|'PARTIALLY_REFUNDED'|'REFUNDED';
 export type Role='OWNER'|'CASHIER'|'STAFF';
 export interface Product {id:string; name:string; category:string; price_vnd:number; is_active:boolean}
+export interface RemoteProductCommand {id:string;product_id:string;name:string;price_vnd:number;expected_price_vnd:number;is_active:boolean;status:'PENDING'|'APPLIED'|'CONFLICT';result_code:string|null;created_at:string;completed_at:string|null}
 export interface Catalog {version:number;products:Product[];enabled_payment_methods:PaymentMethod[]}
 export interface OrderItem {product_id:string;name_snapshot:string;qty:number;unit_price_vnd:number;line_total_vnd:number;note:string}
 export interface Order {order_id:string;display_code:string;created_at:string;created_by:string;status:'COMMITTED'|'VOIDED';payment_status:PaymentStatus;requested_payment_method:PaymentMethod;total_vnd:number;version:number;items:OrderItem[];note:string}
@@ -69,6 +70,11 @@ export class HubClient {
   summary(){return this.request<Summary>('/v1/owner/dashboard')}
   products(){return this.request<Catalog>('/v1/owner/products')}
   updateProduct(id:string,body:{name:string;price_vnd:number;is_active:boolean},key:string){return this.request<Product>('/v1/owner/products/'+id,{method:'PATCH',body:JSON.stringify(body)},key)}
+  queueRemoteProductUpdate(id:string,body:{name:string;price_vnd:number;is_active:boolean;expected_price_vnd:number},key:string){
+    return this.request<RemoteProductCommand>('/v1/owner/products/'+encodeURIComponent(id),{method:'PATCH',body:JSON.stringify(body)},key)
+  }
+  remoteProductCommands(){return this.request<RemoteProductCommand[]>('/v1/owner/product-commands')}
+
   bankExceptions(){return this.request<Array<{provider_tx_id:string;reference:string;amount_vnd:number;reason:string;received_at:string}>>('/v1/owner/bank-exceptions')}
   issuePairing(label:string,key:string){return this.request<PairingCode>('/v1/owner/device-pairings',{method:'POST',body:JSON.stringify({label})},key)}
   devices(){return this.request<StaffDevice[]>('/v1/owner/devices')}
