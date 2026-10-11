@@ -56,3 +56,11 @@ In a shop seeded with 340+ orders and 200+ payment captures, every actionable UN
 ## Actual-payment receipt text regression (2026-10-11)
 
 The CUSTOMER and STORE receipt copies must show the tender **recorded in settled `payments.method`**, not Staff's requested method. CASH STORE copy may show `tendered_vnd` and `change_vnd`; BANK prints verified transfer amount and must never fabricate `Khách đưa 0đ / Tiền thối 0đ`. Missing/mismatched payment rows are flagged UNKNOWN instead of printing an unverified settlement statement. `tests/receipt-content.test.mjs` verifies this as pure content logic; existing virtual ESC/POS tests verify two distinct raster jobs and printer UNKNOWN/reprint handling. Actual Vietnamese font clarity/roll paper and drawer remain physical acceptance gates.
+
+## Owner remote product price command gate (2026-10-11)
+
+- Cloud POST/PATCH with Owner auth queues but does not change price; signed Hub poll is required. No cash/finance endpoints available through this channel.
+- Same Owner idempotency key and payload returns the same command; changed payload returns 409. Wrong HMAC, store ID or timestamp rejects command list and ACK.
+- Hub must atomically compare `expected_price_vnd` against the **live** product price; local edit wins and cloud edit moves to CONFLICT, not silent overwrite. New order uses updated catalog; existing orders retain original price snapshot.
+- After a lost Cloud acknowledgement, repeated signed poll replays the original Hub idempotency key, with only one product update and one audit. Cloud shows APPLIED only after signed Hub result; mirror may remain stale until outbound sync.
+- UI must show PENDING/CONFLICT/APPLIED, responsive at 320px and no false optimistic success. Physical network outage/reconnect test remains a separate acceptance gate.

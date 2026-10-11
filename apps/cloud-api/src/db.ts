@@ -24,6 +24,16 @@ CREATE TABLE IF NOT EXISTS mirror_bank_events(store_id text NOT NULL,provider_tx
 CREATE TABLE IF NOT EXISTS mirror_cash_movements(store_id text NOT NULL,id text NOT NULL,shift_id text NOT NULL,order_id text,kind text NOT NULL,amount_vnd bigint NOT NULL,created_at timestamptz NOT NULL,PRIMARY KEY(store_id,id));
 CREATE TABLE IF NOT EXISTS mirror_refunds(store_id text NOT NULL,id text NOT NULL,order_id text NOT NULL,amount_vnd bigint NOT NULL,created_at timestamptz NOT NULL,PRIMARY KEY(store_id,id));
 CREATE TABLE IF NOT EXISTS mirror_products(store_id text NOT NULL,id text NOT NULL,name text NOT NULL,category text NOT NULL,price_vnd bigint NOT NULL,is_active boolean NOT NULL,PRIMARY KEY(store_id,id));
+CREATE TABLE IF NOT EXISTS remote_product_commands(
+ id text PRIMARY KEY,store_id text NOT NULL,idem_key text NOT NULL,payload_hash text NOT NULL,
+ product_id text NOT NULL,name text NOT NULL,price_vnd bigint NOT NULL CHECK(price_vnd>=0 AND price_vnd<=1000000000),
+ expected_price_vnd bigint NOT NULL CHECK(expected_price_vnd>=0 AND expected_price_vnd<=1000000000),
+ is_active boolean NOT NULL,status text NOT NULL DEFAULT 'PENDING'
+ CHECK(status IN ('PENDING','APPLIED','CONFLICT')),
+ result_code text,created_at timestamptz NOT NULL DEFAULT now(),completed_at timestamptz,
+ UNIQUE(store_id,idem_key)
+);
+CREATE INDEX IF NOT EXISTS idx_remote_commands_pending ON remote_product_commands(store_id,status,created_at,id);
 CREATE TABLE IF NOT EXISTS mirror_shifts(store_id text NOT NULL,id text NOT NULL,cashier_id text NOT NULL,opening_float_vnd bigint NOT NULL,status text NOT NULL,opened_at timestamptz NOT NULL,closed_at timestamptz,counted_cash_vnd bigint,variance_vnd bigint,PRIMARY KEY(store_id,id));
 `);
  }

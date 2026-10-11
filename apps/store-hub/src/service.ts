@@ -188,12 +188,33 @@ export class StoreService implements OnModuleInit {
  updateProduct(a:Actor,id:string,body:any,key:unknown){
   return this.idem('product.update:'+a.id,key,{id,body},()=>{
    const prev=this.store.row<any>('SELECT * FROM products WHERE id=?',id);if(!prev)throw new StoreError(404,'NOT_FOUND','Không tìm thấy món');
+   if(body?.expected_price_vnd!==undefined){
+    const expected=body.expected_price_vnd;
+    if(!Number.isSafeInteger(expected)||expected<0||expected>1_000_000_000)
+     throw new StoreError(400,'INVALID_EXPECTED_PRICE','Giá đối chiếu không hợp lệ');
+    if(prev.price_vnd!==expected)throw new StoreError(409,'PRICE_CHANGED','Giá đã thay đổi tại POS; cần kiểm tra lại');
+   }
    const name=ensureText(body?.name,120),price=ensureMoney(body?.price_vnd),active=body?.is_active;
    if(!name||typeof active!=='boolean')throw new StoreError(400,'INVALID_PRODUCT','Thông tin món không hợp lệ');
    this.store.run('UPDATE products SET name=?,price_vnd=?,is_active=? WHERE id=?',name,price,active?1:0,id);
    this.bump();audit(this.store,a.id,'PRODUCT_UPDATE',id,{old:{name:prev.name,price_vnd:prev.price_vnd},new:{name,price_vnd:price},active});
    return {id,name,category:prev.category,price_vnd:price,is_active:active};
   });
+ }
+ /**
+  * Only the authenticated/signed outbound CloudSyncWorker may call this method.
+  * Same command id is an idempotent key persisted inside the update transaction.
+  */
+ applyRemoteProductCommand(command:{
+  id:string;product_id:string;name:string;price_vnd:number;expected_price_vnd:number;is_active:boolean;
+ }){
+  if(!/^[0-9a-f-]{36}$/i.test(command.id)||!command.product_id||command.product_id.length>90)
+   throw new StoreError(400,'INVALID_CLOUD_COMMAND','Lệnh cloud không hợp lệ');
+  return this.updateProduct({id:'cloud-owner',role:'OWNER',name:'Chủ tiệm từ xa'},
+   command.product_id,{
+    name:command.name,price_vnd:command.price_vnd,is_active:command.is_active,
+    expected_price_vnd:command.expected_price_vnd,
+   },command.id);
  }
  private bump(){this.store.run("UPDATE settings SET value=CAST(value AS INTEGER)+1 WHERE key='catalog_version'")}
  order(a:Actor,id:string){
