@@ -76,3 +76,7 @@ A 409 HTTP status is NOT sufficient evidence an order was never committed: `IDEM
 - Hub inserts exactly once even if signed ACK is lost; catalog version increments once, product audit is once, outbox mirror eventually delivers product to Owner Cloud.
 - Disabled new products remain hidden from Staff catalog while appearing in local/Cloud Owner catalog; local Owner create respects unchecked `is_active` as well.
 - Older order price snapshots are preserved. Real phone refresh and WAN outage/reconnect are still deployment acceptance gates.
+
+## Owner catalog lost-response retry (2026-10-11)
+
+A timed-out remote or local Owner product CREATE/UPDATE may already be committed. Owner Web now writes its immutable command payload and idempotency key into sessionStorage BEFORE HTTP, reuses the exact key/body after error and even after a reload, and only clears it after a positive ACK or clearly rejected 400/404/422. On next login it restores the pending catalog form; attempting a different edit while an uncertain mutation remains triggers a clear blocking error. Playwright simulates a successful server-side create with HTTP 503 response loss, reloads, retries, and confirms identical keys and one server-side mutation. This does not substitute for real WAN-down testing or a merchant/hardware acceptance.

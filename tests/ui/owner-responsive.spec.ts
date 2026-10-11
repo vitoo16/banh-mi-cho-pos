@@ -94,3 +94,47 @@ test('Owner local create can intentionally keep a new item hidden',async({page})
  expect(created[0]).toMatchObject({name:'Món chưa mở bán',is_active:false,price_vnd:35000});
  await assertNoOverflow(page,320);
 });
+
+test('Owner preserves idempotency key when Cloud/POS committed but response was lost across page reload',async({page})=>{
+ await page.setViewportSize({width:390,height:844});
+ const {created}=await mockOwner(page);
+ const keys:string[]=[];
+ let attempts=0;
+ await page.route('**/v1/owner/products',async route=>{
+  if(route.request().method()!=='POST'){await route.fallback();return}
+  attempts++;
+  keys.push(route.request().headers()['idempotency-key']||'');
+  const input=JSON.parse(route.request().postData()||'{}');
+  if(attempts===1){
+   created.push(input); // Simulate server COMMIT followed by a lost ACK.
+   await route.fulfill({status:503,contentType:'application/json',
+    body:JSON.stringify({code:'SERVER_UNAVAILABLE',message:'ACK disappeared'})});
+  }else{
+   await route.fulfill({status:200,contentType:'application/json',
+    body:JSON.stringify({id:'bmc-new-once',...input})});
+  }
+ });
+ await startOwner(page);
+ await page.getByRole('button',{name:'Sản phẩm'}).click();
+ await page.getByRole('button',{name:/Thêm món/}).click();
+ let dialog=page.getByRole('dialog',{name:'Chỉnh sản phẩm'});
+ await dialog.getByLabel('Tên món').fill('Chưa chắc đã lưu');
+ await dialog.getByLabel('Nhóm món').fill('Bánh mì');
+ await dialog.getByLabel('Giá bán (VNĐ)').fill('42000');
+ await dialog.getByRole('button',{name:'Lưu sản phẩm'}).click();
+ await expect(dialog.getByRole('alert')).toContainText('mã chống trùng được giữ nguyên');
+ expect(keys).toHaveLength(1);
+ await page.reload({waitUntil:'domcontentloaded'});
+ await page.getByLabel('Mã PIN chủ tiệm').fill('owner-pin-for-test');
+ await page.getByRole('button',{name:'Đăng nhập'}).click();
+ dialog=page.getByRole('dialog',{name:'Chỉnh sản phẩm'});
+ await expect(dialog).toBeVisible();
+ await expect(dialog.getByLabel('Tên món')).toHaveValue('Chưa chắc đã lưu');
+ await dialog.getByRole('button',{name:'Lưu sản phẩm'}).click();
+ await expect(dialog).toHaveCount(0);
+ expect(attempts).toBe(2);
+ expect(keys[0].length).toBeGreaterThanOrEqual(8);
+ expect(keys[1]).toBe(keys[0]);
+ expect(created).toHaveLength(1,'server-side once-only create when key is unchanged');
+ await assertNoOverflow(page,390);
+});
