@@ -353,9 +353,11 @@ export class StoreService implements OnModuleInit {
    const r=this.store.row<any>('SELECT * FROM receipts WHERE id=?',id);if(!r)throw new StoreError(404,'NOT_FOUND','Không tìm thấy liên in');
    const reason=ensureText(body?.reason,250);if(reason.length<3)throw new StoreError(400,'REASON_REQUIRED','Cần ghi lý do in lại');
    if(r.status==='WAITING_FOR_PRINTER')throw new StoreError(409,'RECEIPT_ALREADY_QUEUED','Liên này đang chờ máy in, không thể xếp hàng trùng');
-   this.store.run("UPDATE receipts SET status='WAITING_FOR_PRINTER',attempts=attempts+1 WHERE id=?",id);
+   // Only the printer worker increments attempts when it actually CLAIMS a
+   // send. Queueing a manual reprint must not double-count physical attempts.
+   this.store.run("UPDATE receipts SET status='WAITING_FOR_PRINTER' WHERE id=?",id);
    audit(this.store,a.id,'RECEIPT_REPRINT',r.order_id,{copy_id:id,kind:r.kind,reason});
-   return {id,kind:r.kind,status:'WAITING_FOR_PRINTER',attempts:r.attempts+1};
+   return {id,kind:r.kind,status:'WAITING_FOR_PRINTER',attempts:r.attempts};
   });
  }
  movement(a:Actor,shiftId:string,body:any,key:unknown){
