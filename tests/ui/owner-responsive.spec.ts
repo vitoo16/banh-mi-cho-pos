@@ -263,3 +263,33 @@ test('OR-10a: React Profiler proves only the changed KPI subtree commits after i
  expect(countEvents.filter(c=>c.id==='revenue')).toHaveLength(0);
  expect(countEvents.filter(c=>c.id==='cash')).toHaveLength(0);
 });
+
+
+/**
+ * Root text-resize smoke across key mobile journeys.
+ * This is not browser zoom or screen-reader certification; it catches horizontal
+ * clipping and broken primary actions when browser text scaling is increased.
+ */
+for(const width of [320,390]){
+ test('OR-08d: Owner root text at 200% remains usable at '+width+'px',async({page})=>{
+  await page.setViewportSize({width,height:844});
+  await mockOwner(page);await startOwner(page);
+  await page.addStyleTag({content:':root{font-size:200%!important}'});
+  const rootPx=await page.evaluate(()=>Number.parseFloat(getComputedStyle(document.documentElement).fontSize));
+  expect(rootPx).toBeGreaterThanOrEqual(32);
+  await expect(page.getByText('1.234.567đ')).toBeVisible();
+  await assertNoOverflow(page,width);
+  await page.getByRole('button',{name:'Sản phẩm'}).click();
+  const add=page.getByRole('button',{name:/Thêm món/});
+  await expect(add).toBeVisible();
+  await add.click();
+  const dlg=page.getByRole('dialog',{name:'Chỉnh sản phẩm'});
+  await expect(dlg.getByLabel('Tên món')).toBeFocused();
+  await dlg.getByLabel('Tên món').fill('Bánh mì chữ lớn');
+  await dlg.getByLabel('Giá bán (VNĐ)').fill('33000');
+  await dlg.getByRole('button',{name:'Lưu sản phẩm'}).click();
+  await expect(dlg).toHaveCount(0);
+  await expect(page.getByText('Bánh mì chữ lớn')).toBeVisible();
+  await assertNoOverflow(page,width);
+ });
+}
