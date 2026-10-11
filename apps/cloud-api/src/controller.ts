@@ -16,6 +16,9 @@ export class CloudController{
  @Post('sync/events')receive(@Body()b:any,@Headers('x-bmc-timestamp')ts:string,@Headers('x-bmc-signature')sig:string,@Headers('x-bmc-store')store:string){return this.s.ingest(b?.events,ts,sig,store)}
  @Get('owner/dashboard')async dashboard(@Req()r:any){await this.s.authorize(r.headers.authorization);return this.s.summary()}
  @Get('owner/products')async products(@Req()r:any){await this.s.authorize(r.headers.authorization);return this.s.products()}
+ @Post('owner/products')async createProduct(@Req()r:any,@Body()body:any,@Headers('idempotency-key')key:string){
+  await this.s.authorize(r.headers.authorization);return this.productsCmd.enqueueCreate(body,key);
+ }
  @Patch('owner/products/:id')async updateProduct(@Req()r:any,@Param('id')id:string,@Body()b:any,@Headers('idempotency-key')key:string){
   await this.s.authorize(r.headers.authorization);return this.productsCmd.enqueue(id,b,key);
  }

@@ -94,6 +94,41 @@ test('remote Owner price command: signed poll, idempotent Hub apply, stale confl
   // One more local owner price edit proves pending remote commands must compare the live POS price.
   hub.updateProduct(owner,'bm-thit',{name:'Tên mới',price_vnd:41000,is_active:true},'owner-local-price-001');
   assert.equal(hub.catalog().products.find(x=>x.id==='bm-thit').price_vnd,41000);
+  const createBody={name:'Bánh mì mè đen',category:'Bánh mì mới',price_vnd:47000,is_active:false};
+  const createKey='remote-create-product-test-001';
+  const newItem=await commands.enqueueCreate(createBody,createKey);
+  assert.equal(newItem.status,'PENDING');
+  assert.equal(newItem.operation,'CREATE');
+  assert.equal(newItem.category,'Bánh mì mới');
+  assert.deepEqual(await commands.enqueueCreate(createBody,createKey),newItem);
+  await assert.rejects(()=>commands.enqueueCreate({...createBody,price_vnd:48000},createKey),e=>e.status===409);
+  await assert.rejects(()=>commands.enqueue('bm-thit',body,createKey),e=>e.status===409);
+  assert.equal((await cloud.products()).products.some(x=>x.id===newItem.product_id),false,'Cloud enqueue cannot add item directly');
+  assert.equal(hub.catalog().products.some(x=>x.id===newItem.product_id),false);
+  const beforeCreate=hub.catalog().version;
+  const signedCreate=(await commands.poll(process.env.CLOUD_STORE_ID,stamp,sign('GET:product-commands')))
+   .payload.commands.find(x=>x.id===newItem.id);
+  assert.ok(signedCreate);
+  const made=hub.applyRemoteProductCommand(signedCreate);
+  assert.equal(made.id,newItem.product_id);
+  assert.equal(made.is_active,false,'hidden creation honored by Hub');
+  assert.deepEqual(hub.applyRemoteProductCommand(signedCreate),made,'ACK loss replays exact original create');
+  assert.equal(hub.catalog().version,beforeCreate+1);
+  assert.equal(hub.allProducts().products.filter(x=>x.id===newItem.product_id).length,1);
+  assert.equal(hub.catalog().products.some(x=>x.id===newItem.product_id),false,'hidden new item not exposed to Staff menu');
+  assert.equal(hub.store.row('SELECT COUNT(*) n FROM audit WHERE kind=? AND entity_id=?','PRODUCT_CREATE',newItem.product_id).n,1);
+  const ackNew=[{id:newItem.id,status:'APPLIED',result_code:'OK'}];
+  await commands.acknowledge({results:ackNew},stamp,sign(JSON.stringify({results:ackNew})),process.env.CLOUD_STORE_ID);
+  assert.equal((await commands.list()).find(x=>x.id===newItem.id).status,'APPLIED');
+  const createdEvent=hub.store.all("SELECT id,entity,payload_json FROM sync_outbox WHERE entity='product' ORDER BY seq DESC LIMIT 1")[0];
+  const newEvents=[{id:createdEvent.id,entity:createdEvent.entity,payload:JSON.parse(createdEvent.payload_json)}];
+  await cloud.ingest(newEvents,stamp,sign(JSON.stringify({events:newEvents})),process.env.CLOUD_STORE_ID);
+  const newMirror=(await cloud.products()).products.find(x=>x.id===newItem.product_id);
+  assert.ok(newMirror);
+  assert.equal(newMirror.price_vnd,47000);
+  assert.equal(newMirror.is_active,false);
+  assert.equal(hub.order(staff,order.order_id).items[0].unit_price_vnd,35000);
+
  }finally{
   await db.onModuleDestroy();
   for(const [k,v] of Object.entries(saved))if(v===undefined)delete process.env[k];else process.env[k]=v;

@@ -72,6 +72,25 @@ for(const width of [320,1366]){
   await expect(page.getByText('Bánh mì QA mới')).toBeVisible();
   expect(created).toHaveLength(1);
   expect(created[0]).toMatchObject({name:'Bánh mì QA mới',price_vnd:45000,category:'Bánh mì',is_active:true});
+
   await assertNoOverflow(page,width);
  });
 }
+
+test('Owner local create can intentionally keep a new item hidden',async({page})=>{
+ await page.setViewportSize({width:320,height:640});
+ const {created}=await mockOwner(page);
+ await startOwner(page);
+ await page.getByRole('button',{name:'Sản phẩm'}).click();
+ await page.getByRole('button',{name:/Thêm món/}).click();
+ const modal=page.getByRole('dialog',{name:'Chỉnh sản phẩm'});
+ await modal.getByLabel('Tên món').fill('Món chưa mở bán');
+ await modal.getByLabel('Nhóm món').fill('Bánh mì');
+ await modal.getByLabel('Giá bán (VNĐ)').fill('35000');
+ await modal.getByRole('checkbox',{name:'Đang bán'}).uncheck();
+ await modal.getByRole('button',{name:'Lưu sản phẩm'}).click();
+ await expect(modal).toHaveCount(0);
+ expect(created).toHaveLength(1);
+ expect(created[0]).toMatchObject({name:'Món chưa mở bán',is_active:false,price_vnd:35000});
+ await assertNoOverflow(page,320);
+});

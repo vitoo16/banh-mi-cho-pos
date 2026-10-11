@@ -68,3 +68,11 @@ The CUSTOMER and STORE receipt copies must show the tender **recorded in settled
 ## Staff app lost-ACK classification gate (2026-10-11)
 
 A 409 HTTP status is NOT sufficient evidence an order was never committed: `IDEMPOTENCY_LEGACY_REVIEW` and `IDEMPOTENCY_PAYLOAD_MISMATCH` require preserving the durable original request and stable key for manual reconciliation. Only known pre-commit `CATALOG_CHANGED` / `PRODUCT_UNAVAILABLE` refresh prices, and explicit validation errors allow edited review. Unknown error codes, network aborts and server errors keep the staged request immutable and route to Recovery, not to a fresh order. The device SQLite pending row must never be overwritten with a changed body even if a caller reuses the key. Native phone kill/restart POC remains a required acceptance step.
+
+## Remote create-product acceptance (2026-10-11)
+
+- Remote Owner POST only queues PENDING, does not insert into `mirror_products` or expose Staff catalog immediately; Hub controls insertion.
+- Cloud-generated UUID and command ID remain stable under identical key retries, changed payload returns 409, HMAC/store verification required to poll and ACK.
+- Hub inserts exactly once even if signed ACK is lost; catalog version increments once, product audit is once, outbox mirror eventually delivers product to Owner Cloud.
+- Disabled new products remain hidden from Staff catalog while appearing in local/Cloud Owner catalog; local Owner create respects unchecked `is_active` as well.
+- Older order price snapshots are preserved. Real phone refresh and WAN outage/reconnect are still deployment acceptance gates.

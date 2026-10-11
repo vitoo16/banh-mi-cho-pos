@@ -79,6 +79,10 @@ export class CloudSyncWorker implements OnModuleInit,OnModuleDestroy {
    for(const command of envelope.payload.commands){
     if(!command||typeof command.id!=='string'||!/^[0-9a-f-]{36}$/i.test(command.id)||
      typeof command.product_id!=='string'||!(/^[A-Za-z0-9_-]{1,90}$/.test(command.product_id))||
+     (command.operation!=='UPDATE'&&command.operation!=='CREATE')||
+     (command.operation==='CREATE'&&(!/^[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}$/i.test(command.product_id)||
+      typeof command.category!=='string'||!command.category.trim()||command.category.length>80||
+      command.expected_price_vnd!==0))||
      typeof command.name!=='string'||!command.name.trim()||command.name.length>120||
      !Number.isSafeInteger(command.price_vnd)||command.price_vnd<0||command.price_vnd>1_000_000_000||
      !Number.isSafeInteger(command.expected_price_vnd)||command.expected_price_vnd<0||command.expected_price_vnd>1_000_000_000||
@@ -89,7 +93,7 @@ export class CloudSyncWorker implements OnModuleInit,OnModuleDestroy {
      results.push({id:command.id,status:'APPLIED',result_code:'OK'});
     }catch(error){
      const code=error&&typeof error==='object'&&'code' in error?(error as {code:string}).code:'';
-     if(!['PRICE_CHANGED','NOT_FOUND'].includes(code))throw error;
+     if(!['PRICE_CHANGED','NOT_FOUND','PRODUCT_ALREADY_EXISTS'].includes(code))throw error;
      results.push({id:command.id,status:'CONFLICT',result_code:code});
     }
    }

@@ -177,12 +177,21 @@ export class StoreService implements OnModuleInit {
   return {version,products:this.store.all<any>('SELECT id,name,category,price_vnd,is_active FROM products WHERE is_active=1 ORDER BY category,name').map(p=>({...p,is_active:!!p.is_active})),enabled_payment_methods:['CASH','BANK']};
  }
  allProducts(){return {version:this.catalog().version,products:this.store.all<any>('SELECT id,name,category,price_vnd,is_active FROM products ORDER BY category,name').map(p=>({...p,is_active:!!p.is_active})),enabled_payment_methods:['CASH','BANK']}}
- createProduct(a:Actor,body:any,key:unknown){
-  return this.idem('product.create:'+a.id,key,body,()=>{
-   const id=randomUUID(),name=ensureText(body?.name,120),category=ensureText(body?.category||'Khác',80),price=ensureMoney(body?.price_vnd);
-   if(!name)throw new StoreError(400,'INVALID_NAME','Tên món không được trống');
-   this.store.run('INSERT INTO products(id,name,category,price_vnd,is_active) VALUES(?,?,?,?,1)',id,name,category,price);this.bump();audit(this.store,a.id,'PRODUCT_CREATE',id,{name,price});
-   return {id,name,category,price_vnd:price,is_active:true};
+ createProduct(a:Actor,body:any,key:unknown,preassignedId?:string){
+  const payload=preassignedId?{body,preassignedId}:body;
+  return this.idem('product.create:'+a.id,key,payload,()=>{
+   if(preassignedId&&!/^[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}$/i.test(preassignedId))
+    throw new StoreError(400,'INVALID_PRODUCT_ID','Mã món mới không hợp lệ');
+   const id=preassignedId||randomUUID(),name=ensureText(body?.name,120);
+   const category=ensureText(body?.category||'Khác',80),price=ensureMoney(body?.price_vnd);
+   const active=body?.is_active===undefined?true:body.is_active;
+   if(!name||!category||typeof active!=='boolean')
+    throw new StoreError(400,'INVALID_PRODUCT','Thông tin món mới không hợp lệ');
+   if(this.store.row('SELECT 1 FROM products WHERE id=?',id))
+    throw new StoreError(409,'PRODUCT_ALREADY_EXISTS','Món đã tồn tại tại POS');
+   this.store.run('INSERT INTO products(id,name,category,price_vnd,is_active) VALUES(?,?,?,?,?)',id,name,category,price,active?1:0);
+   this.bump();audit(this.store,a.id,'PRODUCT_CREATE',id,{name,category,price,is_active:active});
+   return {id,name,category,price_vnd:price,is_active:active};
   });
  }
  updateProduct(a:Actor,id:string,body:any,key:unknown){
@@ -206,15 +215,26 @@ export class StoreService implements OnModuleInit {
   * Same command id is an idempotent key persisted inside the update transaction.
   */
  applyRemoteProductCommand(command:{
-  id:string;product_id:string;name:string;price_vnd:number;expected_price_vnd:number;is_active:boolean;
+  id:string;product_id:string;operation?:'CREATE'|'UPDATE';category?:string;
+  name:string;price_vnd:number;expected_price_vnd:number;is_active:boolean;
  }){
-  if(!/^[0-9a-f-]{36}$/i.test(command.id)||!command.product_id||command.product_id.length>90)
+  if(!/^[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}$/i.test(command.id)||
+   !/^[A-Za-z0-9_-]{1,90}$/.test(command.product_id))
    throw new StoreError(400,'INVALID_CLOUD_COMMAND','Lệnh cloud không hợp lệ');
-  return this.updateProduct({id:'cloud-owner',role:'OWNER',name:'Chủ tiệm từ xa'},
-   command.product_id,{
-    name:command.name,price_vnd:command.price_vnd,is_active:command.is_active,
-    expected_price_vnd:command.expected_price_vnd,
-   },command.id);
+  const actor:Actor={id:'cloud-owner',role:'OWNER',name:'Chủ tiệm từ xa'};
+  if(command.operation==='CREATE'){
+   if(!command.category||command.category.length>80||command.expected_price_vnd!==0)
+    throw new StoreError(400,'INVALID_CLOUD_COMMAND','Lệnh tạo món không hợp lệ');
+   return this.createProduct(actor,{
+    name:command.name,category:command.category,price_vnd:command.price_vnd,is_active:command.is_active,
+   },command.id,command.product_id);
+  }
+  if(command.operation&&command.operation!=='UPDATE')
+   throw new StoreError(400,'INVALID_CLOUD_COMMAND','Loại lệnh không hỗ trợ');
+  return this.updateProduct(actor,command.product_id,{
+   name:command.name,price_vnd:command.price_vnd,is_active:command.is_active,
+   expected_price_vnd:command.expected_price_vnd,
+  },command.id);
  }
  private bump(){this.store.run("UPDATE settings SET value=CAST(value AS INTEGER)+1 WHERE key='catalog_version'")}
  order(a:Actor,id:string){

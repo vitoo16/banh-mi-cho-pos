@@ -34,6 +34,9 @@ CREATE TABLE IF NOT EXISTS remote_product_commands(
  UNIQUE(store_id,idem_key)
 );
 CREATE INDEX IF NOT EXISTS idx_remote_commands_pending ON remote_product_commands(store_id,status,created_at,id);
+ALTER TABLE remote_product_commands ADD COLUMN IF NOT EXISTS operation text NOT NULL DEFAULT 'UPDATE' CHECK(operation IN ('CREATE','UPDATE'));
+ALTER TABLE remote_product_commands ADD COLUMN IF NOT EXISTS category text NOT NULL DEFAULT 'Khác';
+
 CREATE TABLE IF NOT EXISTS mirror_shifts(store_id text NOT NULL,id text NOT NULL,cashier_id text NOT NULL,opening_float_vnd bigint NOT NULL,status text NOT NULL,opened_at timestamptz NOT NULL,closed_at timestamptz,counted_cash_vnd bigint,variance_vnd bigint,PRIMARY KEY(store_id,id));
 `);
  }
