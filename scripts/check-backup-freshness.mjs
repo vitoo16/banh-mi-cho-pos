@@ -4,14 +4,14 @@
  * Checks ALL discovered backup pairs; never deletes, restores, or writes to SQLite.
  * WARNING: SHA-256 + plaintext sidecar is NOT cryptographic provenance.
  */
-import {readdirSync,readFileSync,statSync} from 'node:fs';
+import {readdirSync,readFileSync} from 'node:fs';
 import {resolve,join} from 'node:path';
 import {spawnSync} from 'node:child_process';
 import {fileURLToPath} from 'node:url';
 
 const suffix='.sqlite.manifest.json';
 const sqliteSuffix='.sqlite';
-const verifyScript=resolve('scripts/store-backup.mjs');
+const verifyScript=fileURLToPath(new URL('./store-backup.mjs',import.meta.url));
 
 export function assessBackupDirectory(directory,maxAgeMinutes,now=Date.now(),verify=verifyBackup) {
  if(!Number.isSafeInteger(maxAgeMinutes)||maxAgeMinutes<1||maxAgeMinutes>10080)
