@@ -25,7 +25,7 @@ CREATE INDEX IF NOT EXISTS idx_print_attempts_receipt ON receipt_print_attempts(
 CREATE TABLE IF NOT EXISTS cash_refunds(id TEXT PRIMARY KEY,order_id TEXT NOT NULL UNIQUE,shift_id TEXT NOT NULL,amount_vnd INTEGER NOT NULL,reason TEXT NOT NULL,created_at TEXT NOT NULL,actor_id TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS bank_intents(order_id TEXT PRIMARY KEY, reference TEXT NOT NULL UNIQUE,account_number TEXT NOT NULL,bank_code TEXT NOT NULL,amount_vnd INTEGER NOT NULL,status TEXT NOT NULL DEFAULT 'PENDING');
 CREATE TABLE IF NOT EXISTS bank_events(provider_tx_id TEXT PRIMARY KEY,order_id TEXT,reference TEXT NOT NULL,amount_vnd INTEGER NOT NULL,state TEXT NOT NULL,reason TEXT,received_at TEXT NOT NULL);
-CREATE TABLE IF NOT EXISTS idempotency(scope TEXT NOT NULL,key TEXT NOT NULL,result_json TEXT NOT NULL,PRIMARY KEY(scope,key));
+CREATE TABLE IF NOT EXISTS idempotency(scope TEXT NOT NULL,key TEXT NOT NULL,request_hash TEXT,result_json TEXT NOT NULL,PRIMARY KEY(scope,key));
 CREATE TABLE IF NOT EXISTS audit(id TEXT PRIMARY KEY,actor_id TEXT NOT NULL,kind TEXT NOT NULL,entity_id TEXT NOT NULL,created_at TEXT NOT NULL,details_json TEXT NOT NULL);
 CREATE INDEX IF NOT EXISTS idx_orders_created ON orders(created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_movements_shift ON cash_movements(shift_id);
@@ -74,6 +74,8 @@ END;
   // Additive migration for previously created shops.
   const columns=this.db.prepare('PRAGMA table_info(sessions)').all() as Array<{name:string}>;
   if(!columns.some(c=>c.name==='device_id'))this.db.exec('ALTER TABLE sessions ADD COLUMN device_id TEXT');
+  const idemCols=this.db.prepare('PRAGMA table_info(idempotency)').all() as Array<{name:string}>;
+  if(!idemCols.some(c=>c.name==='request_hash'))this.db.exec('ALTER TABLE idempotency ADD COLUMN request_hash TEXT');
   if(!this.db.prepare("SELECT 1 FROM settings WHERE key='catalog_version'").get())this.db.prepare('INSERT INTO settings(key,value) VALUES(?,?)').run('catalog_version','1');
  }
 /** Backfill existing local rows BEFORE first cloud sync. One atomic snapshot, one marker per store.

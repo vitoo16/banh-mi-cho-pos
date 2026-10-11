@@ -10,6 +10,19 @@ function ensureText(x:unknown,max=500){if(typeof x!=='string'||x.length>max)thro
 function passwordHash(pin:string,salt=randomBytes(16).toString('hex')){return salt+':'+scryptSync(pin,salt,64).toString('hex')}
 function verify(pin:string,hash:string){const [salt,hex]=hash.split(':');if(!salt||!hex)return false;const a=Buffer.from(hex,'hex'),b=scryptSync(pin,salt,64);return a.length===b.length&&timingSafeEqual(a,b)}
 function audit(db:StoreDb,actor:string,kind:string,entity:string,detail:object={}){db.run('INSERT INTO audit(id,actor_id,kind,entity_id,created_at,details_json) VALUES(?,?,?,?,?,?)',randomUUID(),actor,kind,entity,now(),JSON.stringify(detail))}
+function stableIdempotencyJson(value:unknown):string{
+ if(value===null||value===undefined)return 'null';
+ if(Array.isArray(value))return '['+value.map(stableIdempotencyJson).join(',')+']';
+ if(typeof value==='object'){
+  const record=value as Record<string,unknown>;
+  return '{'+Object.keys(record).filter(k=>record[k]!==undefined).sort()
+   .map(k=>JSON.stringify(k)+':'+stableIdempotencyJson(record[k])).join(',')+'}';
+ }
+ const result=JSON.stringify(value);
+ if(result===undefined)throw new StoreError(400,'INVALID_IDEMPOTENCY_PAYLOAD','Nội dung yêu cầu không hợp lệ');
+ return result;
+}
+
 @Injectable()
 export class StoreService implements OnModuleInit {
  readonly store=new StoreDb();
@@ -26,7 +39,7 @@ export class StoreService implements OnModuleInit {
   }
  }
  issuePairing(a:Actor,labelInput:unknown,key:unknown){
-  return this.idem('pairing.issue:'+a.id,key,()=>{
+  return this.idem('pairing.issue:'+a.id,key,labelInput,()=>{
    const label=ensureText(labelInput,80);
    if(label.length<3)throw new StoreError(400,'INVALID_DEVICE_LABEL','Tên thiết bị phải từ 3 ký tự');
    const code=randomBytes(8).toString('hex').toUpperCase(),hash=createHash('sha256').update(code).digest('hex');
@@ -44,7 +57,7 @@ export class StoreService implements OnModuleInit {
  }
  devices(){return this.store.all<any>('SELECT id,user_id,label,created_at,last_seen_at,revoked_at FROM staff_devices ORDER BY created_at DESC LIMIT 100')}
  revokeDevice(a:Actor,id:string,reasonInput:unknown,key:unknown){
-  return this.idem('device.revoke:'+id,key,()=>{
+  return this.idem('device.revoke:'+id,key,{id,reasonInput},()=>{
    const device=this.store.row<any>('SELECT * FROM staff_devices WHERE id=?',id);
    if(!device)throw new StoreError(404,'NOT_FOUND','Không tìm thấy thiết bị');
    const reason=ensureText(reasonInput,250);
@@ -59,7 +72,7 @@ export class StoreService implements OnModuleInit {
  }
  employees(){return this.store.all<{id:string;name:string;role:string;active:number}>('SELECT id,name,role,active FROM users ORDER BY role,id').map(u=>({...u,active:!!u.active}))}
  addEmployee(a:Actor,body:any,key:unknown){
-  return this.idem('employee.add:'+a.id,key,()=>{
+  return this.idem('employee.add:'+a.id,key,{id:body?.id,name:body?.name,role:body?.role},()=>{
    const id=ensureText(body?.id,50).toLowerCase(),name=ensureText(body?.name,120),pin=body?.pin,role=body?.role;
    if(!/^[a-z0-9_-]{2,50}$/.test(id)||!name||!['STAFF','CASHIER'].includes(role)||typeof pin!=='string'||pin.length<6||pin.length>128)
     throw new StoreError(400,'INVALID_EMPLOYEE','Mã nhân viên, tên, vai trò hoặc PIN không hợp lệ');
@@ -70,7 +83,7 @@ export class StoreService implements OnModuleInit {
   });
  }
  setEmployeeActive(a:Actor,id:string,body:any,key:unknown){
-  return this.idem('employee.active:'+a.id+':'+id,key,()=>{
+  return this.idem('employee.active:'+a.id+':'+id,key,{id,body},()=>{
    const employee=this.store.row<any>('SELECT id,name,role FROM users WHERE id=?',id);
    if(!employee||employee.role==='OWNER'||typeof body?.active!=='boolean')
     throw new StoreError(400,'INVALID_EMPLOYEE','Không thể chỉnh trạng thái tài khoản này');
@@ -144,12 +157,19 @@ export class StoreService implements OnModuleInit {
   }
   return {id:row.id,name:row.name,role:row.role} as Actor;
  }
- private idem<T>(scope:string,key:unknown,fn:()=>T):T{
+ private idem<T>(scope:string,key:unknown,payload:unknown,fn:()=>T):T{
   if(typeof key!=='string'||key.length<8||key.length>128)throw new StoreError(400,'IDEMPOTENCY_REQUIRED','Thiếu mã chống gửi trùng');
+  const requestHash=createHash('sha256').update(stableIdempotencyJson(payload)).digest('hex');
   return this.store.transaction(()=>{
-   const found=this.store.row<{result_json:string}>('SELECT result_json FROM idempotency WHERE scope=? AND key=?',scope,key);
-   if(found)return JSON.parse(found.result_json) as T;
-   const result=fn();this.store.run('INSERT INTO idempotency(scope,key,result_json) VALUES(?,?,?)',scope,key,JSON.stringify(result));return result;
+   const found=this.store.row<{request_hash:string|null;result_json:string}>('SELECT request_hash,result_json FROM idempotency WHERE scope=? AND key=?',scope,key);
+   if(found){
+    if(!found.request_hash)throw new StoreError(409,'IDEMPOTENCY_LEGACY_REVIEW','Yêu cầu cũ cần đối soát thủ công; không gửi lại tiền');
+    if(found.request_hash!==requestHash)throw new StoreError(409,'IDEMPOTENCY_PAYLOAD_MISMATCH','Mã chống trùng đã được dùng với nội dung khác');
+    return JSON.parse(found.result_json) as T;
+   }
+   const result=fn();
+   this.store.run('INSERT INTO idempotency(scope,key,request_hash,result_json) VALUES(?,?,?,?)',scope,key,requestHash,JSON.stringify(result));
+   return result;
   });
  }
  catalog(){
@@ -158,7 +178,7 @@ export class StoreService implements OnModuleInit {
  }
  allProducts(){return {version:this.catalog().version,products:this.store.all<any>('SELECT id,name,category,price_vnd,is_active FROM products ORDER BY category,name').map(p=>({...p,is_active:!!p.is_active})),enabled_payment_methods:['CASH','BANK']}}
  createProduct(a:Actor,body:any,key:unknown){
-  return this.idem('product.create:'+a.id,key,()=>{
+  return this.idem('product.create:'+a.id,key,body,()=>{
    const id=randomUUID(),name=ensureText(body?.name,120),category=ensureText(body?.category||'Khác',80),price=ensureMoney(body?.price_vnd);
    if(!name)throw new StoreError(400,'INVALID_NAME','Tên món không được trống');
    this.store.run('INSERT INTO products(id,name,category,price_vnd,is_active) VALUES(?,?,?,?,1)',id,name,category,price);this.bump();audit(this.store,a.id,'PRODUCT_CREATE',id,{name,price});
@@ -166,7 +186,7 @@ export class StoreService implements OnModuleInit {
   });
  }
  updateProduct(a:Actor,id:string,body:any,key:unknown){
-  return this.idem('product.update:'+a.id,key,()=>{
+  return this.idem('product.update:'+a.id,key,{id,body},()=>{
    const prev=this.store.row<any>('SELECT * FROM products WHERE id=?',id);if(!prev)throw new StoreError(404,'NOT_FOUND','Không tìm thấy món');
    const name=ensureText(body?.name,120),price=ensureMoney(body?.price_vnd),active=body?.is_active;
    if(!name||typeof active!=='boolean')throw new StoreError(400,'INVALID_PRODUCT','Thông tin món không hợp lệ');
@@ -182,7 +202,7 @@ export class StoreService implements OnModuleInit {
   return this.asOrder(row);
  }
  voidOrder(a:Actor,id:string,body:any,key:unknown){
-  return this.idem('order.void:'+id,key,()=>{
+  return this.idem('order.void:'+id,key,{id,body},()=>{
    const row=this.store.row<any>('SELECT * FROM orders WHERE id=?',id);
    if(!row)throw new StoreError(404,'NOT_FOUND','Không tìm thấy đơn');
    if(row.status!=='COMMITTED'||row.payment_status!=='UNPAID')throw new StoreError(409,'CANNOT_VOID','Chỉ được hủy đơn chưa thanh toán');
@@ -215,7 +235,7 @@ export class StoreService implements OnModuleInit {
  }
  private asOrder(r:any){return {order_id:r.id,display_code:r.display_code,created_at:r.created_at,created_by:r.created_by,status:r.status,payment_status:r.payment_status,requested_payment_method:r.requested_method,total_vnd:r.total_vnd,version:r.version,note:r.note,items:JSON.parse(r.lines_json)}}
  createOrder(a:Actor,body:any,key:unknown){
-  return this.idem('order.create:'+a.id,key,()=>{
+  return this.idem('order.create:'+a.id,key,body,()=>{
    const version=this.catalog().version;if(body?.catalog_version!==version)throw new StoreError(409,'CATALOG_CHANGED','Giá bán đã cập nhật, vui lòng tải lại');
    const method=body?.requested_payment_method;
    if(!['CASH','BANK'].includes(method))throw new StoreError(422,'METHOD_DISABLED','Phương thức thanh toán chưa được bật');
@@ -239,7 +259,7 @@ export class StoreService implements OnModuleInit {
   });
  }
  openShift(a:Actor,body:any,key:unknown){
-  return this.idem('shift.open:'+a.id,key,()=>{
+  return this.idem('shift.open:'+a.id,key,body,()=>{
    const current=this.store.row<any>("SELECT id FROM shifts WHERE status='OPEN' LIMIT 1");
    if(current)throw new StoreError(409,'SHIFT_ALREADY_OPEN','Đang có ca mở');
    const amount=ensureMoney(body?.opening_float_vnd),id=randomUUID();
@@ -254,7 +274,7 @@ export class StoreService implements OnModuleInit {
   return {id:s.id,cashier_id:s.cashier_id,opening_float_vnd:s.opening_float_vnd,status:s.status,opened_at:s.opened_at,closed_at:s.closed_at||undefined,expected_cash_vnd:closingCash(s.opening_float_vnd,moves),counted_cash_vnd:s.counted_cash_vnd??undefined,variance_vnd:s.variance_vnd??undefined};
  }
  cash(a:Actor,orderId:string,body:any,key:unknown){
-  return this.idem('capture.cash:'+orderId,key,()=>{
+  return this.idem('capture.cash:'+orderId,key,{orderId,body},()=>{
    const shift=this.store.row<any>("SELECT * FROM shifts WHERE id=? AND status='OPEN'",body?.shift_id);
    if(!shift||shift.cashier_id!==a.id)throw new StoreError(409,'INVALID_SHIFT','Ca này không thuộc thu ngân đang đăng nhập');
    const order=this.store.row<any>('SELECT * FROM orders WHERE id=?',orderId);
@@ -276,7 +296,7 @@ export class StoreService implements OnModuleInit {
  }
  receipts(a:Actor,orderId:string){this.order(a,orderId);return this.store.all<any>('SELECT id,kind,status,attempts FROM receipts WHERE order_id=? ORDER BY kind',orderId)}
  reprint(a:Actor,id:string,body:any,key:unknown){
-  return this.idem('receipt.reprint:'+id,key,()=>{
+  return this.idem('receipt.reprint:'+id,key,{id,body},()=>{
    const r=this.store.row<any>('SELECT * FROM receipts WHERE id=?',id);if(!r)throw new StoreError(404,'NOT_FOUND','Không tìm thấy liên in');
    const reason=ensureText(body?.reason,250);if(reason.length<3)throw new StoreError(400,'REASON_REQUIRED','Cần ghi lý do in lại');
    if(r.status==='WAITING_FOR_PRINTER')throw new StoreError(409,'RECEIPT_ALREADY_QUEUED','Liên này đang chờ máy in, không thể xếp hàng trùng');
@@ -286,7 +306,7 @@ export class StoreService implements OnModuleInit {
   });
  }
  movement(a:Actor,shiftId:string,body:any,key:unknown){
-  return this.idem('shift.movement:'+shiftId,key,()=>{
+  return this.idem('shift.movement:'+shiftId,key,{shiftId,body},()=>{
    const s=this.store.row<any>("SELECT * FROM shifts WHERE id=? AND status='OPEN'",shiftId);
    if(!s||s.cashier_id!==a.id)throw new StoreError(409,'INVALID_SHIFT','Ca không hợp lệ');
    const kind=body?.kind;if(!['ADD','WITHDRAW','EXPENSE'].includes(kind))throw new StoreError(400,'INVALID_MOVEMENT','Loại giao dịch không hợp lệ');
@@ -300,7 +320,7 @@ export class StoreService implements OnModuleInit {
   });
  }
  refundCash(a:Actor,orderId:string,body:any,key:unknown){
-  return this.idem('refund.cash:'+orderId,key,()=>{
+  return this.idem('refund.cash:'+orderId,key,{orderId,body},()=>{
    const order=this.store.row<any>('SELECT * FROM orders WHERE id=?',orderId);
    if(!order||order.status!=='COMMITTED'||order.payment_status!=='PAID')throw new StoreError(409,'NOT_REFUNDABLE','Đơn không ở trạng thái có thể hoàn');
    const p=this.store.row<any>("SELECT * FROM payments WHERE order_id=? AND method='CASH'",orderId);
@@ -321,7 +341,7 @@ export class StoreService implements OnModuleInit {
  }
 
  closeShift(a:Actor,id:string,body:any,key:unknown){
-  return this.idem('shift.close:'+id,key,()=>{
+  return this.idem('shift.close:'+id,key,{id,body},()=>{
    const s=this.store.row<any>("SELECT * FROM shifts WHERE id=? AND status='OPEN'",id);
    if(!s||s.cashier_id!==a.id)throw new StoreError(409,'INVALID_SHIFT','Không thể chốt ca không thuộc thu ngân');
    const counted=ensureMoney(body?.counted_cash_vnd),expected=this.getShift(id)!.expected_cash_vnd;
@@ -355,7 +375,7 @@ export class StoreService implements OnModuleInit {
   return {paid_orders:p.paid_orders,net_revenue_vnd:p.net_revenue_vnd,cash_vnd:cash,bank_vnd:this.store.row<any>("SELECT COALESCE(SUM(amount_vnd),0) total FROM payments WHERE method='BANK'")?.total||0,pending_orders:unpaid,bank_pending:bank,last_synced_at:process.env.CLOUD_SYNC_URL?(this.store.row<{at:string|null}>('SELECT MAX(delivered_at) at FROM sync_outbox WHERE delivered_at IS NOT NULL')?.at||null):null,shift:this.currentShift()};
  }
  bankIntent(a:Actor,id:string,key:unknown){
-  return this.idem('bank.intent:'+id,key,()=>{
+  return this.idem('bank.intent:'+id,key,{id},()=>{
    const account=process.env.BANK_ACCOUNT_NUMBER,bank=process.env.BANK_CODE,secret=process.env.BANK_BRIDGE_SECRET;
    if(!account||!bank||!secret||secret.length<32)throw new StoreError(503,'BANK_NOT_CONFIGURED','Chưa kết nối ngân hàng');
    const o=this.store.row<any>('SELECT * FROM orders WHERE id=?',id);
