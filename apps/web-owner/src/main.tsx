@@ -1,4 +1,4 @@
-import React,{useEffect,useState} from 'react';import {createRoot} from 'react-dom/client';import {formatVnd,type Catalog,type Product,type Order,type Summary,type Employee,type StaffDevice,type PairingCode,type RemoteProductCommand} from '@bmc/contracts';import {LayoutDashboard,ClipboardList,Tags,Wallet,Settings,LogOut,AlertCircle,RefreshCcw} from 'lucide-react';import {QueryClientProvider} from '@tanstack/react-query';
+import React,{useEffect,useState} from 'react';import {createRoot} from 'react-dom/client';import {formatVnd,type Catalog,type Product,type Order,type Summary,type Employee,type StaffDevice,type PairingCode,type RemoteProductCommand} from '@bmc/contracts';import {LayoutDashboard,ClipboardList,Tags,Wallet,Settings,LogOut,ShoppingBag,AlertCircle,RefreshCcw} from 'lucide-react';import {QueryClientProvider} from '@tanstack/react-query';
 import {hub,remote,newKey} from './api';
 import {queryClient} from './app/queryClient';
 import {useOwnerAuth} from './app/useOwnerAuth';
