@@ -348,3 +348,25 @@ test('OR-03: after lost catalog ACK and reload, retry uses exact persisted key a
  expect(changes[0].body).toEqual(pending.payload);
  expect(await page.evaluate(()=>sessionStorage.getItem('bmc_owner_pending_catalog_v1'))).toBeNull();
 });
+
+
+test('OR-03b: extracted local catalog list and product form create one exact integer-VND product',async({page})=>{
+ const f=await fixture(page);
+ await login(page);
+ await tab(page,'Sản phẩm');
+ await page.getByRole('button',{name:'+ Thêm món'}).click();
+ const dialog=page.getByRole('dialog',{name:'Chỉnh sản phẩm'});
+ await expect(dialog).toBeVisible();
+ await dialog.getByLabel('Tên món').fill('Bánh mì gà nướng');
+ await dialog.getByLabel('Nhóm món').fill('Bánh mì');
+ await dialog.getByLabel('Giá bán (VNĐ)').fill('31000');
+ await dialog.getByRole('button',{name:'Lưu sản phẩm'}).click();
+ await expect(dialog).toHaveCount(0);
+ await expect(page.getByText('Bánh mì gà nướng')).toBeVisible();
+ await expect(page.getByText('31.000đ')).toBeVisible();
+ const creates=f.calls.filter(x=>x.path==='/v1/owner/products'&&x.method==='POST');
+ expect(creates).toHaveLength(1);
+ expect(creates[0].key.length).toBeGreaterThanOrEqual(8);
+ expect(creates[0].body).toEqual({name:'Bánh mì gà nướng',category:'Bánh mì',price_vnd:31000,is_active:true});
+ expect(f.products.filter(x=>x.name==='Bánh mì gà nướng')).toHaveLength(1);
+});
