@@ -1,0 +1,33 @@
+name: Hub HTTP performance profile
+on:
+  workflow_dispatch:
+    inputs:
+      profile:
+        description: "smoke (150 orders) or burst (1500, 10x smoke volume)"
+        type: choice
+        options: [smoke, burst]
+        default: burst
+permissions:
+  contents: read
+jobs:
+  hub-http:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      BMC_PERF_PROFILE: ${{ inputs.profile }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm install --no-audit --no-fund
+      - run: npm run build -w @bmc/contracts
+      - run: npm run build -w @bmc/store-hub
+      - run: npm run test:perf:http
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: hub-http-perf-${{ inputs.profile }}
+          path: artifacts/perf/
+          if-no-files-found: warn
+          retention-days: 14
