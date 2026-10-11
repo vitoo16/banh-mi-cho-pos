@@ -111,8 +111,8 @@ test('WAL snapshot restore-copy preserves exact money/order/outbox and never ove
   writeFileSync(manifestFile,JSON.stringify(manifest));
   assert.equal(run('verify',backup).status,0);
   const oldManifest=join(dir,'manifest-held-aside.json');
-  assert.notEqual(fresh().status,0,'Missing manifest must fail freshness inventory');
   renameSync(manifestFile,oldManifest);
+  assert.notEqual(fresh().status,0,'Missing manifest must fail freshness inventory');
   assert.notEqual(run('verify',backup).status,0,'No manifest = no valid backup');
   const noManifestTarget=join(dir,'missing-manifest.sqlite');
   assert.notEqual(run('restore-copy',backup,noManifestTarget).status,0);
