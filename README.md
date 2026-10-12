@@ -1,5 +1,12 @@
 # Bánh Mì Chợ POS — Product & Engineering Repository
 
+## Hướng dẫn cho người dùng & triển khai thử nghiệm
+
+- **[Hướng dẫn sử dụng đầy đủ — Owner Web, POS Web, Staff Mobile và Cloud](docs/manual/USER_GUIDE.md)**: cài thử, phân quyền, thao tác màn hình, đối soát, xử lý sự cố và checklist manual test.
+- **[Backend đã deploy chưa? Cách chạy nội bộ và dùng Cloud miễn phí để test](docs/manual/DEPLOYMENT_FREE_TEST.md)**: phân biệt Store Hub trên Windows với Cloud API/PostgreSQL, các lệnh monorepo, Render Free + Neon Free và các giới hạn trước khi dùng tiền thật.
+
+**Trạng thái triển khai:** có code và CI nhưng **chưa xác minh URL backend public đang chạy**. Store Hub phải chạy tại tiệm; không dùng free cloud làm sổ tiền gốc. Chưa có nghiệm thu thiết bị/mạng/ngân hàng production.
+
 **Status: pilot implementation in progress on feature branch. Store Hub + Web POS + Owner + React Native Staff are coded but NOT production-ready; bank provider/cloud sync, vetted LAN security, physical hardware acceptance remain BLOCKED.**
 
 Một cửa hàng, 4–8 nhân viên đồng thời, >300 đơn/ngày, một thu ngân, một két và **một máy in nhiệt in hai liên**. Nhân viên dùng React Native, POS và Owner dùng **React + Vite**, backend **NestJS + Fastify**, điểm bán có **Store Hub** qua LAN + SQLite, cloud dùng PostgreSQL.
