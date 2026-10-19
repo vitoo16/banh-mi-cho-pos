@@ -221,6 +221,24 @@ for(const width of [320,1366]){
  });
 }
 
+test('Owner staff and finance forms remain labeled and accessible on 320px',async({page})=>{
+ await page.setViewportSize({width:320,height:640});
+ await mockOwner(page);await startOwner(page);
+ await page.getByRole('button',{name:'Nhân viên'}).click();
+ await expect(page.getByLabel('Tên thiết bị')).toBeVisible();
+ await expect(page.getByLabel('Mã nhân viên')).toBeVisible();
+ await expect(page.getByLabel('Tên hiển thị')).toBeVisible();
+ await expect(page.getByLabel('Vai trò')).toBeVisible();
+ await expect(page.getByLabel('PIN (từ 6 ký tự)')).toBeVisible();
+ await assertNoOverflow(page,320);
+ await assertAccessible(page);
+ await page.getByRole('button',{name:'Tài chính'}).click();
+ await expect(page.getByRole('heading',{name:'Đối soát ngân hàng'})).toBeVisible();
+ await expect(page.getByText('Chưa đồng bộ')).toBeVisible();
+ await assertNoOverflow(page,320);
+ await assertAccessible(page);
+});
+
 test('OR-08a: Catalog dialog moves focus inside, traps Shift+Tab/Tab and returns focus on Escape',async({page})=>{
  await page.setViewportSize({width:1366,height:768});
  await mockOwner(page);await startOwner(page);
