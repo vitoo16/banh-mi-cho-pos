@@ -1,4 +1,4 @@
-import React from 'react';
+import React,{useEffect,useRef} from 'react';
 import {ownerPagePath} from './router';
 import {LayoutDashboard,ClipboardList,Tags,Wallet,Settings,LogOut,ShoppingBag,AlertCircle,RefreshCcw} from 'lucide-react';
 
@@ -14,7 +14,21 @@ export function AppShell({
  onBottomNavigate:(page:OwnerPage)=>void;
  onLogout:()=>void|Promise<unknown>;onRefresh:()=>void;
 }){
+ const mobileNavRef=useRef<HTMLElement>(null);
+ useEffect(()=>{
+  const revealSelected=()=>{
+   const nav=mobileNavRef.current;
+   const active=nav?.querySelector<HTMLElement>('[aria-current="page"]');
+   if(!nav||!active||nav.clientWidth===0)return;
+   const viewport=nav.getBoundingClientRect(),tab=active.getBoundingClientRect();
+   if(tab.left<viewport.left+4||tab.right>viewport.right-4)
+    nav.scrollLeft+=tab.left-viewport.left-(viewport.width-tab.width)/2;
+  };
+  revealSelected();
+  window.addEventListener('resize',revealSelected);
+  return ()=>window.removeEventListener('resize',revealSelected);
+ },[page]);
  return <div className="layout"><a className="skip-link" href="#owner-main">Đến nội dung chính</a><aside className="sidebar"><div className="brand"><span className="logo"><ShoppingBag size={23}/></span><div><b>Bánh Mì Chợ</b><small>Quản lý cửa hàng</small></div></div><nav className="navlinks" aria-label="Điều hướng chính">{nav.map(([k,l,icon])=><a key={k} href={ownerPagePath(k)} className={page===k?'active':''} onClick={e=>{if(e.button!==0||e.metaKey||e.ctrlKey||e.shiftKey||e.altKey)return;e.preventDefault();onSidebarNavigate(k)}} aria-current={page===k?'page':undefined}>{icon}{l}</a>)}</nav><div className="sidefoot"><div><b>{userName}</b><small>Chủ tiệm</small></div><button aria-label="Đăng xuất" title="Đăng xuất" onClick={()=>void onLogout()}><LogOut size={19}/></button></div></aside><main id="owner-main" className="main" tabIndex={-1}><header className="header"><div><p className="eyebrow">VẬN HÀNH / BÁNH MÌ CHỢ</p><h1>{nav.find(([k])=>k===page)?.[1]}</h1></div><button className="reload" aria-label="Tải lại" title="Tải lại" onClick={onRefresh}><RefreshCcw size={19}/></button></header><div className="stale"><AlertCircle size={17}/> {remote?'Đang xem dữ liệu Cloud. Thay đổi giá chỉ có hiệu lực sau khi Hub tại tiệm xác nhận.':'Chế độ POS nội bộ; dữ liệu tại quầy.'}</div>
  {children}
- </main><nav className="bottomnav" aria-label="Điều hướng di động">{nav.map(([k,l,icon])=><a key={k} href={ownerPagePath(k)} className={page===k?'active':''} onClick={e=>{if(e.button!==0||e.metaKey||e.ctrlKey||e.shiftKey||e.altKey)return;e.preventDefault();onBottomNavigate(k)}} aria-current={page===k?'page':undefined}>{icon}<small>{l}</small></a>)}</nav></div>;
+ </main><nav ref={mobileNavRef} className="bottomnav" aria-label="Điều hướng di động">{nav.map(([k,l,icon])=><a key={k} href={ownerPagePath(k)} className={page===k?'active':''} onClick={e=>{if(e.button!==0||e.metaKey||e.ctrlKey||e.shiftKey||e.altKey)return;e.preventDefault();onBottomNavigate(k)}} aria-current={page===k?'page':undefined}>{icon}<small>{l}</small></a>)}</nav></div>;
 }

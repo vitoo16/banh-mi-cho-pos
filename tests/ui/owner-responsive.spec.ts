@@ -475,3 +475,25 @@ test('Owner history keeps 325 already loaded orders browseable without rendering
  await assertNoOverflow(page,390);
  expect(writes).toBe(0);
 });
+
+for(const width of [320,390]){
+ test('Owner mobile navigation reveals selected Catalog link on direct URL at '+width+'px',async({page})=>{
+  await page.setViewportSize({width,height:width===320?568:844});
+  await mockOwner(page);
+  await page.goto('http://127.0.0.1:5174/catalog');
+  await page.getByLabel('Mã PIN chủ tiệm').fill('owner-pin-for-test');
+  await page.getByRole('button',{name:'Đăng nhập'}).click();
+  const mobile=page.getByRole('navigation',{name:'Điều hướng di động'});
+  const active=mobile.getByRole('link',{name:'Sản phẩm'});
+  await expect(active).toHaveAttribute('aria-current','page');
+  await expect(page.getByRole('heading',{name:'Menu và giá bán'})).toBeVisible();
+  const bounds=await page.evaluate(()=>{
+   const nav=document.querySelector('.bottomnav')!.getBoundingClientRect();
+   const item=document.querySelector('.bottomnav [aria-current="page"]')!.getBoundingClientRect();
+   return {navLeft:nav.left,navRight:nav.right,itemLeft:item.left,itemRight:item.right};
+  });
+  expect(bounds.itemLeft,'Selected nav cut on left '+JSON.stringify(bounds)).toBeGreaterThanOrEqual(bounds.navLeft-1);
+  expect(bounds.itemRight,'Selected nav cut on right '+JSON.stringify(bounds)).toBeLessThanOrEqual(bounds.navRight+1);
+  await assertNoOverflow(page,width);
+ });
+}
