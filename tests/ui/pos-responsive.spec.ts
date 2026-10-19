@@ -194,3 +194,36 @@ test('POS queue can browse more than 300 daily orders without truncation or unsa
  await assertNoViewportOverflow(page,1024);
  expect(captures).toEqual([]);
 });
+
+test('Cashier login cannot present a connected/empty queue before Hub responds',async({page})=>{
+ await page.setViewportSize({width:1024,height:768});
+ const {captures}=await mockHub(page);
+ let releaseOrders:()=>void=()=>{};
+ const pending=new Promise<void>(resolve=>{releaseOrders=resolve});
+ await page.route('**/v1/orders',async route=>{await pending;await route.fallback()});
+ await page.goto('/');
+ await page.getByLabel('Mã PIN thu ngân').fill('cashier-test-secret');
+ await page.getByRole('button',{name:'Đăng nhập'}).click();
+ await expect(page.getByRole('status').filter({hasText:'Đang kết nối Store Hub'})).toBeVisible();
+ await expect(page.getByText('Chưa có đơn trong nhóm này')).toHaveCount(0);
+ await expect(page.getByRole('button',{name:'Xác nhận đã nhận tiền'})).toHaveCount(0);
+ releaseOrders();
+ await expect(page.getByText('#B00042').first()).toBeVisible();
+ expect(captures).toHaveLength(0);
+ await assertNoViewportOverflow(page,1024);
+});
+
+test('Disconnected cashier never enables opening shift or recording money',async({page})=>{
+ await page.setViewportSize({width:1024,height:768});
+ const {captures}=await mockHub(page);
+ await page.route('**/v1/orders',route=>route.fulfill({status:503,contentType:'application/json',
+  body:JSON.stringify({code:'HUB_DOWN',message:'Store Hub không trả lời'})}));
+ await page.goto('/');
+ await page.getByLabel('Mã PIN thu ngân').fill('cashier-test-secret');
+ await page.getByRole('button',{name:'Đăng nhập'}).click();
+ await expect(page.getByRole('alert').filter({hasText:'Không kết nối được Store Hub'})).toBeVisible();
+ await page.getByRole('button',{name:'Sổ quỹ & chốt ca'}).click();
+ await expect(page.getByRole('button',{name:'Mở ca thu ngân'})).toBeDisabled();
+ expect(captures).toHaveLength(0);
+ await assertNoViewportOverflow(page,1024);
+});
