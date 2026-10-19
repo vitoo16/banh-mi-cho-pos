@@ -1,6 +1,6 @@
 # Bánh Mì Chợ POS — UI implementation master plan (Mobile-first)
 
-**Status:** APPROVED-FOR-PLANNING proposal, NOT implemented or device-tested. **Baseline:** `docs/spec/MVP-v1.2.md` (2026-10-10). **Priority:** Staff React Native + POS cashier Vite P0, Owner Vite P1. **Audience:** 4–8 order takers, one cashier, one store, 300+ orders/day.
+**Status:** Design baseline with Web/Native implementation in Draft PR #76; automated tests exist, but physical devices, printer, and visual signoff are NOT complete. **Baseline:** `docs/spec/MVP-v1.2.md` (2026-10-10). **Priority:** Staff React Native + POS cashier Vite P0, Owner Vite P1. **Audience:** 4–8 order takers, one cashier, one store, 300+ orders/day.
 
 ## 1. Design intent and strict boundaries
 
@@ -48,7 +48,7 @@ All dimensions are **design/test targets**, not assumed hardware specifications.
 - Narrow POS: list OR checkout full-screen with Back and persistent order summary; wider POS: list ~35% and checkout ~65%, minimum checkout width 500px. 3-column layout only if validated > 1440 CSS px; never force horizontally scrolling tables.
 
 ### Owner Vite
-- Mobile bottom nav: Overview / Orders / Finance / More; `More` routes to Catalog, Staff and Settings. Desktop sidebar.
+- Current implementation (PR #76): six directly accessible mobile links Overview / Production / Orders / Finance / Catalog / Staff in a horizontally scrollable rail, with semantic href destinations and desktop sidebar. The earlier four-link + More proposal was superseded for this build, pending operator signoff.
 - Money-related finance screens provide absolute amount + method labels (do not rely only on pie slices/colors). Defer long tables and filter-heavy UIs to desktop but preserve mobile access via stacked rows.
 
 ## 5. Interaction requirements

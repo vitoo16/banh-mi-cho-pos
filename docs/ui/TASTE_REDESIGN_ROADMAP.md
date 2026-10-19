@@ -1,6 +1,6 @@
 # Taste-led full app redesign — implementation checklist
 
-Status: **foundation in progress**; not a finished full-system redesign.
+Status: **implemented code slices under review**; no real-device or operator visual signoff. Not a finished full-system redesign.
 
 ## Art direction
 Bánh Mì Chợ is an operational tool, not a generic SaaS dashboard. Favor a clear menu, fast queue triage, legible currency and calm actions. Warm neutral canvas, muted green-black headers, restrained bakery-brown action accent, and quiet boundaries replace bright gradient cards, excessive shadows, decorative badges and microanimations.
@@ -13,7 +13,7 @@ Target: **Be Vietnam Pro** across Owner Web, Cashier Web, and Staff Native.
 - Preserve system fallback for accessibility and failed font loading; tabular lining numerals must remain readable for currency.
 
 ## Order of implementation
-1. **Foundation:** unify color/spacing/radii/focus semantics across shared CSS and RN tokens (this PR).
+1. **Foundation:** unify color/spacing/radii/focus semantics across shared CSS and RN tokens (implemented).
 2. **Owner:** login, navigation, dashboard (daily totals), production sales by day/week/month/quarter/year, orders, catalog, finance, staff. Use route-specific typography, dense tables only as needed. Preserve TanStack Query data boundaries.
 3. **Cashier:** queue/selected order, unpaid/paid/exception states, cash input and change, transfer confirmation, receipt printing and retry/UNKNOWN. No silent settling.
 4. **Staff:** login, menu/quantity, cart and notes, payment intent, save confirmation, order history, crash/offline recovery. Keep idempotency and request locks.
@@ -29,3 +29,9 @@ Target: **Be Vietnam Pro** across Owner Web, Cashier Web, and Staff Native.
 
 ## Evidence tracking
 Local font asset paths and code implemented; automated asset checks added. Native device rendering, physical screenshots and full regression test evidence remain outstanding; do not claim readiness to deploy.
+
+## October 19 Web guideline remediation
+- Owner navigation is now real SPA links with open-in-new-tab behavior. Catalog uses a proper submit form and protects unsaved drafts from modal exits, direct navigation and browser Back/Forward.
+- Cashier now uses TanStack Query with separate queue and operations polling, stable shared cache and pause-on-hidden; OrderQueue and CashTenderPanel have independent UI boundaries. Queue shows older orders progressively, never hard caps daily totals.
+- Web timestamps use explicit Asia/Ho_Chi_Minh. Chromium/Firefox/WebKit operational smoke, review-candidate screenshots and CI browser installs were added. This is not Safari on macOS.
+- Remaining gates are physical operator, printer/bank sandbox and visual approval. See FRONTEND_GUIDELINES_AUDIT_2026-10-19.md and FRONTEND_REMEDIATION_STATUS.md.
