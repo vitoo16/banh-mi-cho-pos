@@ -24,6 +24,7 @@ function App(){
  const [mode,setMode]=useState<'ORDERS'|'SHIFT'>('ORDERS'),[method,setMethod]=useState<'CASH'|'BANK'>('CASH');
  const [copies,setCopies]=useState<ReceiptCopy[]>([]),[message,setMessage]=useState('');
  const [receiptBusy,setReceiptBusy]=useState(false);
+ const receiptActiveOrderRef=useRef<string|null>(null);
  const [historicalOrder,setHistoricalOrder]=useState<Order|null>(null);
  const [bankIntent,setBankIntent]=useState<BankIntent|null>(null);
  const [bankBusy,setBankBusy]=useState(false);
@@ -57,10 +58,11 @@ function App(){
   operationsQuery.refetch({cancelRefetch:false})
  ])},[queueQuery.refetch,operationsQuery.refetch]);
  const current=useMemo(()=>orders.find(o=>o.order_id===selected)||(historicalOrder?.order_id===selected?historicalOrder:undefined),[orders,selected,historicalOrder]);
+ receiptActiveOrderRef.current=selected;
  const qrImageUrl=bankIntent?vietQrImageUrl(bankIntent):null;
  const canCollect=current?.status==='COMMITTED'&&current.payment_status==='UNPAID';
  const due=current?.total_vnd||0;const paid=current?.payment_status==='PAID';const cashGiven=moneyInput(tender);const change=Math.max(0,cashGiven-due);
- useEffect(()=>{if(!current)return;setMethod(current.requested_payment_method==='BANK'?'BANK':'CASH');setCopies([]);setBankIntent(null);setQrFailed(false);setTender('');setMessage('');keyRef.current=null;},[selected]);
+ useEffect(()=>{if(!current)return;setMethod(current.requested_payment_method==='BANK'?'BANK':'CASH');setCopies([]);setReceiptBusy(false);setBankIntent(null);setQrFailed(false);setTender('');setMessage('');keyRef.current=null;},[selected]);
  useEffect(()=>{
   if(!selected)return;
   let live=true;
@@ -115,9 +117,16 @@ function App(){
  async function loadReceipts(orderId:string){
   if(receiptBusy)return;
   setReceiptBusy(true);setError('');
-  try{setCopies(await hub.receipts(orderId))}
-  catch(e){setError('Không thể kiểm tra trạng thái liên in. Chưa có xác nhận giấy đã ra. '+(e as Error).message)}
-  finally{setReceiptBusy(false)}
+  try{
+   const result=await hub.receipts(orderId);
+   // Only the order being reviewed may receive this response.
+   if(receiptActiveOrderRef.current===orderId)setCopies(result);
+  }catch(e){
+   if(receiptActiveOrderRef.current===orderId)
+    setError('Không thể kiểm tra trạng thái liên in. Chưa có xác nhận giấy đã ra. '+(e as Error).message);
+  }finally{
+   if(receiptActiveOrderRef.current===orderId)setReceiptBusy(false);
+  }
  }
  async function openPrintException(orderId:string){
   setError('');
