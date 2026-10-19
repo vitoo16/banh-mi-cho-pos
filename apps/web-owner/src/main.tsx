@@ -16,6 +16,7 @@ import {catalogKey,commandKey} from './features/catalog/queries';
 import {catalogRetryStorageKey,readCatalogRetry,type CatalogRetry} from './features/catalog/catalog-retry';
 import {submitCatalogChange} from './features/catalog/mutations';
 import './styles.css';
+import './feature-surfaces.css';
 
 import {AppShell,type OwnerPage as Page} from './app/AppShell';
 import {useOwnerRoute} from './app/router';

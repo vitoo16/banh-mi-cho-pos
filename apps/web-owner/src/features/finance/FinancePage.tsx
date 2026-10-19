@@ -52,8 +52,8 @@ export function FinanceLastSynced(){
  return <p className="muted" role="status">Cập nhật: {isPending?'Đang tải…':data?new Date(data).toLocaleTimeString('vi-VN'):'Chưa đồng bộ'}</p>;
 }
 export function FinancePage({ownerId,remote}:{ownerId:string;remote:boolean}){
- return <><FinanceLastSynced/><div className="twocol">
+ return <div className="finance-page"><div className="finance-intro"><div><p className="eyebrow">SỐ LIỆU ĐÃ XÁC MINH</p><h2>Tiền tại quầy và đối soát</h2></div><FinanceLastSynced/></div><div className="twocol finance-columns">
   <ShiftLedger/>
   <BankExceptions ownerId={ownerId} remote={remote}/>
- </div></>;
+ </div></div>;
 }
