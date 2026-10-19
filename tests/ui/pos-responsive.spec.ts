@@ -350,3 +350,26 @@ test('Receipt refresh API failure is visible without allowing another payment',a
  await expect(page.getByRole('button',{name:'Xác nhận đã nhận tiền'})).toHaveCount(0);
  expect(captures).toEqual([]);
 });
+
+test('Partial cash/refund orders are labeled truthfully and never reopen cash capture',async({page})=>{
+ await page.setViewportSize({width:1024,height:768});
+ const partial={...order,order_id:'33333333-3333-4333-8333-333333333333',
+  display_code:'B00043',payment_status:'PARTIAL'};
+ const partiallyRefunded={...order,order_id:'44444444-4444-4444-8444-444444444444',
+  display_code:'B00044',payment_status:'PARTIALLY_REFUNDED'};
+ const {captures}=await mockHub(page,[partial,partiallyRefunded]);
+ await startCashier(page);
+ const partialButton=page.getByRole('button',{name:/B00043/});
+ await expect(partialButton.getByText('Đã thu một phần')).toBeVisible();
+ await partialButton.click();
+ await expect(page.getByText('Đơn đã thu một phần')).toBeVisible();
+ await expect(page.getByRole('button',{name:'Xác nhận đã nhận tiền'})).toHaveCount(0);
+ await page.getByRole('button',{name:'Tất cả'}).click();
+ const refundedButton=page.getByRole('button',{name:/B00044/});
+ await expect(refundedButton.getByText('Hoàn một phần')).toBeVisible();
+ await refundedButton.click();
+ await expect(page.getByText('Đơn đã hoàn tiền')).toBeVisible();
+ await expect(page.getByRole('button',{name:'Xác nhận đã nhận tiền'})).toHaveCount(0);
+ expect(captures).toHaveLength(0);
+ await assertNoViewportOverflow(page,1024);
+});
