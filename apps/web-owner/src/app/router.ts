@@ -1,4 +1,4 @@
-import {useCallback,useEffect,useState} from 'react';
+import {useCallback,useEffect,useRef,useState} from 'react';
 import type {OwnerPage} from './AppShell';
 
 /** URL is the navigation source of truth. Never encode credentials or form drafts in it. */
@@ -31,10 +31,17 @@ function resolveLocation():OwnerPage{
  * Invalid paths redirect to the safe Overview; no protected content until auth.
  * Session/Cloud permissions remain enforced by the AuthBoundary/Hub.
  */
-export function useOwnerRoute(){
+export function useOwnerRoute(canLeave:()=>boolean=()=>true){
+ const guardRef=useRef(canLeave);guardRef.current=canLeave;
+ const acceptedUrlRef=useRef(window.location.pathname+window.location.search+window.location.hash);
  const [page,setPage]=useState<OwnerPage>(resolveLocation);
  useEffect(()=>{
   const sync=()=>{
+   if(!guardRef.current()){
+    // A browser Back navigation changes location before popstate; retain the last accepted route.
+    window.history.pushState(window.history.state,'',acceptedUrlRef.current);
+    return;
+   }
    const selected=ownerPageFromPath(window.location.pathname);
    if(!selected){
     window.history.replaceState(window.history.state,'',routes.dashboard);
@@ -47,10 +54,17 @@ export function useOwnerRoute(){
     window.history.replaceState(window.history.state,'',canonical+window.location.search+window.location.hash);
    }
    setPage(selected);
+   acceptedUrlRef.current=window.location.pathname+window.location.search+window.location.hash;
   };
+  // Canonicalize initial location, without prompting on first mount.
+  const initial=ownerPageFromPath(window.location.pathname);
+  if(!initial)window.history.replaceState(window.history.state,'',routes.dashboard);
+  acceptedUrlRef.current=window.location.pathname+window.location.search+window.location.hash;
+  // The guard runs only for browser Back/Forward, not for this initial sync.
+  const onPopState=()=>sync();
   sync();
-  window.addEventListener('popstate',sync);
-  return ()=>window.removeEventListener('popstate',sync);
+  window.addEventListener('popstate',onPopState);
+  return ()=>window.removeEventListener('popstate',onPopState);
  },[]);
  const navigate=useCallback((target:OwnerPage,options?:{replace?:boolean})=>{
   const path=routes[target];
@@ -59,6 +73,7 @@ export function useOwnerRoute(){
    else window.history.pushState(window.history.state,'',path);
   }
   setPage(target);
+  acceptedUrlRef.current=window.location.pathname+window.location.search+window.location.hash;
  },[]);
  return {page,navigate};
 }

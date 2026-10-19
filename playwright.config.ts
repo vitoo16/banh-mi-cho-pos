@@ -16,7 +16,11 @@ export default defineConfig({
     screenshot:'only-on-failure',
     actionTimeout:10_000,
   },
-  projects:[{name:'chromium',use:{...devices['Desktop Chrome']}}],
+  projects:[
+   {name:'chromium',use:{...devices['Desktop Chrome']}},
+   {name:'firefox-smoke',testMatch:'**/browser-smoke.spec.ts',use:{...devices['Desktop Firefox']}},
+   {name:'webkit-smoke',testMatch:'**/browser-smoke.spec.ts',use:{...devices['Desktop Safari']}},
+  ],
   webServer:[
     {command:'npm run dev:pos',url:'http://127.0.0.1:5173',reuseExistingServer:!process.env.CI,timeout:100_000},
     {command:'npm run dev:owner',url:'http://127.0.0.1:5174',reuseExistingServer:!process.env.CI,timeout:100_000},

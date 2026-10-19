@@ -14,7 +14,7 @@ Taste Skill is the primary art-direction reviewer, not a literal template. Its c
 - **Motion intensity:** 2/10 for Staff and cashier POS; 3/10 for Owner. Transitions should clarify state changes, never delay actions; honor reduced motion.
 - **Visual density:** Staff 4/10, cashier POS 7/10 for operational facts, Owner 5/10 with denser tables only where comparison needs them.
 - **Primary action:** exactly one visually dominant action per current task/viewport.
-- **Typography:** local/system stack, tabular numbers for currency and metrics; no remote font dependency on LAN/offline paths.
+- **Typography:** self-hosted **Be Vietnam Pro** regular/medium/semibold/bold, with system fallbacks and tabular numbers for currency and metrics. Web assets load from shared local CSS; Expo bundles matching TTFs through `expo-font`. No CDN or WAN dependency.
 - **Surface:** warm cream canvas, white working surfaces, dark readable text, restrained caramel accent. Semantic red/amber/green always paired with words/icons; color never carries payment state alone.
 - **Motion:** only explicit opacity/transform transitions; never `transition: all`; avoid layout shifts and continuous animation at the counter.
 

@@ -80,7 +80,7 @@ for(const width of [320,1366]){
   await page.setViewportSize({width,height:width===320?568:768});
   const {created}=await mockOwner(page);
   await startOwner(page);
-  await page.getByRole('button',{name:'Sản phẩm'}).click();
+  await page.getByRole('link',{name:'Sản phẩm'}).click();
   await page.getByRole('button',{name:/Thêm món/}).click();
   const dialog=page.getByRole('dialog',{name:'Chỉnh sản phẩm'});
   await expect(dialog).toBeVisible();
@@ -101,7 +101,7 @@ test('Owner local create can intentionally keep a new item hidden',async({page})
  await page.setViewportSize({width:320,height:640});
  const {created}=await mockOwner(page);
  await startOwner(page);
- await page.getByRole('button',{name:'Sản phẩm'}).click();
+ await page.getByRole('link',{name:'Sản phẩm'}).click();
  await page.getByRole('button',{name:/Thêm món/}).click();
  const modal=page.getByRole('dialog',{name:'Chỉnh sản phẩm'});
  await modal.getByLabel('Tên món').fill('Món chưa mở bán');
@@ -135,7 +135,7 @@ test('Owner preserves idempotency key when Cloud/POS committed but response was 
   }
  });
  await startOwner(page);
- await page.getByRole('button',{name:'Sản phẩm'}).click();
+ await page.getByRole('link',{name:'Sản phẩm'}).click();
  await page.getByRole('button',{name:/Thêm món/}).click();
  let dialog=page.getByRole('dialog',{name:'Chỉnh sản phẩm'});
  await dialog.getByLabel('Tên món').fill('Chưa chắc đã lưu');
@@ -177,10 +177,72 @@ for(const width of [320,390,768,1366]){
 }
 
 
+
+/** Taste catalog filters are purely presentational; no mutation or optimistic price changes. */
+for(const width of [320,1366]){
+ test('Owner catalog search ignores Vietnamese accents and filters live products at '+width+'px',async({page})=>{
+  await page.setViewportSize({width,height:width===320?640:768});
+  await mockOwner(page);
+  const mutations:string[]=[];
+  await page.route('**/v1/owner/products',async route=>{
+   if(route.request().method()!=='GET'){mutations.push(route.request().method());await route.fallback();return}
+   await route.fulfill({status:200,contentType:'application/json',
+    body:JSON.stringify({version:1,enabled_payment_methods:['CASH','BANK'],products:[
+     {id:'bm1',name:'Bánh mì đặc biệt',category:'Bánh mì',price_vnd:45000,is_active:true},
+     {id:'bm2',name:'Bánh mì chay',category:'Bánh mì',price_vnd:30000,is_active:false},
+     {id:'bb1',name:'Bánh bao trứng cút',category:'Bánh bao',price_vnd:25000,is_active:true},
+    ]})});
+  });
+  await startOwner(page);
+  await page.getByRole('link',{name:'Sản phẩm'}).click();
+  const list=page.locator('.catalog-record');
+  await expect(list).toHaveCount(3);
+  await expect(page.getByText('2 đang bán · 1 đã ẩn')).toBeVisible();
+  const search=page.getByRole('searchbox',{name:'Tìm món hoặc nhóm'});
+  await search.fill('banh mi');
+  await expect(list).toHaveCount(2);
+  await expect(list.getByText('Bánh mì chay')).toBeVisible();
+  const filters=page.getByRole('group',{name:'Lọc trạng thái món'});
+  await filters.getByRole('button',{name:'Đang bán'}).click();
+  await expect(list).toHaveCount(1);
+  await expect(list.getByText('Bánh mì đặc biệt')).toBeVisible();
+  await filters.getByRole('button',{name:'Đã ẩn'}).click();
+  await expect(list).toHaveCount(1);
+  await expect(list.getByText('Bánh mì chay')).toBeVisible();
+  await search.fill('khong co');
+  await expect(list).toHaveCount(0);
+  await expect(page.getByText('Không tìm thấy món phù hợp.',{exact:false})).toBeVisible();
+  await search.clear();
+  await filters.getByRole('button',{name:'Tất cả'}).click();
+  await expect(list).toHaveCount(3);
+  expect(mutations).toEqual([]);
+  await assertNoOverflow(page,width);
+  await assertAccessible(page);
+ });
+}
+
+test('Owner staff and finance forms remain labeled and accessible on 320px',async({page})=>{
+ await page.setViewportSize({width:320,height:640});
+ await mockOwner(page);await startOwner(page);
+ await page.getByRole('link',{name:'Nhân viên'}).click();
+ await expect(page.getByLabel('Tên thiết bị')).toBeVisible();
+ await expect(page.getByLabel('Mã nhân viên')).toBeVisible();
+ await expect(page.getByLabel('Tên hiển thị')).toBeVisible();
+ await expect(page.getByLabel('Vai trò')).toBeVisible();
+ await expect(page.getByLabel('PIN (từ 6 ký tự)')).toBeVisible();
+ await assertNoOverflow(page,320);
+ await assertAccessible(page);
+ await page.getByRole('link',{name:'Tài chính'}).click();
+ await expect(page.getByRole('heading',{name:'Đối soát ngân hàng'})).toBeVisible();
+ await expect(page.getByText('Chưa đồng bộ')).toBeVisible();
+ await assertNoOverflow(page,320);
+ await assertAccessible(page);
+});
+
 test('OR-08a: Catalog dialog moves focus inside, traps Shift+Tab/Tab and returns focus on Escape',async({page})=>{
  await page.setViewportSize({width:1366,height:768});
  await mockOwner(page);await startOwner(page);
- await page.getByRole('button',{name:'Sản phẩm'}).click();
+ await page.getByRole('link',{name:'Sản phẩm'}).click();
  const opener=page.getByRole('button',{name:/Thêm món/});
  await opener.click();
  const dialog=page.getByRole('dialog',{name:'Chỉnh sản phẩm'});
@@ -203,14 +265,58 @@ test('OR-08a: Catalog dialog moves focus inside, traps Shift+Tab/Tab and returns
  const bounds=await close.boundingBox();
  expect(bounds?.height).toBeGreaterThanOrEqual(44);
  expect(bounds?.width).toBeGreaterThanOrEqual(44);
+ page.once('dialog',dialog=>dialog.accept()); // Discard a modified form intentionally.
  await page.keyboard.press('Escape');
  await expect(dialog).toHaveCount(0);
  await expect(opener).toBeFocused();
 });
+test('Owner preserves unsaved catalog changes unless operator explicitly discards',async({page})=>{
+ await page.setViewportSize({width:390,height:844});
+ await mockOwner(page);await startOwner(page);
+ await page.getByRole('link',{name:'Sản phẩm'}).click();
+ const opener=page.getByRole('button',{name:/Thêm món/});
+ await opener.click();
+ const dialog=page.getByRole('dialog',{name:'Chỉnh sản phẩm'});
+ await dialog.getByLabel('Tên món').fill('Bánh mì chưa lưu');
+ page.once('dialog',confirm=>confirm.dismiss());
+ await dialog.getByRole('button',{name:'Đóng'}).click();
+ await expect(dialog).toBeVisible();
+ await expect(dialog.getByLabel('Tên món')).toHaveValue('Bánh mì chưa lưu');
+ page.once('dialog',confirm=>confirm.dismiss());
+ await page.evaluate(()=>document.querySelector<HTMLAnchorElement>('.bottomnav a[href="/finance"]')?.click());
+ await expect(dialog).toBeVisible();
+ await expect(page).toHaveURL(/\/catalog$/);
+ page.once('dialog',confirm=>confirm.dismiss());
+ await page.evaluate(()=>history.back());
+ await expect(page).toHaveURL(/\/catalog$/);
+ await expect(dialog.getByLabel('Tên món')).toHaveValue('Bánh mì chưa lưu');
+ page.once('dialog',confirm=>confirm.accept());
+ await dialog.getByRole('button',{name:'Đóng'}).click();
+ await expect(dialog).toHaveCount(0);
+ await expect(opener).toBeFocused();
+});
+
+test('Owner catalog validates typed VND and Enter submits a valid edit',async({page})=>{
+ const {created}=await mockOwner(page);await startOwner(page);
+ await page.getByRole('link',{name:'Sản phẩm'}).click();
+ await page.getByRole('button',{name:/Thêm món/}).click();
+ const dialog=page.getByRole('dialog',{name:'Chỉnh sản phẩm'});
+ await dialog.getByLabel('Tên món').fill('Món kiểm tra');
+ await dialog.getByLabel('Giá bán (VNĐ)').fill('34x000');
+ await dialog.getByLabel('Giá bán (VNĐ)').press('Enter');
+ await expect(dialog.getByRole('alert')).toContainText('số nguyên VNĐ');
+ await expect(dialog.getByLabel('Giá bán (VNĐ)')).toBeFocused();
+ expect(created).toHaveLength(0);
+ await dialog.getByLabel('Giá bán (VNĐ)').fill('34000');
+ await dialog.getByLabel('Giá bán (VNĐ)').press('Enter');
+ await expect(dialog).toHaveCount(0);
+ expect(created).toHaveLength(1);
+});
+
 test('OR-08a: 320px dialog stays keyboard-contained and returns focus after confirmed save',async({page})=>{
  await page.setViewportSize({width:320,height:568});
  const {created}=await mockOwner(page);await startOwner(page);
- await page.getByRole('button',{name:'Sản phẩm'}).click();
+ await page.getByRole('link',{name:'Sản phẩm'}).click();
  const opener=page.getByRole('button',{name:/Thêm món/});
  await opener.click();
  const dialog=page.getByRole('dialog',{name:'Chỉnh sản phẩm'});
@@ -280,7 +386,7 @@ for(const width of [320,390]){
   expect(rootPx).toBeGreaterThanOrEqual(32);
   await expect(page.getByText('1.234.567đ')).toBeVisible();
   await assertNoOverflow(page,width);
-  await page.getByRole('button',{name:'Sản phẩm'}).click();
+  await page.getByRole('link',{name:'Sản phẩm'}).click();
   const add=page.getByRole('button',{name:/Thêm món/});
   await expect(add).toBeVisible();
   await add.click();
@@ -324,7 +430,7 @@ test('OR-08c: Owner login and operational dashboard meet automated WCAG A/AA smo
 test('OR-08c: Catalog edit dialog meets automated WCAG A/AA smoke on a phone',async({page})=>{
  await page.setViewportSize({width:390,height:844});
  await mockOwner(page);await startOwner(page);
- await page.getByRole('button',{name:'Sản phẩm'}).click();
+ await page.getByRole('link',{name:'Sản phẩm'}).click();
  await page.getByRole('button',{name:/Thêm món/}).click();
  await expect(page.getByRole('dialog',{name:'Chỉnh sản phẩm'})).toBeVisible();
  await assertAccessible(page);
@@ -338,3 +444,56 @@ test('OR-08c: Cloud Owner staff read-only page meets automated WCAG A/AA smoke',
  await expect(page.getByText('Quản lý nhân viên chỉ được thao tác từ POS nội bộ',{exact:false})).toBeVisible();
  await assertAccessible(page);
 });
+
+test('Owner history keeps 325 already loaded orders browseable without rendering all rows',async({page})=>{
+ await page.setViewportSize({width:390,height:844});
+ const data=Array.from({length:325},(_,index)=>({
+  order_id:'history-'+index,display_code:'B'+String(index+100).padStart(5,'0'),
+  created_at:'2026-10-11T03:20:00.000Z',created_by:'staff',
+  status:'COMMITTED',payment_status:'PAID',requested_payment_method:'CASH',
+  total_vnd:45000,version:1,items:[],note:'',
+ }));
+ let writes=0;
+ await mockOwner(page);
+ await page.route('**/v1/orders/history**',async route=>{
+  if(route.request().method()!=='GET')writes++;
+  await route.fulfill({status:200,contentType:'application/json',
+   body:JSON.stringify({items:data,next_cursor:null})});
+ });
+ await startOwner(page);
+ await page.getByRole('link',{name:'Đơn hàng'}).click();
+ const rows=page.locator('.records .record');
+ await expect(rows).toHaveCount(80);
+ await expect(page.getByRole('status',{name:''}).filter({hasText:'Đang hiển thị 80/325 đơn đã tải'})).toBeVisible();
+ await page.getByRole('button',{name:'Hiện thêm 80 đơn đã tải'}).click();
+ await expect(rows).toHaveCount(160);
+ await page.getByRole('textbox',{name:'Tìm đơn'}).fill('B00424');
+ await expect(rows).toHaveCount(1);
+ await expect(page.getByText('#B00424')).toBeVisible();
+ await page.getByRole('textbox',{name:'Tìm đơn'}).clear();
+ await expect(rows).toHaveCount(80);
+ await assertNoOverflow(page,390);
+ expect(writes).toBe(0);
+});
+
+for(const width of [320,390]){
+ test('Owner mobile navigation reveals selected Catalog link on direct URL at '+width+'px',async({page})=>{
+  await page.setViewportSize({width,height:width===320?568:844});
+  await mockOwner(page);
+  await page.goto('http://127.0.0.1:5174/catalog');
+  await page.getByLabel('Mã PIN chủ tiệm').fill('owner-pin-for-test');
+  await page.getByRole('button',{name:'Đăng nhập'}).click();
+  const mobile=page.getByRole('navigation',{name:'Điều hướng di động'});
+  const active=mobile.getByRole('link',{name:'Sản phẩm'});
+  await expect(active).toHaveAttribute('aria-current','page');
+  await expect(page.getByRole('heading',{name:'Menu và giá bán'})).toBeVisible();
+  const bounds=await page.evaluate(()=>{
+   const nav=document.querySelector('.bottomnav')!.getBoundingClientRect();
+   const item=document.querySelector('.bottomnav [aria-current="page"]')!.getBoundingClientRect();
+   return {navLeft:nav.left,navRight:nav.right,itemLeft:item.left,itemRight:item.right};
+  });
+  expect(bounds.itemLeft,'Selected nav cut on left '+JSON.stringify(bounds)).toBeGreaterThanOrEqual(bounds.navLeft-1);
+  expect(bounds.itemRight,'Selected nav cut on right '+JSON.stringify(bounds)).toBeLessThanOrEqual(bounds.navRight+1);
+  await assertNoOverflow(page,width);
+ });
+}
