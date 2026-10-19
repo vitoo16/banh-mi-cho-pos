@@ -41,6 +41,19 @@ test('POS 1024px queue/cash visual candidate with bundled Vietnamese font',async
  await expect(page.getByText('10.000đ')).toBeVisible();
  await assertNoXScroll(page);
  await page.screenshot({path:testInfo.outputPath('pos-cash-1024.png'),fullPage:true});
+ if(testInfo.project.name==='chromium'){
+  for(const width of [1280,1366,1920]){
+   await page.setViewportSize({width,height:width===1920?1080:768});
+   await assertNoXScroll(page);
+   await page.screenshot({path:testInfo.outputPath('pos-cash-'+width+'.png'),fullPage:true});
+  }
+  await page.setViewportSize({width:1024,height:768});
+  await page.addStyleTag({content:':root{font-size:200%!important}'});
+  await assertNoXScroll(page);
+  await expect(page.getByLabel('Khách đưa (VNĐ)')).toBeVisible();
+  await page.screenshot({path:testInfo.outputPath('pos-cash-1024-large-type.png'),fullPage:true});
+ }
+
 });
 test('Owner 390px dashboard/catalog visual candidate with route links',async({page},testInfo)=>{
  await page.setViewportSize({width:390,height:844});
@@ -66,4 +79,19 @@ test('Owner 390px dashboard/catalog visual candidate with route links',async({pa
  await expect(page.getByText('Bánh mì đặc biệt')).toBeVisible();
  await assertNoXScroll(page);
  await page.screenshot({path:testInfo.outputPath('owner-catalog-390.png'),fullPage:true});
+ if(testInfo.project.name==='chromium'){
+  for(const width of [320,768,1366]){
+   await page.setViewportSize({width,height:width===320?568:width===768?1024:768});
+   await assertNoXScroll(page);
+   await page.screenshot({path:testInfo.outputPath('owner-catalog-'+width+'.png'),fullPage:true});
+  }
+  await page.getByRole('link',{name:'Tổng quan'}).click();
+  await expect(page.getByText('250.000đ')).toBeVisible();
+  for(const width of [320,768,1366]){
+   await page.setViewportSize({width,height:width===320?568:width===768?1024:768});
+   await assertNoXScroll(page);
+   await page.screenshot({path:testInfo.outputPath('owner-dashboard-'+width+'.png'),fullPage:true});
+  }
+ }
+
 });
