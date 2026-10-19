@@ -1,4 +1,32 @@
-/* Be Vietnam Pro is loaded from local()/bundled assets where available. Never rely on a CDN for offline operation. */
+/* Self-hosted Be Vietnam Pro; no CDN or WAN access required at the cashier. */
+@font-face {
+ font-family:'Be Vietnam Pro';
+ src:url('../assets/fonts/BeVietnamPro-Regular.ttf') format('truetype');
+ font-style:normal;
+ font-weight:400;
+ font-display:swap;
+}
+@font-face {
+ font-family:'Be Vietnam Pro';
+ src:url('../assets/fonts/BeVietnamPro-Medium.ttf') format('truetype');
+ font-style:normal;
+ font-weight:500;
+ font-display:swap;
+}
+@font-face {
+ font-family:'Be Vietnam Pro';
+ src:url('../assets/fonts/BeVietnamPro-SemiBold.ttf') format('truetype');
+ font-style:normal;
+ font-weight:600;
+ font-display:swap;
+}
+@font-face {
+ font-family:'Be Vietnam Pro';
+ src:url('../assets/fonts/BeVietnamPro-Bold.ttf') format('truetype');
+ font-style:normal;
+ font-weight:700;
+ font-display:swap;
+}
 /* Bánh Mì Chợ operational visual system. Taste is art direction; safety, clarity and speed win. */
 :root {
  color-scheme: light;
@@ -45,7 +73,7 @@ button:disabled{cursor:not-allowed}
  outline-offset:3px;
 }
 :where(input,select,textarea){color:var(--bmc-ink);background:var(--bmc-surface)}
-:where(button,a){-webkit-tap-highlight-color:#A84F1020}
+:where(button,a){-webkit-tap-highlight-color:#99451520}
 @media(max-width:600px){
  :where(input,select,textarea){font-size:max(16px,1em)}
 }

@@ -8,8 +8,8 @@ Bánh Mì Chợ is an operational tool, not a generic SaaS dashboard. Favor a cl
 ## Typography
 Target: **Be Vietnam Pro** across Owner Web, Cashier Web, and Staff Native.
 - Web CSS uses a Be Vietnam Pro-first fallback stack.
-- **Release blocker:** vendor WOFF2 font files locally in the monorepo and define @font-face; don't depend on remote Google Fonts for POS LAN/offline.
-- **Release blocker:** vendor compatible TTF/OTF assets for React Native, load via expo-font with splash/loading guard, and apply to all Text/TextInput variants. No font file is included in this initial PR; this is *not yet* font-complete.
+- **Implemented in this PR:** local TrueType originals from Google Fonts with @font-face for four weights (400/500/600/700); no WAN font downloads. Includes SIL OFL license.
+- **Implemented in this PR:** same local TTF assets bundled with Expo useFonts, a loading/failure fallback, and typography wrappers applied to Text + TextInput. Real-device font rendering remains to be verified.
 - Preserve system fallback for accessibility and failed font loading; tabular lining numerals must remain readable for currency.
 
 ## Order of implementation
@@ -28,4 +28,4 @@ Target: **Be Vietnam Pro** across Owner Web, Cashier Web, and Staff Native.
 - No stock/prep/KDS features without separate approved scope.
 
 ## Evidence tracking
-Foundation CSS updated in this branch. Physical screenshots, tests and local font assets **not yet verified**; do not claim completed implementation or readiness to deploy.
+Local font asset paths and code implemented; automated asset checks added. Native device rendering, physical screenshots and full regression test evidence remain outstanding; do not claim readiness to deploy.
