@@ -14,6 +14,8 @@ async function assertNoXScroll(page:import('@playwright/test').Page){
  expect(metrics.scrollWidth).toBeLessThanOrEqual(metrics.width+1);
 }
 test('POS 1024px queue/cash visual candidate with bundled Vietnamese font',async({page},testInfo)=>{
+ const runtimeErrors:string[]=[];
+ page.on('pageerror',error=>runtimeErrors.push(error.stack||error.message));
  await page.setViewportSize({width:1024,height:768});
  await page.route('**/v1/**',async route=>{
   const path=new URL(route.request().url()).pathname;
@@ -25,6 +27,8 @@ test('POS 1024px queue/cash visual candidate with bundled Vietnamese font',async
   await route.fulfill({status:200,contentType:'application/json',body:JSON.stringify(body)});
  });
  await page.goto('http://127.0.0.1:5173/');
+ await page.waitForTimeout(200);
+ if(runtimeErrors.length)throw new Error('POS runtime errors: '+runtimeErrors.join(' | '));
  await page.getByLabel('Mã PIN thu ngân').fill('screen-test');
  await page.getByRole('button',{name:'Đăng nhập'}).click();
  await expect(page.getByText('#B00042').first()).toBeVisible();
