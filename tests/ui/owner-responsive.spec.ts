@@ -177,6 +177,50 @@ for(const width of [320,390,768,1366]){
 }
 
 
+
+/** Taste catalog filters are purely presentational; no mutation or optimistic price changes. */
+for(const width of [320,1366]){
+ test('Owner catalog search ignores Vietnamese accents and filters live products at '+width+'px',async({page})=>{
+  await page.setViewportSize({width,height:width===320?640:768});
+  await mockOwner(page);
+  const mutations:string[]=[];
+  await page.route('**/v1/owner/products',async route=>{
+   if(route.request().method()!=='GET'){mutations.push(route.request().method());await route.fallback();return}
+   await route.fulfill({status:200,contentType:'application/json',
+    body:JSON.stringify({version:1,enabled_payment_methods:['CASH','BANK'],products:[
+     {id:'bm1',name:'Bánh mì đặc biệt',category:'Bánh mì',price_vnd:45000,is_active:true},
+     {id:'bm2',name:'Bánh mì chay',category:'Bánh mì',price_vnd:30000,is_active:false},
+     {id:'bb1',name:'Bánh bao trứng cút',category:'Bánh bao',price_vnd:25000,is_active:true},
+    ]})});
+  });
+  await startOwner(page);
+  await page.getByRole('button',{name:'Sản phẩm'}).click();
+  const list=page.locator('.catalog-record');
+  await expect(list).toHaveCount(3);
+  await expect(page.getByText('2 đang bán · 1 đã ẩn')).toBeVisible();
+  const search=page.getByRole('searchbox',{name:'Tìm món hoặc nhóm'});
+  await search.fill('banh mi');
+  await expect(list).toHaveCount(2);
+  await expect(list.getByText('Bánh mì chay')).toBeVisible();
+  const filters=page.getByRole('group',{name:'Lọc trạng thái món'});
+  await filters.getByRole('button',{name:'Đang bán'}).click();
+  await expect(list).toHaveCount(1);
+  await expect(list.getByText('Bánh mì đặc biệt')).toBeVisible();
+  await filters.getByRole('button',{name:'Đã ẩn'}).click();
+  await expect(list).toHaveCount(1);
+  await expect(list.getByText('Bánh mì chay')).toBeVisible();
+  await search.fill('khong co');
+  await expect(list).toHaveCount(0);
+  await expect(page.getByText('Không tìm thấy món phù hợp.',{exact:false})).toBeVisible();
+  await search.clear();
+  await filters.getByRole('button',{name:'Tất cả'}).click();
+  await expect(list).toHaveCount(3);
+  expect(mutations).toEqual([]);
+  await assertNoOverflow(page,width);
+  await assertAccessible(page);
+ });
+}
+
 test('OR-08a: Catalog dialog moves focus inside, traps Shift+Tab/Tab and returns focus on Escape',async({page})=>{
  await page.setViewportSize({width:1366,height:768});
  await mockOwner(page);await startOwner(page);
