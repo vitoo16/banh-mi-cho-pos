@@ -306,3 +306,47 @@ test('Cash confirmation and change stay in visible checkout pane at standard cou
   await assertNoViewportOverflow(page,width);
  }
 });
+
+test('BANK request is disabled when Hub disconnects after a valid order read',async({page})=>{
+ await page.setViewportSize({width:1024,height:768});
+ let created=0;
+ await mockHub(page);
+ await page.route('**/v1/orders/*/payments/bank-intent',async route=>{
+  created++;await route.fulfill({status:200,contentType:'application/json',body:'{}'});
+ });
+ await startCashier(page);
+ await page.getByRole('button',{name:/B00042/}).click();
+ const options=page.locator('.method-row');
+ await options.getByRole('button',{name:'Chuyển khoản'}).click();
+ await expect(options.getByRole('button',{name:'Chuyển khoản'})).toHaveAttribute('aria-pressed','true');
+ await page.route('**/v1/orders',route=>route.fulfill({status:503,contentType:'application/json',
+  body:JSON.stringify({code:'HUB_DOWN',message:'Store Hub không trả lời'})}));
+ await page.getByRole('button',{name:'Tải lại đơn'}).click();
+ await expect(page.getByRole('alert').filter({hasText:'Không kết nối được Store Hub'})).toBeVisible();
+ await expect(page.getByRole('button',{name:'Tạo yêu cầu chuyển khoản'})).toBeDisabled();
+ await expect(page.getByText('Chưa thể tạo hoặc kiểm tra yêu cầu chuyển khoản.')).toBeVisible();
+ expect(created).toBe(0);
+ await assertNoViewportOverflow(page,1024);
+});
+
+test('Receipt refresh API failure is visible without allowing another payment',async({page})=>{
+ await page.setViewportSize({width:1024,height:768});
+ const paidOrder={...order,payment_status:'PAID'};
+ const {captures}=await mockHub(page);
+ await page.route('**/v1/orders',route=>route.fulfill({
+  status:200,contentType:'application/json',body:JSON.stringify([paidOrder])
+ }));
+ await page.route('**/v1/orders/*/receipts',route=>route.fulfill({
+  status:503,contentType:'application/json',body:JSON.stringify({code:'PRINTER_UNAVAILABLE',message:'Không đọc được trạng thái máy in'})
+ }));
+ await page.goto('/');
+ await page.getByLabel('Mã PIN thu ngân').fill('cashier-test-secret');
+ await page.getByRole('button',{name:'Đăng nhập'}).click();
+ await page.getByRole('button',{name:'Đã thu'}).click();
+ await page.getByRole('button',{name:/B00042/}).click();
+ await expect(page.getByRole('heading',{name:'Hai liên biên nhận'})).toBeVisible();
+ await page.getByRole('button',{name:'Xem trạng thái in'}).click();
+ await expect(page.getByRole('alert').filter({hasText:'Không thể kiểm tra trạng thái liên in'})).toBeVisible();
+ await expect(page.getByRole('button',{name:'Xác nhận đã nhận tiền'})).toHaveCount(0);
+ expect(captures).toEqual([]);
+});
