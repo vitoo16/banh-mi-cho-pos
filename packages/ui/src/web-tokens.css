@@ -1,22 +1,23 @@
+/* Be Vietnam Pro is loaded from local()/bundled assets where available. Never rely on a CDN for offline operation. */
 /* Bánh Mì Chợ operational visual system. Taste is art direction; safety, clarity and speed win. */
 :root {
  color-scheme: light;
- --bmc-font: system-ui,-apple-system,'Segoe UI','Noto Sans',Arial,sans-serif;
- --bmc-canvas: #FAF9F6;
+ --bmc-font: 'Be Vietnam Pro',system-ui,-apple-system,'Segoe UI','Noto Sans',Arial,sans-serif;
+ --bmc-canvas: #F6F4EF;
  --bmc-surface: #FFFFFF;
  --bmc-surface-raised: #FFFFFF;
- --bmc-ink: #1E2420;
- --bmc-muted: #5D6760;
- --bmc-border: #D9DFD8;
- --bmc-accent: #A84F10;
- --bmc-accent-soft: #FFF0E3;
+ --bmc-ink: #202820;
+ --bmc-muted: #647066;
+ --bmc-border: #D9DED5;
+ --bmc-accent: #994515;
+ --bmc-accent-soft: #F6E8DC;
  --bmc-success: #166534;
  --bmc-warning: #795100;
  --bmc-danger: #B42318;
- --bmc-focus: #2563EB;
- --bmc-radius-control: 10px;
- --bmc-radius-card: 16px;
- --bmc-radius-dialog: 20px;
+ --bmc-focus: #215A75;
+ --bmc-radius-control: 8px;
+ --bmc-radius-card: 12px;
+ --bmc-radius-dialog: 16px;
  --bmc-space-1: 4px;
  --bmc-space-2: 8px;
  --bmc-space-3: 12px;
