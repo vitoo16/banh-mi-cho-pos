@@ -1,5 +1,6 @@
 import React,{useEffect,useMemo,useRef,useState} from 'react';
 import {createRoot} from 'react-dom/client';
+import {QueryClient,QueryClientProvider,useQuery} from '@tanstack/react-query';
 import {HubClient,formatVnd,type Order,type Shift,type ReceiptCopy,type Session,type OperationalStatus} from '@bmc/contracts';
 import {ShoppingBag,Wallet,Search,LogOut,Wifi,WifiOff,CheckCircle2,Clock,Printer,Plus,ArrowDownLeft,History,ShieldAlert,RefreshCcw} from 'lucide-react';
 import './styles.css';
@@ -9,15 +10,16 @@ const tokenKey='bmc_cashier_token';
 const hub=new HubClient('',()=>sessionStorage.getItem(tokenKey)||undefined);
 const moneyInput=(s:string)=>Math.max(0,Number(s.replace(/\D/g,''))||0);
 const nonce=()=>crypto.randomUUID();
+const posQueryClient=new QueryClient({defaultOptions:{queries:{retry:0,refetchOnWindowFocus:true}}});
+const EMPTY_ORDERS:Order[]=[];
 function App(){
  const [session,setSession]=useState<Session|null>(null),[pin,setPin]=useState(''),[error,setError]=useState(''),[busy,setBusy]=useState(false);
- const [orders,setOrders]=useState<Order[]>([]),[shift,setShift]=useState<Shift|null>(null),[selected,setSelected]=useState<string|null>(null);
+ const [selected,setSelected]=useState<string|null>(null);
  const [filter,setFilter]=useState<'UNPAID'|'PAID'|'ALL'>('UNPAID'),[query,setQuery]=useState('');
  const [tender,setTender]=useState(''),[floatAmount,setFloatAmount]=useState('1000000'),[counted,setCounted]=useState(''),[reason,setReason]=useState('');
  const [mode,setMode]=useState<'ORDERS'|'SHIFT'>('ORDERS'),[method,setMethod]=useState<'CASH'|'BANK'>('CASH');
- const [copies,setCopies]=useState<ReceiptCopy[]>([]),[message,setMessage]=useState(''),[online,setOnline]=useState(true);
- const [operations,setOperations]=useState<OperationalStatus|null>(null);
- const [connectionError,setConnectionError]=useState(''),[historicalOrder,setHistoricalOrder]=useState<Order|null>(null);
+ const [copies,setCopies]=useState<ReceiptCopy[]>([]),[message,setMessage]=useState('');
+ const [historicalOrder,setHistoricalOrder]=useState<Order|null>(null);
  const [bankIntent,setBankIntent]=useState<{reference:string;amount_vnd:number;account_number:string;bank_code:string;status:string}|null>(null);
  const [bankBusy,setBankBusy]=useState(false);
  const [qrFailed,setQrFailed]=useState(false);
@@ -28,17 +30,31 @@ function App(){
  const [pendingCash,setPendingCash]=useState<PendingCashCapture|null>(()=>{try{return readPendingCash(localStorage)}catch{return null}});
  const [pendingCashError,setPendingCashError]=useState(()=>{try{readPendingCash(localStorage);return ''}catch(e){return (e as Error).message}});
 
+ // TanStack Query coalesces in-flight reads, avoids overlapping polling and
+ // preserves referential equality for unchanged order rows. Hub remains authoritative.
+ const queueQuery=useQuery<{orders:Order[];shift:Shift|null}>({
+  queryKey:['cashier','queue',session?.user.id??'signed-out'],
+  queryFn:async()=>{const [orders,shift]=await Promise.all([hub.orders(),hub.shift()]);return {orders,shift}},
+  enabled:Boolean(session),staleTime:1_000,refetchInterval:2_500,
+ });
+ const operationsQuery=useQuery<OperationalStatus>({
+  queryKey:['cashier','operational',session?.user.id??'signed-out'],
+  queryFn:()=>hub.operationalStatus(),enabled:Boolean(session),staleTime:2_000,refetchInterval:5_000,
+ });
+ const orders=queueQuery.data?.orders??EMPTY_ORDERS;
+ const shift=queueQuery.data?.shift??null;
+ const online=!queueQuery.isError;
+ const connectionError=queueQuery.error instanceof Error?queueQuery.error.message:'';
+ // Reporting outages never misrepresent cash checkout connectivity.
+ const operations=operationsQuery.isError?null:operationsQuery.data??null;
+ const refresh=async()=>{await Promise.all([
+  queueQuery.refetch({cancelRefetch:false}),
+  operationsQuery.refetch({cancelRefetch:false})
+ ])};
  const current=useMemo(()=>orders.find(o=>o.order_id===selected)||(historicalOrder?.order_id===selected?historicalOrder:undefined),[orders,selected,historicalOrder]);
  const qrImageUrl=bankIntent?vietQrImageUrl(bankIntent):null;
  const canCollect=current?.status==='COMMITTED'&&current.payment_status==='UNPAID';
  const due=current?.total_vnd||0;const paid=current?.payment_status==='PAID';const cashGiven=moneyInput(tender);const change=Math.max(0,cashGiven-due);
- const refresh=async()=>{
-  try{const [os,sh]=await Promise.all([hub.orders(),hub.shift()]);setOrders(os);setShift(sh);setOnline(true);setConnectionError('')}
-  catch(e){setOnline(false);setConnectionError(String((e as Error).message||e))}
-  // Operational reporting must not make working cash checkout appear disconnected.
-  try{setOperations(await hub.operationalStatus())}catch{setOperations(null)}
- };
- useEffect(()=>{if(!session)return;void refresh();const id=setInterval(()=>void refresh(),2500);return ()=>clearInterval(id)},[session]);
  useEffect(()=>{if(!current)return;setMethod(current.requested_payment_method==='BANK'?'BANK':'CASH');setCopies([]);setBankIntent(null);setQrFailed(false);setTender('');setMessage('');keyRef.current=null;},[selected]);
  useEffect(()=>{
   if(!selected)return;
@@ -109,7 +125,7 @@ function App(){
  if(!session)return <main className="login-shell"><div className="login-card"><div className="mark"><ShoppingBag size={25}/></div><p className="eyebrow">BÁNH MÌ CHỢ</p><h1>Quầy thu ngân</h1><p className="muted">Một quầy thu tiền, mọi đơn hàng rõ ràng.</p><form onSubmit={login}><label htmlFor="pin">Mã PIN thu ngân</label><input id="pin" autoFocus autoComplete="off" type="password" value={pin} onChange={e=>setPin(e.target.value)} minLength={6} required/><button className="primary full" disabled={busy}>Đăng nhập</button></form>{error&&<div role="alert" className="alert">{error}</div>}<p className="hint">Kết nối với Store Hub nội bộ. Không lưu PIN trên thiết bị.</p></div></main>;
  return <div className="shell">
   <a className="pos-skip-link" href="#pos-main">Đến nội dung thu ngân</a>
-  <header className="topbar"><div className="brand"><span className="mark small"><ShoppingBag size={19}/></span><span><b>Bánh Mì Chợ</b><small>POS • Thu ngân</small></span></div><div className="top-right"><span className={'network '+(online?'good':'bad')}>{online?<Wifi size={16}/>:<WifiOff size={16}/>} {online?'Store Hub':'Mất kết nối'}</span><span className="pill">Ca: {shift?'Đang mở':'Chưa mở'}</span><button className="ghost" onClick={()=>{void hub.logout().catch(()=>{}).finally(()=>{sessionStorage.removeItem(tokenKey);setSession(null)})}} title="Đăng xuất"><LogOut size={18}/></button></div></header>
+  <header className="topbar"><div className="brand"><span className="mark small"><ShoppingBag size={19}/></span><span><b>Bánh Mì Chợ</b><small>POS • Thu ngân</small></span></div><div className="top-right"><span className={'network '+(online?'good':'bad')}>{online?<Wifi size={16}/>:<WifiOff size={16}/>} {online?'Store Hub':'Mất kết nối'}</span><span className="pill">Ca: {shift?'Đang mở':'Chưa mở'}</span><button className="ghost" onClick={()=>{void hub.logout().catch(()=>{}).finally(()=>{sessionStorage.removeItem(tokenKey);posQueryClient.clear();setSession(null)})}} title="Đăng xuất"><LogOut size={18}/></button></div></header>
   <nav className="mainnav" aria-label="Chế độ thu ngân"><button type="button" onClick={()=>setMode('ORDERS')} aria-pressed={mode==='ORDERS'} className={mode==='ORDERS'?'active':''}><ShoppingBag size={17}/> Đơn hàng</button><button type="button" onClick={()=>setMode('SHIFT')} aria-pressed={mode==='SHIFT'} className={mode==='SHIFT'?'active':''}><Wallet size={17}/> Sổ quỹ & chốt ca</button></nav>
   {!online&&<div role="alert" className="alert wide">Không kết nối được Store Hub. Không ghi nhận thanh toán khi chưa có xác nhận. {connectionError}</div>}
   {(pendingCash||pendingCashError)&&<section className="cash-recovery" role="alert"><div><ShieldAlert size={23}/><div><strong>Thu tiền mặt cần xác minh</strong><p>{pendingCashError||'Có lần thu tiền chưa nhận được xác nhận cuối. Không nhận tiền khách lần nữa; giữ nguyên đơn và số tiền đã nhập.'}</p>{pendingCash&&<small>Đơn {orders.find(o=>o.order_id===pendingCash.order_id)?.display_code||pendingCash.order_id} · Khách đưa {formatVnd(pendingCash.cash_tendered_vnd)} · Mã chống trùng giữ nguyên</small>}</div></div>{pendingCash&&<button className="secondary" disabled={busy||!online||session.user.id!==pendingCash.cashier_id} onClick={()=>void recoverCash()}>{busy?'Đang xác minh…':'Gửi lại đúng yêu cầu cũ để xác minh'}</button>}</section>}
@@ -158,4 +174,4 @@ function App(){
    </main>}
  </div>
 }
-createRoot(document.getElementById('root')!).render(<React.StrictMode><App/></React.StrictMode>);
+createRoot(document.getElementById('root')!).render(<React.StrictMode><QueryClientProvider client={posQueryClient}><App/></QueryClientProvider></React.StrictMode>);
