@@ -58,3 +58,21 @@
  border-radius:10px;font-weight:800;box-shadow:0 8px 25px #1d281d24}
 .pos-skip-link:focus-visible{transform:none}
 #pos-main:focus{outline:none}
+
+/* Taste refresh: compact, utilitarian checkout instead of stacked dashboard cards. */
+:root{font-family:var(--bmc-font)}
+.topbar{background:#F0EEE8;border-bottom-color:var(--bmc-border)}
+.mark{border-radius:9px}
+.mainnav{background:#F0EEE8;border-bottom-color:var(--bmc-border)}
+.mainnav button{border-radius:7px;font-weight:650}
+.mainnav button.active{background:#FFF;color:var(--bmc-ink);box-shadow:inset 0 -3px var(--bmc-accent)}
+.orders-pane{border-right-color:var(--bmc-border)}
+.order-tile{border-radius:8px;margin-bottom:6px;transition:background-color 120ms,border-color 120ms}
+.order-tile.selected{background:#F9F2EB;border-color:var(--bmc-accent);box-shadow:inset 3px 0 var(--bmc-accent)}
+.checkout-pane{background:var(--bmc-canvas)}
+.lineitems,.cash-panel,.surface,.bank-panel,.stat{border-radius:var(--bmc-radius-card);box-shadow:none}
+.due{border-top:2px solid var(--bmc-ink);border-bottom-color:var(--bmc-border)}
+.due strong,.change strong,.cashhero{font-variant-numeric:tabular-nums;letter-spacing:-.04em}
+.primary,.secondary{border-radius:var(--bmc-radius-control)}
+button:focus-visible,input:focus-visible{outline-color:var(--bmc-focus)}
+@media(max-width:700px){.topbar{padding:0 12px}.checkout-pane{padding-inline:14px}.due strong{white-space:normal;overflow-wrap:anywhere}}
