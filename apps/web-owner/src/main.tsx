@@ -4,12 +4,12 @@ import {queryClient} from './app/queryClient';
 import {useOwnerAuth} from './app/useOwnerAuth';
 import {OwnerLogin} from './app/OwnerLogin';
 import {OwnerDashboard} from './analytics/OwnerAnalytics';
-import {OwnerProductSalesPage} from './features/production/OwnerProductSalesPage';
-import {OrderHistoryPage} from './features/orders/OrderHistoryPage';
-import {CatalogPage} from './features/catalog/CatalogPage';
+const OwnerProductSalesPage=React.lazy(()=>import('./features/production/OwnerProductSalesPage').then(module=>({default:module.OwnerProductSalesPage})));
+const OrderHistoryPage=React.lazy(()=>import('./features/orders/OrderHistoryPage').then(module=>({default:module.OrderHistoryPage})));
+const CatalogPage=React.lazy(()=>import('./features/catalog/CatalogPage').then(module=>({default:module.CatalogPage})));
 import {ProductFormDialog} from './features/catalog/ProductFormDialog';
-import {StaffPage} from './features/staff/StaffPage';
-import {FinancePage} from './features/finance/FinancePage';
+const StaffPage=React.lazy(()=>import('./features/staff/StaffPage').then(module=>({default:module.StaffPage})));
+const FinancePage=React.lazy(()=>import('./features/finance/FinancePage').then(module=>({default:module.FinancePage})));
 import {summaryKey,bankExceptionsKey} from './features/finance/queries';
 import {employeeKey,deviceKey} from './features/staff/queries';
 import {catalogKey,commandKey} from './features/catalog/queries';
@@ -104,7 +104,8 @@ function App(){
  if(!session)return <OwnerLogin remote={remote} pin={pin} busy={busy} error={error} onPinChange={setPin} onSignIn={signIn}/>;
  return <AppShell userName={session.user.name} page={page} remote={remote}
  onSidebarNavigate={navigateSidebar} onBottomNavigate={navigateSidebar} onLogout={()=>{if(confirmLeaveDraft())void logout()}} onRefresh={refreshPage}>
- {page==='dashboard'&&<OwnerDashboard onOpenSales={()=>navigate('sales')}/>}
+ <React.Suspense fallback={<section className="panel" role="status" aria-live="polite">Đang tải màn hình…</section>}>
+  {page==='dashboard'&&<OwnerDashboard onOpenSales={()=>navigate('sales')}/>}
  {page==='sales'&&<OwnerProductSalesPage/>}
  {page==='orders'&&<OrderHistoryPage/>}
  {page==='finance'&&<FinancePage ownerId={session.user.id} remote={remote}/>}
@@ -114,7 +115,8 @@ function App(){
  employeeProps={{empId,empName,empPin,empRole,busy,onEmpIdChange:setEmpId,onEmpNameChange:setEmpName,onEmpPinChange:setEmpPin,onEmpRoleChange:setEmpRole,onCreateEmployee:createEmployee,onToggleEmployee:toggleEmployee}}
  />}
  {editing&&page==='catalog'&&<ProductFormDialog editing={editing} remote={remote} name={name} category={category} price={price} active={active} error={error} busy={busy} onNameChange={setName} onCategoryChange={setCategory} onPriceChange={setPrice} onActiveChange={setActive} onSave={save} onClose={closeDraft}/>}
- {notice&&<p className="success" role="status">{notice}</p>}{error&&!editing&&<p className="alert" role="alert">{error}</p>}
+ </React.Suspense>
+  {notice&&<p className="success" role="status">{notice}</p>}{error&&!editing&&<p className="alert" role="alert">{error}</p>}
  </AppShell>
 }
 createRoot(document.getElementById('root')!).render(<React.StrictMode><QueryClientProvider client={queryClient}><App/></QueryClientProvider></React.StrictMode>);
