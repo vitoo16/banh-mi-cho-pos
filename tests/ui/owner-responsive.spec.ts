@@ -286,6 +286,10 @@ test('Owner preserves unsaved catalog changes unless operator explicitly discard
  await page.evaluate(()=>document.querySelector<HTMLAnchorElement>('.bottomnav a[href="/finance"]')?.click());
  await expect(dialog).toBeVisible();
  await expect(page).toHaveURL(/\/catalog$/);
+ page.once('dialog',confirm=>confirm.dismiss());
+ await page.evaluate(()=>history.back());
+ await expect(page).toHaveURL(/\/catalog$/);
+ await expect(dialog.getByLabel('Tên món')).toHaveValue('Bánh mì chưa lưu');
  page.once('dialog',confirm=>confirm.accept());
  await dialog.getByRole('button',{name:'Đóng'}).click();
  await expect(dialog).toHaveCount(0);

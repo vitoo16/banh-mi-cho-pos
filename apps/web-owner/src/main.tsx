@@ -23,7 +23,8 @@ import {useOwnerRoute} from './app/router';
 
 function App(){
  const {session,login,logout}=useOwnerAuth();
- const {page,navigate}=useOwnerRoute();
+ const navGuardRef=useRef<()=>boolean>(()=>true);
+ const {page,navigate}=useOwnerRoute(()=>navGuardRef.current());
  const baselineRef=useRef('');
  const [pin,setPin]=useState(''),[error,setError]=useState(''),[notice,setNotice]=useState(''),[busy,setBusy]=useState(false);
  const [deviceLabel,setDeviceLabel]=useState(''),[newPairing,setNewPairing]=useState<PairingCode|null>(null);
@@ -33,6 +34,7 @@ function App(){
  const hasDirtyDraft=()=>Boolean(editing)&&draftSnapshot()!==baselineRef.current;
  function confirmLeaveDraft(){return !hasDirtyDraft()||window.confirm('Có thay đổi sản phẩm chưa lưu. Bỏ thay đổi và rời trang?')}
  function closeDraft(){if(confirmLeaveDraft())setEditing(null)}
+ navGuardRef.current=confirmLeaveDraft;
  useEffect(()=>{if(!editing||!hasDirtyDraft())return;const warn=(e:BeforeUnloadEvent)=>{e.preventDefault();e.returnValue=''};window.addEventListener('beforeunload',warn);return ()=>window.removeEventListener('beforeunload',warn)},[editing,name,category,price,active]);
  async function signIn(e:React.FormEvent){e.preventDefault();setBusy(true);try{await login(pin);setPin('')}catch(e){setError((e as Error).message)}finally{setBusy(false)}}
  async function save(){
