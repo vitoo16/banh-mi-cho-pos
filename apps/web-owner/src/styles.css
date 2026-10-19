@@ -102,3 +102,7 @@
 .primary{border-radius:var(--bmc-radius-control)}
 button:focus-visible,input:focus-visible,select:focus-visible{outline-color:var(--bmc-focus)}
 @media(max-width:950px){.bottomnav{display:flex;overflow-x:auto;overscroll-behavior-x:contain;scrollbar-width:thin;justify-content:space-between}.bottomnav button{flex:1 0 70px;min-width:70px}.main{padding-bottom:125px}}
+
+/* Small supporting labels must remain AA on the warm rail. */
+.sidebar .brand small,.sidefoot small{color:#526256}
+@media(max-width:950px){.bottomnav button small{font-size:11px;line-height:1.25}}
