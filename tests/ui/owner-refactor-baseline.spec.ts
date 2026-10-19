@@ -683,12 +683,12 @@ test('OR-07a: mobile AppShell bottom nav remains active and never overflows at 3
  await page.setViewportSize({width:320,height:568});
  await fixture(page);await login(page);
  const nav=page.locator('.bottomnav');
- await expect(nav.locator('button')).toHaveCount(6);
+ await expect(nav.locator('a')).toHaveCount(6);
  await tab(page,'Sản phẩm');
- await expect(nav.locator('button.active small')).toHaveText('Sản phẩm');
+ await expect(nav.locator('a.active small')).toHaveText('Sản phẩm');
  await expect(page.getByText('Bánh mì thịt nguội')).toBeVisible();
  await tab(page,'Tài chính');
- await expect(nav.locator('button.active small')).toHaveText('Tài chính');
+ await expect(nav.locator('a.active small')).toHaveText('Tài chính');
  await expect(page.getByText('BANK-UNKNOWN-01')).toBeVisible();
  const sizes=await page.evaluate(()=>({view:innerWidth,doc:document.documentElement.scrollWidth}));
  expect(sizes.doc).toBeLessThanOrEqual(sizes.view+1);
