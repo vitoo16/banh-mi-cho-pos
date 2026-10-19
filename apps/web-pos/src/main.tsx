@@ -1,5 +1,6 @@
 import React,{useCallback,useEffect,useMemo,useRef,useState} from 'react';
 import {OrderQueue} from './OrderQueue';
+import {CashTenderPanel} from './CashTenderPanel';
 import {createRoot} from 'react-dom/client';
 import {QueryClient,QueryClientProvider,useQuery} from '@tanstack/react-query';
 import {HubClient,formatVnd,type Order,type Shift,type ReceiptCopy,type Session,type OperationalStatus} from '@bmc/contracts';
@@ -141,7 +142,7 @@ function App(){
     <div className="lineitems">{current.items.map((it,i)=><div className="item" key={i}><div><b>{it.name_snapshot} <span className="muted">× {it.qty}</span></b>{it.note&&<small>Ghi chú: {it.note}</small>}</div><strong>{formatVnd(it.line_total_vnd)}</strong></div>)}</div>
     <div className="due"><span>TỔNG CẦN THU</span><strong>{formatVnd(due)}</strong></div>
     {canCollect? <><div className="method-row"><button onClick={()=>setMethod('CASH')} className={method==='CASH'?'chosen':''}><Wallet size={17}/> Tiền mặt</button><button onClick={()=>setMethod('BANK')} className={method==='BANK'?'chosen':''}>▦ Chuyển khoản</button></div>
-    {method==='CASH'?<div className="cash-panel"><label htmlFor="tender">Khách đưa (VNĐ)</label><input id="tender" inputMode="numeric" className="tender" value={tender} onChange={e=>setTender(e.target.value)} placeholder="0"/><div className="denominations">{[50000,100000,200000,500000].map(n=><button key={n} onClick={()=>setTender(String(n))}>{n/1000}k</button>)}</div><div className="change"><span>{cashGiven>=due?'TIỀN THỐI':'CÒN THIẾU'}</span><strong className={cashGiven<due?'negative':''}>{formatVnd(Math.abs(cashGiven-due))}</strong></div><button className="primary full big" disabled={busy||!online||!shift||cashGiven<due||!!pendingCash||!!pendingCashError} onClick={settle}>{busy?'Đang xử lý…':'Xác nhận đã nhận tiền'}</button>{!shift&&<p className="hint">Cần mở ca trước khi thu tiền mặt.</p>}</div>:<div className="bank-panel"><Clock size={24}/><h3>{bankIntent?'Đang chờ xác nhận ngân hàng':'Chuyển khoản'}</h3>{bankIntent?<><p>Ngân hàng: <b>{bankIntent.bank_code}</b></p><p>Tài khoản nhận: <b>{bankIntent.account_number}</b></p><p>Số tiền chính xác: <b>{formatVnd(bankIntent.amount_vnd)}</b></p><p>Nội dung chuyển khoản: <b>{bankIntent.reference}</b></p>
+    {method==='CASH'?<CashTenderPanel due={due} tender={tender} cashGiven={cashGiven} onTender={setTender} onSettle={settle} busy={busy} online={online} shiftOpen={Boolean(shift)} pendingCash={Boolean(pendingCash||pendingCashError)}/>:<div className="bank-panel"><Clock size={24}/><h3>{bankIntent?'Đang chờ xác nhận ngân hàng':'Chuyển khoản'}</h3>{bankIntent?<><p>Ngân hàng: <b>{bankIntent.bank_code}</b></p><p>Tài khoản nhận: <b>{bankIntent.account_number}</b></p><p>Số tiền chính xác: <b>{formatVnd(bankIntent.amount_vnd)}</b></p><p>Nội dung chuyển khoản: <b>{bankIntent.reference}</b></p>
      {qrImageUrl&&!qrFailed?
       <div className="vietqr-block">
        <img src={qrImageUrl} alt={'VietQR chuyển khoản '+formatVnd(bankIntent.amount_vnd)+' với mã '+bankIntent.reference}
