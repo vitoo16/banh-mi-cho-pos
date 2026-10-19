@@ -99,3 +99,7 @@ button:focus-visible,input:focus-visible{outline-color:var(--bmc-focus)}
 .welcome{max-width:390px}
 .welcome-icon{background:#EBE9E2;color:#25382D;border-radius:12px}
 .welcome-stat{border:1px solid var(--bmc-border);border-radius:8px}
+
+/* Large daily queues reveal older rows on demand; never silently cap total orders. */
+.queue-more{width:calc(100% - 24px);margin:10px 12px 22px;min-height:48px;background:var(--bmc-surface);border:1px solid var(--bmc-border);border-radius:8px;color:var(--bmc-ink);font-weight:700}
+.queue-more:hover{border-color:var(--bmc-accent);background:var(--bmc-accent-soft)}

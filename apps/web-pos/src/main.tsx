@@ -1,8 +1,9 @@
-import React,{useEffect,useMemo,useRef,useState} from 'react';
+import React,{useCallback,useEffect,useMemo,useRef,useState} from 'react';
+import {OrderQueue} from './OrderQueue';
 import {createRoot} from 'react-dom/client';
 import {QueryClient,QueryClientProvider,useQuery} from '@tanstack/react-query';
 import {HubClient,formatVnd,type Order,type Shift,type ReceiptCopy,type Session,type OperationalStatus} from '@bmc/contracts';
-import {ShoppingBag,Wallet,Search,LogOut,Wifi,WifiOff,CheckCircle2,Clock,Printer,Plus,ArrowDownLeft,History,ShieldAlert,RefreshCcw} from 'lucide-react';
+import {ShoppingBag,Wallet,LogOut,Wifi,WifiOff,CheckCircle2,Clock,Printer,Plus,ArrowDownLeft,History,ShieldAlert} from 'lucide-react';
 import './styles.css';
 import {vietQrImageUrl} from './vietQr';
 import {readPendingCash,stagePendingCash,clearPendingCash,type PendingCashCapture} from './pendingCash';
@@ -15,7 +16,7 @@ const EMPTY_ORDERS:Order[]=[];
 function App(){
  const [session,setSession]=useState<Session|null>(null),[pin,setPin]=useState(''),[error,setError]=useState(''),[busy,setBusy]=useState(false);
  const [selected,setSelected]=useState<string|null>(null);
- const [filter,setFilter]=useState<'UNPAID'|'PAID'|'ALL'>('UNPAID'),[query,setQuery]=useState('');
+ 
  const [tender,setTender]=useState(''),[floatAmount,setFloatAmount]=useState('1000000'),[counted,setCounted]=useState(''),[reason,setReason]=useState('');
  const [mode,setMode]=useState<'ORDERS'|'SHIFT'>('ORDERS'),[method,setMethod]=useState<'CASH'|'BANK'>('CASH');
  const [copies,setCopies]=useState<ReceiptCopy[]>([]),[message,setMessage]=useState('');
@@ -47,10 +48,10 @@ function App(){
  const connectionError=queueQuery.error instanceof Error?queueQuery.error.message:'';
  // Reporting outages never misrepresent cash checkout connectivity.
  const operations=operationsQuery.isError?null:operationsQuery.data??null;
- const refresh=async()=>{await Promise.all([
+ const refresh=useCallback(async()=>{await Promise.all([
   queueQuery.refetch({cancelRefetch:false}),
   operationsQuery.refetch({cancelRefetch:false})
- ])};
+ ])},[queueQuery.refetch,operationsQuery.refetch]);
  const current=useMemo(()=>orders.find(o=>o.order_id===selected)||(historicalOrder?.order_id===selected?historicalOrder:undefined),[orders,selected,historicalOrder]);
  const qrImageUrl=bankIntent?vietQrImageUrl(bankIntent):null;
  const canCollect=current?.status==='COMMITTED'&&current.payment_status==='UNPAID';
@@ -106,22 +107,12 @@ function App(){
   // Retry NEVER changes amount, order, shift, version or idempotency key.
   await sendPendingCash(pendingCash);
  }
- function activateOrder(id:string){setHistoricalOrder(null);setSelected(id);setMode('ORDERS');setError('')}
+ const activateOrder=useCallback((id:string)=>{setHistoricalOrder(null);setSelected(id);setMode('ORDERS');setError('')},[]);
  async function openPrintException(orderId:string){
   setError('');
   try{const order=await hub.order(orderId);setHistoricalOrder(order);setSelected(orderId);setMode('ORDERS')}
   catch(e){setError('Không mở được đơn cần kiểm tra: '+(e as Error).message)}
  }
- const list=useMemo(()=>{
-  const needle=query.trim().toLowerCase();
-  const actionable=(o:Order)=>o.status==='COMMITTED'&&(o.payment_status==='UNPAID'||o.payment_status==='PARTIAL');
-  return orders.filter(o=>
-   (filter==='ALL'||(filter==='PAID'?o.payment_status==='PAID':actionable(o)))&&
-   (o.display_code.toLowerCase().includes(needle)||o.created_by.toLowerCase().includes(needle))
-  ).sort((a,b)=>filter==='UNPAID'
-   ?a.created_at.localeCompare(b.created_at)||a.order_id.localeCompare(b.order_id)
-   :b.created_at.localeCompare(a.created_at)||b.order_id.localeCompare(a.order_id));
- },[orders,filter,query]);
  if(!session)return <main className="login-shell"><div className="login-card"><div className="mark"><ShoppingBag size={25}/></div><p className="eyebrow">BÁNH MÌ CHỢ</p><h1>Quầy thu ngân</h1><p className="muted">Một quầy thu tiền, mọi đơn hàng rõ ràng.</p><form onSubmit={login}><label htmlFor="pin">Mã PIN thu ngân</label><input id="pin" autoFocus autoComplete="off" type="password" value={pin} onChange={e=>setPin(e.target.value)} minLength={6} required/><button className="primary full" disabled={busy}>Đăng nhập</button></form>{error&&<div role="alert" className="alert">{error}</div>}<p className="hint">Kết nối với Store Hub nội bộ. Không lưu PIN trên thiết bị.</p></div></main>;
  return <div className="shell">
   <a className="pos-skip-link" href="#pos-main">Đến nội dung thu ngân</a>
@@ -144,12 +135,7 @@ function App(){
      <div className="shiftgrid"><section className="surface"><h2>Thu / chi két</h2><div className="seg">{(['ADD','WITHDRAW','EXPENSE'] as const).map(k=><button key={k} onClick={()=>setMoveKind(k)} className={moveKind===k?'on':''}>{k==='ADD'?'Bổ sung':k==='WITHDRAW'?'Rút tiền':'Chi tiền'}</button>)}</div><label htmlFor="shift-movement-amount">Số tiền (VNĐ)</label><input id="shift-movement-amount" inputMode="numeric" value={moveAmount} onChange={e=>setMoveAmount(e.target.value)} placeholder="Nhập số tiền"/><label htmlFor="shift-movement-reason">Lý do</label><input id="shift-movement-reason" value={reason} onChange={e=>setReason(e.target.value)} placeholder="Ví dụ: chủ rút tiền"/><button className="secondary full" disabled={busy||!!pendingCash||!!pendingCashError||moneyInput(moveAmount)<=0||reason.trim().length<3} onClick={()=>void execute(()=>hub.movement(shift.id,moveKind,moneyInput(moveAmount),reason,stableKey()),'Đã ghi sổ quỹ')}>Ghi vào sổ quỹ</button></section>
      <section className="surface"><h2>Chốt ca</h2><p className="muted">Đếm toàn bộ tiền mặt đang có trong két rồi nhập số thực tế.</p><label htmlFor="shift-close-counted">Tiền thực đếm (VNĐ)</label><input id="shift-close-counted" inputMode="numeric" value={counted} onChange={e=>setCounted(e.target.value)}/><div className="reconcile"><span>Chênh lệch</span><strong className={moneyInput(counted)-shift.expected_cash_vnd<0?'negative':''}>{formatVnd(moneyInput(counted)-shift.expected_cash_vnd)}</strong></div><label htmlFor="shift-close-reason">Giải trình (bắt buộc nếu lệch)</label><input id="shift-close-reason" value={reason} onChange={e=>setReason(e.target.value)}/><button className="primary full" disabled={busy||!!pendingCash||!!pendingCashError||!counted||moneyInput(counted)!==shift.expected_cash_vnd&&reason.trim().length<3} onClick={()=>{if(window.confirm('Xác nhận khóa ca? Không thể sửa các giao dịch đã ghi.'))void execute(()=>hub.closeShift(shift.id,moneyInput(counted),reason,stableKey()),'Đã chốt ca và lưu biên bản')}}>Xác nhận chốt ca</button></section></div></>}
     {message&&<p className="success-note" role="status">{message}</p>}{error&&<p className="alert" role="alert">{error}</p>}
-   </main>:<main id="pos-main" tabIndex={-1} className="poslayout"><section className={'orders-pane '+(selected?'hide-on-small':'')}>
-    <div className="panehead"><div><p className="eyebrow">ĐƠN TRONG NGÀY</p><h1>{filter==='UNPAID'?'Hàng đợi':'Đơn gần đây'} <span className="count">{list.length}</span></h1></div><button className="iconbtn" aria-label="Tải lại đơn" onClick={()=>void refresh()}><RefreshCcw size={18}/></button></div>
-    <div className="search"><Search size={18}/><input value={query} onChange={e=>setQuery(e.target.value)} placeholder="Tìm mã đơn hoặc nhân viên" aria-label="Tìm đơn hàng"/></div>
-    <div className="tabs">{([['UNPAID','Chờ thu'],['PAID','Đã thu'],['ALL','Tất cả']] as const).map(([k,l])=><button key={k} className={filter===k?'active':''} onClick={()=>setFilter(k)} aria-pressed={filter===k}>{l}</button>)}</div>
-    <div className="orders-scroll">{list.length===0?<div className="empty"><ShoppingBag/><p>Chưa có đơn trong nhóm này</p></div>:list.map(o=><button key={o.order_id} className={'order-tile '+(selected===o.order_id?'selected':'')} onClick={()=>activateOrder(o.order_id)} aria-pressed={selected===o.order_id}><div className="orderline"><b>#{o.display_code}</b><strong>{formatVnd(o.total_vnd)}</strong></div><div className="orderline muted"><small>NV: {o.created_by} · {new Date(o.created_at).toLocaleTimeString('vi-VN',{hour:'2-digit',minute:'2-digit'})}</small><span className={'status '+(o.payment_status==='PAID'?'paid':'pending')}>{o.status==='VOIDED'?'Đã hủy':o.payment_status==='REFUNDED'?'Đã hoàn':o.payment_status==='PAID'?'Đã thu':'Chưa thu'}</span></div><small>Khách chọn: {o.requested_payment_method==='BANK'?'Chuyển khoản':'Tiền mặt'}</small></button>)}</div>
-   </section>
+   </main>:<main id="pos-main" tabIndex={-1} className="poslayout"><OrderQueue orders={orders} selected={selected} onRefresh={refresh} onSelect={activateOrder}/>
    <section className={'checkout-pane '+(!selected?'hide-when-unselected':'')}>{current?<div className="checkout-content"><div className="back-line"><button className="ghost mobile-back" onClick={()=>setSelected(null)}>← Trở lại</button><span className={'status '+(paid?'paid':'pending')}>{current.payment_status==='REFUNDED'?'Đã hoàn tiền':paid?'Đã thu tiền':'Chưa thanh toán'}</span></div>
     <p className="eyebrow">CHI TIẾT ĐƠN HÀNG</p><h1>#{current.display_code}</h1><p className="muted">Tạo bởi {current.created_by} • Khách chọn: {current.requested_payment_method==='BANK'?'Chuyển khoản':'Tiền mặt'}</p>
     <div className="lineitems">{current.items.map((it,i)=><div className="item" key={i}><div><b>{it.name_snapshot} <span className="muted">× {it.qty}</span></b>{it.note&&<small>Ghi chú: {it.note}</small>}</div><strong>{formatVnd(it.line_total_vnd)}</strong></div>)}</div>

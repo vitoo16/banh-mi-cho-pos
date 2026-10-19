@@ -172,3 +172,25 @@ test('POS keyboard navigation announces Orders vs Shift and does not collect pay
  expect(captures).toHaveLength(0);
  await assertNoViewportOverflow(page,1024);
 });
+
+test('POS queue can browse more than 300 daily orders without truncation or unsafe writes',async({page})=>{
+ await page.setViewportSize({width:1024,height:768});
+ const otherOrders=Array.from({length:325},(_,i)=>({...order,
+  order_id:'f'+String(i+1).padStart(7,'0')+'-1111-4111-8111-111111111111',
+  display_code:'B'+String(i+100).padStart(5,'0'),
+  created_at:'2026-10-11T03:20:00.000Z',
+ }));
+ const {captures}=await mockHub(page,otherOrders);
+ await startCashier(page);
+ await expect(page.getByText('Hàng đợi')).toBeVisible();
+ await expect(page.locator('.orders-scroll .order-tile')).toHaveCount(80);
+ const more=page.getByRole('button',{name:/Xem thêm 246 đơn cũ/});
+ await expect(more).toBeVisible();
+ await more.click();
+ await expect(page.locator('.orders-scroll .order-tile')).toHaveCount(160);
+ await page.getByRole('textbox',{name:'Tìm đơn hàng'}).fill('B00420');
+ await expect(page.locator('.orders-scroll .order-tile')).toHaveCount(1);
+ await expect(page.getByText('#B00420')).toBeVisible();
+ await assertNoViewportOverflow(page,1024);
+ expect(captures).toEqual([]);
+});
