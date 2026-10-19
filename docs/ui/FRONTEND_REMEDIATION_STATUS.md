@@ -13,16 +13,16 @@ This follows the immutable source audit `FRONTEND_GUIDELINES_AUDIT_2026-10-19.md
 | F-06 VN timezone | Explicit timeZone for displayed Owner/POS timestamps; bank QR still an external network dependency with copy/paste fallback | Browser smoke; offline QR acceptance still pending |
 | F-07 outdated docs | Design tokens/theme meta, mobile nav and font documentation aligned | Docs CI |
 | F-08 font budget | Build asset check now counts locally emitted TTF/WOFF/OTF separately with an 850 KiB compressed font cap per Web app, along with JS/CSS budgets | Verify real output size via newest App CI; font byte budget is not a runtime font-loading metric |
-| F-09 route splitting | Owner pages still eagerly imported; lazy loading needs measurement and a safe loading affordance | Still open |
+| F-09 route splitting | Owner noncritical pages are lazy-loaded via `React.lazy`/`Suspense`; dashboard remains eager | Build/browser E2E green on `5e92297` plus later follow-up (latest head must also pass) |
 | F-10 CSS consolidation | Some historical override layering remains | Still open |
-| F-11 runtime perf | Bundle budget and backend perf exist, browser P50/P95 and INP/LCP/CLS target measurement absent | Still open |
-| F-12 secondary accessibility | Automated WCAG A/AA smoke and several focus flows; real screen readers and cashier exception focus audit absent | Still open |
+| F-11 runtime perf | Bounded Owner history DOM (80 rows at a time), POS queue 80 rows at a time, DEV-only React Profiler assertion that cash input does not commit the unchanged queue | Mock-browser render isolation under test; real-device P50/P95, INP/LCP/CLS still open |
+| F-12 secondary accessibility | Added keyboard drill for printer UNKNOWN -> select affected paid order -> no second cash action; Hub pending state hides false empty queue and disables disconnected shift actions | Playwright check pending on current head; real screen readers and operator hardware audit still open |
 
 **Guardrails:** no change to ledger, cash settlement, bank verification, staff permissions or receipt exactly-once claims. POS retains persistent cash idempotency key and no second capture on ACK unknown. Production quantities never capped by display pagination.
 
 ### How to sign off
 1. Every check on the **latest** head SHA must be green; older green commit does not prove latest.
-2. Review PNG candidate screenshots on Owner 390 and POS 1024 in multiple rendering engines, and collect missing Owner 320/1366 and POS 1280/1366/1920, Windows 125/150% zoom, 200% text. A screenshot produced by CI is only a *candidate*, not an accepted visual diff.
+2. Review CI PNG candidates for Owner 320/390/768/1366 and POS 1024/1280/1366/1920, plus POS 1024 with large root text. Check Windows 125/150% OS scaling and actual browser zoom separately; root-font scaling is not equivalent to physical OS/browser scaling. A screenshot produced by CI is only a *candidate*, not an accepted visual diff.
 3. Record real device trials for Staff Android/iOS, keyboard/safe area/TalkBack/VoiceOver, the receipt printer two-copy + UNKNOWN flow, and bank sandbox verification. Full POS cash LAN-only without Cloud must be observed.
 4. Owner/operator chooses final colors, typography and navigation, then record approval. Keep Draft until explicit release acceptance.
 
@@ -31,3 +31,10 @@ Commit `8473a92`: POS JS 90.2 KiB gzip, CSS 4.7 KiB; Owner JS 92.2 KiB, CSS 4.9 
 
 ## Font asset budget methodology
 Both Web builds are now checked for emitted TTF/OTF/WOFF/WOFF2 in dist (all subdirectories), in addition to JS and CSS. Font gzip bytes are reported independently; test fixtures verify font detection and over-budget rejection. This is a transmission-size proxy rather than a Core Web Vitals or first-render measurement. If either Web app exceeds 850 KiB, keep the failed check and optimize the local assets rather than raise the cap without evidence.
+
+## Current follow-up test notes (2026-10-19)
+- Owner history now keeps only 80 loaded rows in the DOM, with explicit `Hiện thêm` while retaining access to all fetched pages; 325-item read-only fixture proves full loaded-order search.
+- POS initial auth/query screen no longer declares a working Store Hub before it has an authoritative successful read; disconnected shift actions are disabled.
+- Developer-only POS `DevProfiler` captures *commit identifiers only*, not money/customer/session data; the tender-entry test checks unchanged queue isolation. The production build excludes the profiler wrapper.
+- `browser-smoke.spec.ts` now saves screenshot **candidates** at more approved viewports. CI artifacts are not pixel-verified baselines and have not been visually approved.
+- Printer UNKNOWN keyboard test proves a paid order from the exception list does not offer a second cash capture. This does not replace a physical paper-out/reprint drill.
