@@ -61,9 +61,9 @@ export function CatalogPage({ownerId,remote,onBegin}:{
   </div>}
   <div className="records catalog-records">
    {visible.map(p=><div className="record catalog-record" key={p.id}>
-    <div><b>{p.name}</b><small>{p.category} <span className={p.is_active?'catalog-state active':'catalog-state hidden'}>{p.is_active?'Đang bán':'Đã ẩn'}</span></small></div>
+    <div><b id={"catalog-product-name-"+p.id}>{p.name}</b><small>{p.category} <span className={p.is_active?'catalog-state active':'catalog-state hidden'}>{p.is_active?'Đang bán':'Đã ẩn'}</span></small></div>
     <div className="catalog-record-side"><strong>{formatVnd(p.price_vnd)}</strong>
-     <button type="button" className="textbutton" onClick={()=>onBegin(p)} aria-label={remote?'Đề xuất sửa giá '+p.name:'Sửa '+p.name}>{remote?'Đề xuất sửa giá':'Sửa'}</button>
+     <button type="button" className="textbutton" onClick={()=>onBegin(p)} aria-describedby={'catalog-product-name-'+p.id}>{remote?'Đề xuất sửa giá':'Sửa'}</button>
     </div>
    </div>)}
    {catalog?.products.length===0&&<p className="muted">Chưa có món. Hãy thêm món đầu tiên.</p>}
