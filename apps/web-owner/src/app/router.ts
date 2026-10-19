@@ -62,7 +62,7 @@ export function useOwnerRoute(canLeave:()=>boolean=()=>true){
   acceptedUrlRef.current=window.location.pathname+window.location.search+window.location.hash;
   // The guard runs only for browser Back/Forward, not for this initial sync.
   const onPopState=()=>sync();
-
+  sync();
   window.addEventListener('popstate',onPopState);
   return ()=>window.removeEventListener('popstate',onPopState);
  },[]);
