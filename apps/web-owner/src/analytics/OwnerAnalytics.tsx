@@ -10,7 +10,7 @@ const fmt=(x:number|undefined)=>new Intl.NumberFormat('vi-VN').format(x??0);
 function ErrorMessage({error}:{error:unknown}){return <p className="alert" role="alert">{error instanceof Error?error.message:'Không tải được dữ liệu. Thử tải lại.'}</p>}
 const RevenueCard=memo(function RevenueCard(){
  const {data,isPending,error}=useQuery({...summaryOptions(),select:r=>r.net_revenue_vnd});
- return <div className="kpi hero"><span>DOANH THU ĐÃ XÁC NHẬN</span><strong>{isPending?'…':formatVnd(data??0)}</strong><small>{error?'Không cập nhật được':'Tổng đơn đã thu đủ; chưa trừ chi phí'}</small></div>
+ return <div className="kpi"><span>DOANH THU ĐÃ XÁC NHẬN</span><strong>{isPending?'…':formatVnd(data??0)}</strong><small>{error?'Không cập nhật được':'Tổng đơn đã thu đủ; chưa trừ chi phí'}</small></div>
 });
 const CashCard=memo(function CashCard(){
  const {data,isPending,error}=useQuery({...summaryOptions(),select:r=>r.cash_vnd});
@@ -19,7 +19,7 @@ const CashCard=memo(function CashCard(){
 export const TodayOrdersCard=memo(function TodayOrdersCard({onOpen}:{onOpen:()=>void}){
  const shopDate=useShopToday();
  const {data,isPending,error}=useQuery({queryKey:['owner','orders-today',shopDate],queryFn:()=>hub.ownerTodayCounts(),refetchInterval:10_000,staleTime:4_000});
- return <div className="kpi"><span>TỔNG SỐ ĐƠN HÔM NAY</span><strong aria-label="Tổng số đơn hôm nay">{isPending?'…':fmt(data?.total_orders)}</strong><small>Ngày {shopDate.slice(8,10)}/{shopDate.slice(5,7)}/{shopDate.slice(0,4)} · Bao gồm đơn chưa thu và đã hủy; {fmt(data?.paid_orders)} đơn đã thu</small><button className="textbutton analytics-link" onClick={onOpen}>Xem số bánh bán theo loại →</button>{error&&<small role="alert">Không cập nhật được số đơn</small>}</div>
+ return <div className="kpi hero"><span>TỔNG SỐ ĐƠN HÔM NAY</span><strong aria-label="Tổng số đơn hôm nay">{isPending?'…':fmt(data?.total_orders)}</strong><small>Ngày {shopDate.slice(8,10)}/{shopDate.slice(5,7)}/{shopDate.slice(0,4)} · Bao gồm đơn chưa thu và đã hủy; {fmt(data?.paid_orders)} đơn đã thu</small><button className="textbutton analytics-link" onClick={onOpen}>Xem số bánh bán theo loại →</button>{error&&<small role="alert">Không cập nhật được số đơn</small>}</div>
 });
 const PaidOrdersCard=memo(function PaidOrdersCard(){
  const {data,isPending}=useQuery({...summaryOptions(),select:r=>r.paid_orders});
@@ -50,9 +50,9 @@ const CurrentShift=memo(function CurrentShift(){
 export const OwnerDashboard=memo(function OwnerDashboard({onOpenSales}:{onOpenSales:()=>void}){
  return <>
   <section className="kpis analytics-kpis">
+   <DevProfiler id="today-orders"><TodayOrdersCard onOpen={onOpenSales}/></DevProfiler>
    <DevProfiler id="revenue"><RevenueCard/></DevProfiler>
    <DevProfiler id="cash"><CashCard/></DevProfiler>
-   <DevProfiler id="today-orders"><TodayOrdersCard onOpen={onOpenSales}/></DevProfiler>
    <DevProfiler id="paid-orders"><PaidOrdersCard/></DevProfiler>
   </section>
   <div className="twocol"><PaymentBreakdown/><CurrentShift/></div>

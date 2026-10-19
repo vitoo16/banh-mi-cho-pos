@@ -81,3 +81,21 @@ button:focus-visible,input:focus-visible{outline-color:var(--bmc-focus)}
 .topbar .brand small,.mainnav button{color:#526256}
 .orders-pane .order-tile:focus-visible{outline:3px solid var(--bmc-focus);outline-offset:2px}
 .mainnav button.active{color:var(--bmc-ink)}
+
+/* Queue is a working list, not a group of promotional cards. */
+.tabs{gap:0;padding:0 18px;border-bottom:1px solid var(--bmc-border);margin-bottom:12px}
+.tabs button{background:transparent;border-bottom:3px solid transparent;border-radius:0;padding:12px 6px;color:#536157;min-height:48px}
+.tabs button.active{background:transparent;border-bottom-color:var(--bmc-accent);color:var(--bmc-ink)}
+.orders-scroll{padding-inline:12px}
+.order-tile{border-radius:7px;padding:16px;margin-bottom:5px}
+.order-tile .orderline strong{font-size:17px;font-variant-numeric:tabular-nums}
+.order-tile.selected{box-shadow:inset 4px 0 var(--bmc-accent)}
+.order-tile:hover:not(.selected){background:#F7F6F2;border-color:#BAC4B8}
+.checkout-content h1{font-size:clamp(26px,2.2vw,34px);letter-spacing:-.045em}
+.checkout-content .lineitems{padding-block:0}
+.checkout-content .due{padding:24px 0}
+.cash-panel .tender{border-width:2px;border-color:#7E9586}
+.denominations button:focus-visible,.method-row button:focus-visible{outline-color:var(--bmc-focus)}
+.welcome{max-width:390px}
+.welcome-icon{background:#EBE9E2;color:#25382D;border-radius:12px}
+.welcome-stat{border:1px solid var(--bmc-border);border-radius:8px}
