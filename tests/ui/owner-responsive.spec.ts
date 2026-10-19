@@ -265,10 +265,50 @@ test('OR-08a: Catalog dialog moves focus inside, traps Shift+Tab/Tab and returns
  const bounds=await close.boundingBox();
  expect(bounds?.height).toBeGreaterThanOrEqual(44);
  expect(bounds?.width).toBeGreaterThanOrEqual(44);
+ page.once('dialog',dialog=>dialog.accept()); // Discard a modified form intentionally.
  await page.keyboard.press('Escape');
  await expect(dialog).toHaveCount(0);
  await expect(opener).toBeFocused();
 });
+test('Owner preserves unsaved catalog changes unless operator explicitly discards',async({page})=>{
+ await page.setViewportSize({width:390,height:844});
+ await mockOwner(page);await startOwner(page);
+ await page.getByRole('link',{name:'Sản phẩm'}).click();
+ const opener=page.getByRole('button',{name:/Thêm món/});
+ await opener.click();
+ const dialog=page.getByRole('dialog',{name:'Chỉnh sản phẩm'});
+ await dialog.getByLabel('Tên món').fill('Bánh mì chưa lưu');
+ page.once('dialog',confirm=>confirm.dismiss());
+ await dialog.getByRole('button',{name:'Đóng'}).click();
+ await expect(dialog).toBeVisible();
+ await expect(dialog.getByLabel('Tên món')).toHaveValue('Bánh mì chưa lưu');
+ page.once('dialog',confirm=>confirm.dismiss());
+ await page.getByRole('link',{name:'Tài chính'}).click();
+ await expect(dialog).toBeVisible();
+ await expect(page).toHaveURL(/\/catalog$/);
+ page.once('dialog',confirm=>confirm.accept());
+ await dialog.getByRole('button',{name:'Đóng'}).click();
+ await expect(dialog).toHaveCount(0);
+ await expect(opener).toBeFocused();
+});
+
+test('Owner catalog validates typed VND and Enter submits a valid edit',async({page})=>{
+ const {created}=await mockOwner(page);await startOwner(page);
+ await page.getByRole('link',{name:'Sản phẩm'}).click();
+ await page.getByRole('button',{name:/Thêm món/}).click();
+ const dialog=page.getByRole('dialog',{name:'Chỉnh sản phẩm'});
+ await dialog.getByLabel('Tên món').fill('Món kiểm tra');
+ await dialog.getByLabel('Giá bán (VNĐ)').fill('34x000');
+ await dialog.getByLabel('Giá bán (VNĐ)').press('Enter');
+ await expect(dialog.getByRole('alert')).toContainText('số nguyên VNĐ');
+ await expect(dialog.getByLabel('Giá bán (VNĐ)')).toBeFocused();
+ expect(created).toHaveLength(0);
+ await dialog.getByLabel('Giá bán (VNĐ)').fill('34000');
+ await dialog.getByLabel('Giá bán (VNĐ)').press('Enter');
+ await expect(dialog).toHaveCount(0);
+ expect(created).toHaveLength(1);
+});
+
 test('OR-08a: 320px dialog stays keyboard-contained and returns focus after confirmed save',async({page})=>{
  await page.setViewportSize({width:320,height:568});
  const {created}=await mockOwner(page);await startOwner(page);
