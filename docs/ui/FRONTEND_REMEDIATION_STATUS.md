@@ -12,7 +12,7 @@ This follows the immutable source audit `FRONTEND_GUIDELINES_AUDIT_2026-10-19.md
 | F-05 cross-engine and snapshots | Chromium full suite; Firefox and Linux WebKit smoke; screenshot review candidates uploaded regardless of result | CI screenshot artifacts **are not approved pixel baselines**; macOS Safari, target hardware and visual signoff pending |
 | F-06 VN timezone | Explicit timeZone for displayed Owner/POS timestamps; bank QR still an external network dependency with copy/paste fallback | Browser smoke; offline QR acceptance still pending |
 | F-07 outdated docs | Design tokens/theme meta, mobile nav and font documentation aligned | Docs CI |
-| F-08 font budget | Self-hosted fonts proven available but gzip budget excludes TTF | Still open |
+| F-08 font budget | Build asset check now counts locally emitted TTF/WOFF/OTF separately with an 850 KiB compressed font cap per Web app, along with JS/CSS budgets | Verify real output size via newest App CI; font byte budget is not a runtime font-loading metric |
 | F-09 route splitting | Owner pages still eagerly imported; lazy loading needs measurement and a safe loading affordance | Still open |
 | F-10 CSS consolidation | Some historical override layering remains | Still open |
 | F-11 runtime perf | Bundle budget and backend perf exist, browser P50/P95 and INP/LCP/CLS target measurement absent | Still open |
@@ -28,3 +28,6 @@ This follows the immutable source audit `FRONTEND_GUIDELINES_AUDIT_2026-10-19.md
 
 ## Measured pre–cross-engine evidence
 Commit `8473a92`: POS JS 90.2 KiB gzip, CSS 4.7 KiB; Owner JS 92.2 KiB, CSS 4.9 KiB; both under repository budgets (assets/font bytes, browser runtime and printer not measured). Re-run evidence on final SHA.
+
+## Font asset budget methodology
+Both Web builds are now checked for emitted TTF/OTF/WOFF/WOFF2 in dist (all subdirectories), in addition to JS and CSS. Font gzip bytes are reported independently; test fixtures verify font detection and over-budget rejection. This is a transmission-size proxy rather than a Core Web Vitals or first-render measurement. If either Web app exceeds 850 KiB, keep the failed check and optimize the local assets rather than raise the cap without evidence.
