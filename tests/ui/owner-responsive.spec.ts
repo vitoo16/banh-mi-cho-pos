@@ -444,3 +444,34 @@ test('OR-08c: Cloud Owner staff read-only page meets automated WCAG A/AA smoke',
  await expect(page.getByText('Quản lý nhân viên chỉ được thao tác từ POS nội bộ',{exact:false})).toBeVisible();
  await assertAccessible(page);
 });
+
+test('Owner history keeps 325 already loaded orders browseable without rendering all rows',async({page})=>{
+ await page.setViewportSize({width:390,height:844});
+ const data=Array.from({length:325},(_,index)=>({
+  order_id:'history-'+index,display_code:'B'+String(index+100).padStart(5,'0'),
+  created_at:'2026-10-11T03:20:00.000Z',created_by:'staff',
+  status:'COMMITTED',payment_status:'PAID',requested_payment_method:'CASH',
+  total_vnd:45000,version:1,items:[],note:'',
+ }));
+ let writes=0;
+ await mockOwner(page);
+ await page.route('**/v1/orders/history**',async route=>{
+  if(route.request().method()!=='GET')writes++;
+  await route.fulfill({status:200,contentType:'application/json',
+   body:JSON.stringify({items:data,next_cursor:null})});
+ });
+ await startOwner(page);
+ await page.getByRole('link',{name:'Đơn hàng'}).click();
+ const rows=page.locator('.records .record');
+ await expect(rows).toHaveCount(80);
+ await expect(page.getByRole('status',{name:''}).filter({hasText:'Đang hiển thị 80/325 đơn đã tải'})).toBeVisible();
+ await page.getByRole('button',{name:'Hiện thêm 80 đơn đã tải'}).click();
+ await expect(rows).toHaveCount(160);
+ await page.getByRole('textbox',{name:'Tìm đơn'}).fill('B00424');
+ await expect(rows).toHaveCount(1);
+ await expect(page.getByText('#B00424')).toBeVisible();
+ await page.getByRole('textbox',{name:'Tìm đơn'}).clear();
+ await expect(rows).toHaveCount(80);
+ await assertNoOverflow(page,390);
+ expect(writes).toBe(0);
+});
