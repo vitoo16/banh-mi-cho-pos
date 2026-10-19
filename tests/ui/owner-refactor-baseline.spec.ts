@@ -110,7 +110,7 @@ async function login(page:Page,remote=false,expectedLanding:'dashboard'|'recover
 }
 async function tab(page:Page,name:string){
  // Desktop sidebar or mobile bottom navigation has exactly one visible copy.
- await page.getByRole('button',{name,exact:true}).click();
+ await page.getByRole('link',{name,exact:true}).click();
 }
 test('OWNER G1: failed login must not expose protected dashboard or write a session token',async({page})=>{
  const f=await fixture(page,{failLogin:true});
@@ -848,28 +848,28 @@ test('OR-08b: desktop Owner navigation exposes landmarks and current page to scr
  await fixture(page);await login(page);
  const nav=page.getByRole('navigation',{name:'Điều hướng chính'});
  await expect(nav).toBeVisible();
- await expect(nav.getByRole('button',{name:'Tổng quan'})).toHaveAttribute('aria-current','page');
- const orders=nav.getByRole('button',{name:'Đơn hàng'});
+ await expect(nav.getByRole('link',{name:'Tổng quan'})).toHaveAttribute('aria-current','page');
+ const orders=nav.getByRole('link',{name:'Đơn hàng'});
  await orders.focus();
  await page.keyboard.press('Enter');
  await expect(page).toHaveURL(localUrl+'orders');
  await expect(orders).toHaveAttribute('aria-current','page');
- await expect(nav.getByRole('button',{name:'Tổng quan'})).not.toHaveAttribute('aria-current','page');
+ await expect(nav.getByRole('link',{name:'Tổng quan'})).not.toHaveAttribute('aria-current','page');
  await expect(page.getByText('#B00001')).toBeVisible();
  await page.goBack();
  await expect(page).toHaveURL(localUrl);
- await expect(nav.getByRole('button',{name:'Tổng quan'})).toHaveAttribute('aria-current','page');
+ await expect(nav.getByRole('link',{name:'Tổng quan'})).toHaveAttribute('aria-current','page');
 });
 test('OR-08b: mobile Owner current-page announcements follow navigation at 320px',async({page})=>{
  await page.setViewportSize({width:320,height:568});
  await fixture(page);await login(page);
  const nav=page.getByRole('navigation',{name:'Điều hướng di động'});
  await expect(nav).toBeVisible();
- await expect(nav.getByRole('button',{name:'Tổng quan'})).toHaveAttribute('aria-current','page');
- await nav.getByRole('button',{name:'Tài chính'}).click();
+ await expect(nav.getByRole('link',{name:'Tổng quan'})).toHaveAttribute('aria-current','page');
+ await nav.getByRole('link',{name:'Tài chính'}).click();
  await expect(page).toHaveURL(localUrl+'finance');
- await expect(nav.getByRole('button',{name:'Tài chính'})).toHaveAttribute('aria-current','page');
- await expect(nav.getByRole('button',{name:'Tổng quan'})).not.toHaveAttribute('aria-current','page');
+ await expect(nav.getByRole('link',{name:'Tài chính'})).toHaveAttribute('aria-current','page');
+ await expect(nav.getByRole('link',{name:'Tổng quan'})).not.toHaveAttribute('aria-current','page');
  const width=await page.evaluate(()=>({screen:innerWidth,content:document.documentElement.scrollWidth}));
  expect(width.content).toBeLessThanOrEqual(width.screen+1);
 });
@@ -885,7 +885,7 @@ test('OR-08e: keyboard skip link bypasses Owner sidebar and focuses the main lan
  await page.keyboard.press('Enter');
  await expect(page.locator('main#owner-main')).toBeFocused();
  await expect(page.getByRole('heading',{name:'Tổng quan'})).toBeVisible();
- await page.getByRole('navigation',{name:'Điều hướng chính'}).getByRole('button',{name:'Sản phẩm'}).click();
+ await page.getByRole('navigation',{name:'Điều hướng chính'}).getByRole('link',{name:'Sản phẩm'}).click();
  await expect(page).toHaveURL(localUrl+'catalog');
  await expect(page.locator('main#owner-main')).toBeVisible();
 });

@@ -45,10 +45,10 @@ test('UI-00: Owner six-tab mobile navigation keeps readable hit targets with no 
  const loginButton=page.getByRole('button',{name:'Đăng nhập'});
  const loginBox=await loginButton.boundingBox();expect(loginBox!.height).toBeGreaterThanOrEqual(48);
  await loginButton.click();
- await expect(page.locator('.bottomnav button')).toHaveCount(6);
+ await expect(page.locator('.bottomnav a')).toHaveCount(6);
  const metrics=await page.evaluate(()=>{
   const nav=document.querySelector('.bottomnav') as HTMLElement;
-  const buttons=[...nav.querySelectorAll('button')];
+  const buttons=[...nav.querySelectorAll('a')];
   return {outer:document.documentElement.scrollWidth,viewport:innerWidth,
    navCanScroll:nav.scrollWidth>nav.clientWidth,
    minTap:Math.min(...buttons.map(x=>x.getBoundingClientRect().height)),

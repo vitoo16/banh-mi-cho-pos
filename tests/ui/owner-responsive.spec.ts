@@ -80,7 +80,7 @@ for(const width of [320,1366]){
   await page.setViewportSize({width,height:width===320?568:768});
   const {created}=await mockOwner(page);
   await startOwner(page);
-  await page.getByRole('button',{name:'Sản phẩm'}).click();
+  await page.getByRole('link',{name:'Sản phẩm'}).click();
   await page.getByRole('button',{name:/Thêm món/}).click();
   const dialog=page.getByRole('dialog',{name:'Chỉnh sản phẩm'});
   await expect(dialog).toBeVisible();
@@ -101,7 +101,7 @@ test('Owner local create can intentionally keep a new item hidden',async({page})
  await page.setViewportSize({width:320,height:640});
  const {created}=await mockOwner(page);
  await startOwner(page);
- await page.getByRole('button',{name:'Sản phẩm'}).click();
+ await page.getByRole('link',{name:'Sản phẩm'}).click();
  await page.getByRole('button',{name:/Thêm món/}).click();
  const modal=page.getByRole('dialog',{name:'Chỉnh sản phẩm'});
  await modal.getByLabel('Tên món').fill('Món chưa mở bán');
@@ -135,7 +135,7 @@ test('Owner preserves idempotency key when Cloud/POS committed but response was 
   }
  });
  await startOwner(page);
- await page.getByRole('button',{name:'Sản phẩm'}).click();
+ await page.getByRole('link',{name:'Sản phẩm'}).click();
  await page.getByRole('button',{name:/Thêm món/}).click();
  let dialog=page.getByRole('dialog',{name:'Chỉnh sản phẩm'});
  await dialog.getByLabel('Tên món').fill('Chưa chắc đã lưu');
@@ -194,7 +194,7 @@ for(const width of [320,1366]){
     ]})});
   });
   await startOwner(page);
-  await page.getByRole('button',{name:'Sản phẩm'}).click();
+  await page.getByRole('link',{name:'Sản phẩm'}).click();
   const list=page.locator('.catalog-record');
   await expect(list).toHaveCount(3);
   await expect(page.getByText('2 đang bán · 1 đã ẩn')).toBeVisible();
@@ -224,7 +224,7 @@ for(const width of [320,1366]){
 test('Owner staff and finance forms remain labeled and accessible on 320px',async({page})=>{
  await page.setViewportSize({width:320,height:640});
  await mockOwner(page);await startOwner(page);
- await page.getByRole('button',{name:'Nhân viên'}).click();
+ await page.getByRole('link',{name:'Nhân viên'}).click();
  await expect(page.getByLabel('Tên thiết bị')).toBeVisible();
  await expect(page.getByLabel('Mã nhân viên')).toBeVisible();
  await expect(page.getByLabel('Tên hiển thị')).toBeVisible();
@@ -232,7 +232,7 @@ test('Owner staff and finance forms remain labeled and accessible on 320px',asyn
  await expect(page.getByLabel('PIN (từ 6 ký tự)')).toBeVisible();
  await assertNoOverflow(page,320);
  await assertAccessible(page);
- await page.getByRole('button',{name:'Tài chính'}).click();
+ await page.getByRole('link',{name:'Tài chính'}).click();
  await expect(page.getByRole('heading',{name:'Đối soát ngân hàng'})).toBeVisible();
  await expect(page.getByText('Chưa đồng bộ')).toBeVisible();
  await assertNoOverflow(page,320);
@@ -242,7 +242,7 @@ test('Owner staff and finance forms remain labeled and accessible on 320px',asyn
 test('OR-08a: Catalog dialog moves focus inside, traps Shift+Tab/Tab and returns focus on Escape',async({page})=>{
  await page.setViewportSize({width:1366,height:768});
  await mockOwner(page);await startOwner(page);
- await page.getByRole('button',{name:'Sản phẩm'}).click();
+ await page.getByRole('link',{name:'Sản phẩm'}).click();
  const opener=page.getByRole('button',{name:/Thêm món/});
  await opener.click();
  const dialog=page.getByRole('dialog',{name:'Chỉnh sản phẩm'});
@@ -272,7 +272,7 @@ test('OR-08a: Catalog dialog moves focus inside, traps Shift+Tab/Tab and returns
 test('OR-08a: 320px dialog stays keyboard-contained and returns focus after confirmed save',async({page})=>{
  await page.setViewportSize({width:320,height:568});
  const {created}=await mockOwner(page);await startOwner(page);
- await page.getByRole('button',{name:'Sản phẩm'}).click();
+ await page.getByRole('link',{name:'Sản phẩm'}).click();
  const opener=page.getByRole('button',{name:/Thêm món/});
  await opener.click();
  const dialog=page.getByRole('dialog',{name:'Chỉnh sản phẩm'});
@@ -342,7 +342,7 @@ for(const width of [320,390]){
   expect(rootPx).toBeGreaterThanOrEqual(32);
   await expect(page.getByText('1.234.567đ')).toBeVisible();
   await assertNoOverflow(page,width);
-  await page.getByRole('button',{name:'Sản phẩm'}).click();
+  await page.getByRole('link',{name:'Sản phẩm'}).click();
   const add=page.getByRole('button',{name:/Thêm món/});
   await expect(add).toBeVisible();
   await add.click();
@@ -386,7 +386,7 @@ test('OR-08c: Owner login and operational dashboard meet automated WCAG A/AA smo
 test('OR-08c: Catalog edit dialog meets automated WCAG A/AA smoke on a phone',async({page})=>{
  await page.setViewportSize({width:390,height:844});
  await mockOwner(page);await startOwner(page);
- await page.getByRole('button',{name:'Sản phẩm'}).click();
+ await page.getByRole('link',{name:'Sản phẩm'}).click();
  await page.getByRole('button',{name:/Thêm món/}).click();
  await expect(page.getByRole('dialog',{name:'Chỉnh sản phẩm'})).toBeVisible();
  await assertAccessible(page);
