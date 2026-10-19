@@ -182,7 +182,7 @@ test('POS queue can browse more than 300 daily orders without truncation or unsa
  }));
  const {captures}=await mockHub(page,otherOrders);
  await startCashier(page);
- await expect(page.getByText('Hàng đợi')).toBeVisible();
+ await expect(page.getByRole('heading',{name:/Hàng đợi/})).toBeVisible();
  await expect(page.locator('.orders-scroll .order-tile')).toHaveCount(80);
  const more=page.getByRole('button',{name:/Xem thêm 246 đơn cũ/});
  await expect(more).toBeVisible();
