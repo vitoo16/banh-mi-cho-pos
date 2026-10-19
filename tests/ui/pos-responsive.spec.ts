@@ -242,7 +242,9 @@ test('Printer UNKNOWN keyboard drill opens receipt exception without offering a 
     unknown_receipts:[{id:'copy-unknown',order_id:order.order_id,display_code:'B00042',kind:'CUSTOMER'}]},
   }),
  }));
- await startCashier(page);
+ await page.goto('/');
+ await page.getByLabel('Mã PIN thu ngân').fill('cashier-test-secret');
+ await page.getByRole('button',{name:'Đăng nhập'}).click();
  const alert=page.getByRole('alert',{name:'Cảnh báo biên nhận in chưa xác định'});
  await expect(alert.getByText('1 liên in chưa xác định')).toBeVisible();
  const disclosure=alert.getByText('Chọn đơn cần kiểm tra');
