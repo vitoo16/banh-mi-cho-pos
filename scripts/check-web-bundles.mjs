@@ -6,7 +6,7 @@ import {fileURLToPath} from 'node:url';
 const root=resolve(fileURLToPath(new URL('..',import.meta.url)));
 export const budgets=[
  {app:'Cashier POS',directory:'apps/web-pos/dist',jsGzipLimit:100*1024,cssGzipLimit:10*1024,fontGzipLimit:850*1024},
- {app:'Owner Web',directory:'apps/web-owner/dist',jsGzipLimit:112*1024,cssGzipLimit:10*1024},
+ {app:'Owner Web',directory:'apps/web-owner/dist',jsGzipLimit:112*1024,cssGzipLimit:10*1024,fontGzipLimit:850*1024},
 ];
 
 /** Count all JS/CSS assets, including future split chunks (not just index.js).
