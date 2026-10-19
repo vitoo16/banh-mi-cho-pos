@@ -373,3 +373,42 @@ test('Partial cash/refund orders are labeled truthfully and never reopen cash ca
  expect(captures).toHaveLength(0);
  await assertNoViewportOverflow(page,1024);
 });
+
+test('Late receipt response for order A never appears while reviewing paid order B',async({page})=>{
+ await page.setViewportSize({width:1024,height:768});
+ const paidA={...order,payment_status:'PAID'};
+ const paidB={...order,order_id:'55555555-5555-4555-8555-555555555555',display_code:'B00043',
+  payment_status:'PAID'};
+ await mockHub(page);
+ await page.route('**/v1/orders',route=>route.fulfill({status:200,
+  contentType:'application/json',body:JSON.stringify([paidA,paidB])}));
+ let holdA=false;
+ let releaseA:()=>void=()=>{};
+ const deferred=new Promise<void>(resolve=>{releaseA=resolve});
+ const receiptA='/v1/orders/'+order.order_id+'/receipts';
+ await page.route('**'+receiptA,async route=>{
+  if(holdA)await deferred;
+  await route.fulfill({status:200,contentType:'application/json',body:JSON.stringify(
+   holdA?[{id:'old-a',order_id:order.order_id,kind:'CUSTOMER',status:'SENT'}]:[]
+  )});
+ });
+ await page.goto('/');
+ await page.getByLabel('Mã PIN thu ngân').fill('cashier-test-secret');
+ await page.getByRole('button',{name:'Đăng nhập'}).click();
+ await page.getByRole('button',{name:'Đã thu'}).click();
+ const firstAuto=page.waitForResponse(response=>new URL(response.url()).pathname===receiptA);
+ await page.getByRole('button',{name:/B00042/}).click();
+ await firstAuto;
+ await expect(page.getByRole('heading',{name:'Hai liên biên nhận'})).toBeVisible();
+ holdA=true;
+ await page.getByRole('button',{name:'Xem trạng thái in'}).click();
+ await expect(page.getByRole('button',{name:'Đang kiểm tra…'}).first()).toBeVisible();
+ await page.getByRole('button',{name:/B00043/}).click();
+ await expect(page.getByRole('heading',{name:'#B00043'})).toBeVisible();
+ const delayed=page.waitForResponse(response=>new URL(response.url()).pathname===receiptA);
+ releaseA();
+ await delayed;
+ await expect(page.locator('.receipt-row')).toHaveCount(0);
+ await expect(page.getByRole('button',{name:'Xem trạng thái in'})).toBeEnabled();
+ await assertNoViewportOverflow(page,1024);
+});
