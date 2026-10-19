@@ -80,3 +80,25 @@
  border-radius:10px;font-weight:800;box-shadow:var(--bmc-shadow-dialog);}
 .skip-link:focus,.skip-link:focus-visible{transform:none}
 #owner-main:focus{outline:none}
+
+/* Taste refresh: editorial hierarchy, restrained chrome, stronger scan rhythm. */
+:root{font-family:var(--bmc-font);font-optical-sizing:auto}
+.sidebar{background:#F0EEE8;border-right-color:var(--bmc-border);padding:30px 16px}
+.brand{padding:0 10px;margin-bottom:34px}
+.brand b{letter-spacing:-.035em;font-size:17px}
+.logo{border-radius:9px}
+.navlinks{gap:3px}
+.navlinks button{border-radius:8px;font-weight:600;min-height:48px;transition:background-color 120ms,color 120ms}
+.navlinks button:hover:not(.active){background:#E7E5DE;color:var(--bmc-ink)}
+.navlinks button.active{background:#FFF;box-shadow:inset 3px 0 var(--bmc-accent);color:var(--bmc-ink)}
+.main{max-width:1480px}
+.header{border-bottom:1px solid var(--bmc-border);padding-bottom:22px;margin-bottom:24px}
+.header h1{font-weight:750;letter-spacing:-.042em}
+.eyebrow{font-weight:700;letter-spacing:.1em}
+.kpi,.panel,.sales-stats>div{border-color:var(--bmc-border);border-radius:var(--bmc-radius-card);box-shadow:none}
+.kpi.hero{background:#25382D;border-color:#25382D}
+.kpi.hero span,.kpi.hero small{color:#E0E8DE}
+.kpi strong,.sales-stats strong{font-variant-numeric:tabular-nums;letter-spacing:-.035em}
+.primary{border-radius:var(--bmc-radius-control)}
+button:focus-visible,input:focus-visible,select:focus-visible{outline-color:var(--bmc-focus)}
+@media(max-width:950px){.bottomnav{display:flex;overflow-x:auto;overscroll-behavior-x:contain;scrollbar-width:thin;justify-content:space-between}.bottomnav button{flex:1 0 70px;min-width:70px}.main{padding-bottom:125px}}
