@@ -227,3 +227,34 @@ test('Disconnected cashier never enables opening shift or recording money',async
  expect(captures).toHaveLength(0);
  await assertNoViewportOverflow(page,1024);
 });
+
+test('Printer UNKNOWN keyboard drill opens receipt exception without offering a second capture',async({page})=>{
+ await page.setViewportSize({width:1024,height:768});
+ const {captures}=await mockHub(page);
+ const paidOrder={...order,payment_status:'PAID'};
+ await page.route('**/v1/orders',route=>route.fulfill({status:200,contentType:'application/json',
+  body:JSON.stringify([paidOrder])}));
+ await page.route('**/v1/orders/'+order.order_id,route=>route.fulfill({status:200,contentType:'application/json',
+  body:JSON.stringify(paidOrder)}));
+ await page.route('**/v1/cashier/operational-status',route=>route.fulfill({
+  status:200,contentType:'application/json',body:JSON.stringify({
+   ...operational,printer:{driver_configured:true,waiting_copies:0,unknown_copies:1,
+    unknown_receipts:[{id:'copy-unknown',order_id:order.order_id,display_code:'B00042',kind:'CUSTOMER'}]},
+  }),
+ }));
+ await startCashier(page);
+ const alert=page.getByRole('alert',{name:'Cảnh báo biên nhận in chưa xác định'});
+ await expect(alert.getByText('1 liên in chưa xác định')).toBeVisible();
+ const disclosure=alert.getByText('Chọn đơn cần kiểm tra');
+ await disclosure.focus();
+ await page.keyboard.press('Enter');
+ const receipt=alert.getByRole('button',{name:/B00042.*Liên khách/});
+ await expect(receipt).toBeVisible();
+ await receipt.focus();
+ await page.keyboard.press('Enter');
+ await expect(page.getByText('Hai liên biên nhận')).toBeVisible();
+ await expect(page.getByLabel('Khách đưa (VNĐ)')).toHaveCount(0);
+ await expect(page.getByRole('button',{name:'Xác nhận đã nhận tiền'})).toHaveCount(0);
+ expect(captures).toHaveLength(0);
+ await assertNoViewportOverflow(page,1024);
+});
