@@ -1,4 +1,4 @@
-import React,{useEffect,useState} from 'react';import {createRoot} from 'react-dom/client';import {type Product,type Employee,type StaffDevice,type PairingCode} from '@bmc/contracts';import {QueryClientProvider} from '@tanstack/react-query';
+import React,{useEffect,useRef,useState} from 'react';import {createRoot} from 'react-dom/client';import {type Product,type Employee,type StaffDevice,type PairingCode} from '@bmc/contracts';import {QueryClientProvider} from '@tanstack/react-query';
 import {hub,remote,newKey} from './api';
 import {queryClient} from './app/queryClient';
 import {useOwnerAuth} from './app/useOwnerAuth';
@@ -24,10 +24,16 @@ import {useOwnerRoute} from './app/router';
 function App(){
  const {session,login,logout}=useOwnerAuth();
  const {page,navigate}=useOwnerRoute();
+ const baselineRef=useRef('');
  const [pin,setPin]=useState(''),[error,setError]=useState(''),[notice,setNotice]=useState(''),[busy,setBusy]=useState(false);
  const [deviceLabel,setDeviceLabel]=useState(''),[newPairing,setNewPairing]=useState<PairingCode|null>(null);
  const [empId,setEmpId]=useState(''),[empName,setEmpName]=useState(''),[empPin,setEmpPin]=useState(''),[empRole,setEmpRole]=useState<'STAFF'|'CASHIER'>('STAFF');
  const [editing,setEditing]=useState<string|null>(null),[name,setName]=useState(''),[price,setPrice]=useState(''),[category,setCategory]=useState('Bánh mì'),[active,setActive]=useState(true);
+ const draftSnapshot=(target=editing,n=name,c=category,p=price,a=active)=>JSON.stringify({target,n,c,p,a});
+ const hasDirtyDraft=()=>Boolean(editing)&&draftSnapshot()!==baselineRef.current;
+ function confirmLeaveDraft(){return !hasDirtyDraft()||window.confirm('Có thay đổi sản phẩm chưa lưu. Bỏ thay đổi và rời trang?')}
+ function closeDraft(){if(confirmLeaveDraft())setEditing(null)}
+ useEffect(()=>{if(!editing||!hasDirtyDraft())return;const warn=(e:BeforeUnloadEvent)=>{e.preventDefault();e.returnValue=''};window.addEventListener('beforeunload',warn);return ()=>window.removeEventListener('beforeunload',warn)},[editing,name,category,price,active]);
  async function signIn(e:React.FormEvent){e.preventDefault();setBusy(true);try{await login(pin);setPin('')}catch(e){setError((e as Error).message)}finally{setBusy(false)}}
  async function save(){
   if(busy||!editing)return;
@@ -59,7 +65,9 @@ function App(){
  const restoreCatalogRetry=(item:CatalogRetry)=>{
   setEditing(item.draft.target);setName(item.draft.name);
   setCategory(item.draft.category);setPrice(String(item.draft.price_vnd));
-  setActive(item.draft.is_active);navigate('catalog',{replace:true});
+  setActive(item.draft.is_active);
+  baselineRef.current=draftSnapshot(item.draft.target,item.draft.name,item.draft.category,String(item.draft.price_vnd),item.draft.is_active);
+  navigate('catalog',{replace:true});
   setNotice('Có yêu cầu menu chưa xác nhận. Gửi lại chính nội dung cũ để tra cứu, không tạo món trùng.');
  };
  useEffect(()=>{
@@ -72,8 +80,9 @@ function App(){
   catch(e){setError((e as Error).message);return}
   setEditing(p?.id||'new');setName(p?.name||'');setCategory(p?.category||'Bánh mì');
   setPrice(String(p?.price_vnd??''));setActive(p?.is_active??true);setNotice('');
+  baselineRef.current=draftSnapshot(p?.id||'new',p?.name||'',p?.category||'Bánh mì',String(p?.price_vnd??''),p?.is_active??true);
  };
- function navigateSidebar(target:Page){navigate(target);setError('');setNotice('')}
+ function navigateSidebar(target:Page){if(target===page)return;if(!confirmLeaveDraft())return;setEditing(null);navigate(target);setError('');setNotice('')}
  function refreshPage(){
   if(!session)return;
   if(page==='dashboard'||page==='sales')void queryClient.invalidateQueries({queryKey:page==='dashboard'?['owner']:['owner','product-sales']});
@@ -92,7 +101,7 @@ function App(){
  }
  if(!session)return <OwnerLogin remote={remote} pin={pin} busy={busy} error={error} onPinChange={setPin} onSignIn={signIn}/>;
  return <AppShell userName={session.user.name} page={page} remote={remote}
- onSidebarNavigate={navigateSidebar} onBottomNavigate={navigate} onLogout={logout} onRefresh={refreshPage}>
+ onSidebarNavigate={navigateSidebar} onBottomNavigate={navigateSidebar} onLogout={()=>{if(confirmLeaveDraft())void logout()}} onRefresh={refreshPage}>
  {page==='dashboard'&&<OwnerDashboard onOpenSales={()=>navigate('sales')}/>}
  {page==='sales'&&<OwnerProductSalesPage/>}
  {page==='orders'&&<OrderHistoryPage/>}
@@ -102,7 +111,7 @@ function App(){
  deviceProps={{deviceLabel,newPairing,busy,onDeviceLabelChange:setDeviceLabel,onIssuePairing:issuePairing,onRevokeDevice:revokeDevice}}
  employeeProps={{empId,empName,empPin,empRole,busy,onEmpIdChange:setEmpId,onEmpNameChange:setEmpName,onEmpPinChange:setEmpPin,onEmpRoleChange:setEmpRole,onCreateEmployee:createEmployee,onToggleEmployee:toggleEmployee}}
  />}
- {editing&&page==='catalog'&&<ProductFormDialog editing={editing} remote={remote} name={name} category={category} price={price} active={active} error={error} busy={busy} onNameChange={setName} onCategoryChange={setCategory} onPriceChange={setPrice} onActiveChange={setActive} onSave={save} onClose={()=>setEditing(null)}/>}
+ {editing&&page==='catalog'&&<ProductFormDialog editing={editing} remote={remote} name={name} category={category} price={price} active={active} error={error} busy={busy} onNameChange={setName} onCategoryChange={setCategory} onPriceChange={setPrice} onActiveChange={setActive} onSave={save} onClose={closeDraft}/>}
  {notice&&<p className="success" role="status">{notice}</p>}{error&&!editing&&<p className="alert" role="alert">{error}</p>}
  </AppShell>
 }
