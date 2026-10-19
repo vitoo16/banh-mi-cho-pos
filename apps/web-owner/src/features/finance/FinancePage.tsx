@@ -43,13 +43,13 @@ export function BankExceptions({ownerId,remote}:{ownerId:string;remote:boolean})
   {exceptionsPending?<p className="muted" role="status">Đang tải giao dịch ngoại lệ…</p>:
    exceptions?.length===0?<p className="muted">Chưa phát hiện giao dịch ngân hàng bất thường.</p>:
    exceptions?.map(x=><div className="record" key={x.provider_tx_id}><div><b>{x.reference}</b>
-    <small>{x.reason} · {new Date(x.received_at).toLocaleString('vi-VN')}</small></div><strong>{formatVnd(x.amount_vnd)}</strong></div>)}
+    <small>{x.reason} · {new Date(x.received_at).toLocaleString('vi-VN',{timeZone:'Asia/Ho_Chi_Minh'})}</small></div><strong>{formatVnd(x.amount_vnd)}</strong></div>)}
   {exceptionsError&&<p className="alert" role="alert">Không tải được giao dịch ngoại lệ. Không thể kết luận chưa có ngoại lệ. <button type="button" className="textbutton" onClick={()=>void retryExceptions()}>Thử lại giao dịch</button></p>}
  </section>;
 }
 export function FinanceLastSynced(){
  const {data,isPending}=useQuery({...summaryOptions(),select:r=>r.last_synced_at});
- return <p className="muted" role="status">Cập nhật: {isPending?'Đang tải…':data?new Date(data).toLocaleTimeString('vi-VN'):'Chưa đồng bộ'}</p>;
+ return <p className="muted" role="status">Cập nhật: {isPending?'Đang tải…':data?new Date(data).toLocaleTimeString('vi-VN',{timeZone:'Asia/Ho_Chi_Minh'}):'Chưa đồng bộ'}</p>;
 }
 export function FinancePage({ownerId,remote}:{ownerId:string;remote:boolean}){
  return <div className="finance-page"><div className="finance-intro"><div><p className="eyebrow">SỐ LIỆU ĐÃ XÁC MINH</p><h2>Tiền tại quầy và đối soát</h2></div><FinanceLastSynced/></div><div className="twocol finance-columns">

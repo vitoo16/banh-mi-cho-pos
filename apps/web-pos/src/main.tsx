@@ -126,7 +126,7 @@ function App(){
   </section>:null}
   {operations&&<div className="ops-line" role="status">
     <span><Printer size={15}/> {operations.printer.driver_configured?'Đã cấu hình bộ in (chưa xác nhận giấy)':'Chưa cấu hình máy in'} · {operations.printer.waiting_copies} liên chờ</span>
-    <span><Wifi size={15}/> {operations.cloud_sync.configured?'Cloud: '+operations.cloud_sync.pending_events+' sự kiện chờ · '+(operations.cloud_sync.last_delivered_at?'Đã gửi gần nhất '+new Date(operations.cloud_sync.last_delivered_at).toLocaleTimeString('vi-VN'):'Chưa có lần gửi thành công'):'Cloud chưa bật · thu tiền mặt qua LAN vẫn hoạt động'}</span>
+    <span><Wifi size={15}/> {operations.cloud_sync.configured?'Cloud: '+operations.cloud_sync.pending_events+' sự kiện chờ · '+(operations.cloud_sync.last_delivered_at?'Đã gửi gần nhất '+new Date(operations.cloud_sync.last_delivered_at).toLocaleTimeString('vi-VN',{timeZone:'Asia/Ho_Chi_Minh'}):'Chưa có lần gửi thành công'):'Cloud chưa bật · thu tiền mặt qua LAN vẫn hoạt động'}</span>
    </div>}
   {mode==='SHIFT'?<main id="pos-main" tabIndex={-1} className="shiftpage">
     <div><p className="eyebrow">QUẢN LÝ TIỀN MẶT</p><h1>Ca thu ngân</h1><p className="muted">Tiền chuyển khoản không được tính vào két.</p></div>

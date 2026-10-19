@@ -35,7 +35,7 @@ export function CatalogPage({ownerId,remote,onBegin}:{
    <h3>Lệnh cập nhật đang theo dõi</h3>
    <p className="muted">Yêu cầu chưa được POS xác nhận không có nghĩa là giá mới đã áp dụng.</p>
    {remoteCommands.slice(0,8).map(cmd=><div className="command-row" key={cmd.id}>
-    <div><strong>{cmd.operation==='CREATE'?'Thêm món: ':''}{cmd.name}</strong><small>{formatVnd(cmd.price_vnd)} · {new Date(cmd.created_at).toLocaleString('vi-VN')}</small></div>
+    <div><strong>{cmd.operation==='CREATE'?'Thêm món: ':''}{cmd.name}</strong><small>{formatVnd(cmd.price_vnd)} · {new Date(cmd.created_at).toLocaleString('vi-VN',{timeZone:'Asia/Ho_Chi_Minh'})}</small></div>
     <span className={cmd.status==='APPLIED'?'command-applied':cmd.status==='CONFLICT'?'command-conflict':'command-pending'}>
      {cmd.status==='APPLIED'?'POS đã áp dụng':cmd.status==='CONFLICT'?'Xung đột giá — cần xem lại':'Đang chờ POS'}
     </span>

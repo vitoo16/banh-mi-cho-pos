@@ -16,10 +16,10 @@ Project override: do not import general website Taste animation, large hero, des
 ## Visual system
 
 - Single source of Web semantic tokens: `packages/ui/src/web-tokens.css` imported by Owner and POS. Native mirrors values in `apps/mobile-staff/src/ui/designTokens.ts`. A follow-up can promote platform-agnostic JSON build generation when stack agrees.
-- Accessible text color `#1E2420`, secondary `#5D6760` on white, caramel primary `#A84F10`; green `#166534` only for confirmed receipt/payment, amber pending, red errors. **Never use color alone**.
-- System font stack with Vietnamese glyph support, no Google Fonts dependency during WAN outage. Currency and operational counts use tabular numerals.
-- Radius convention: 10px control, 16px cards, select overlays have visible focus ring. Min Web key action 48px; RN qty buttons 48dp. Modal role/focus trap work scheduled as OR-08; no false a11y claims.
-- Owner six-section mobile navigation scrolls horizontally with visible partial next item and 11px text instead of shrinking to 9px; outer document must never X-scroll. POS retains deliberate split queue/checkout at supported widths; no decorative motion on cash capture.
+- Current visual tokens: ink `#202820`, muted `#5A665B` on white/warm canvas, caramel primary `#994515`; green `#166534` only for confirmed receipt/payment, amber pending, red errors. **Never use color alone**.
+- Bundled Be Vietnam Pro (400/500/600/700), with system fallbacks and no remote font dependency during WAN outage. Currency and operational counts use tabular numerals.
+- Radius convention: 8px control, 12px cards and 16px dialogs, select overlays have visible focus ring. Min Web key action 48px; RN qty buttons 48dp. Modal role/focus trap work scheduled as OR-08; no false a11y claims.
+- Owner six-section mobile navigation currently scrolls horizontally with visible partial next item and 11px text instead of shrinking to 9px; outer document must never X-scroll. POS retains deliberate split queue/checkout at supported widths; no decorative motion on cash capture.
 - Real test gates: responsive 320/390 Owner, 1024/1366 POS, 320/390 native, font scaling 200%, offline with no CDN calls, labels, money clarity, bank pending vs paid, print UNKNOWN. Browser mock tests are not physical evidence.
 
 ## External sources reviewed and trust boundaries
