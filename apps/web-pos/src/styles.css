@@ -103,3 +103,40 @@ button:focus-visible,input:focus-visible{outline-color:var(--bmc-focus)}
 /* Large daily queues reveal older rows on demand; never silently cap total orders. */
 .queue-more{width:calc(100% - 24px);margin:10px 12px 22px;min-height:48px;background:var(--bmc-surface);border:1px solid var(--bmc-border);border-radius:8px;color:var(--bmc-ink);font-weight:700}
 .queue-more:hover{border-color:var(--bmc-accent);background:var(--bmc-accent-soft)}
+
+/* Operator screenshot acceptance: keep money/change/primary action simultaneously
+   visible at the normal Windows counter sizes (1024x768 / 1280x720).
+   Large text and unusually long tickets may still scroll vertically. */
+.cash-entry,.cash-confirm{min-width:0}
+@media(min-width:1024px) and (max-height:850px){
+ .checkout-pane{padding-block:12px 20px}
+ .checkout-content .back-line{margin-bottom:8px}
+ .checkout-content .eyebrow{margin-bottom:4px}
+ .checkout-content>p.muted{margin-bottom:6px}
+ .checkout-content h1{font-size:clamp(25px,2.1vw,30px);margin-bottom:5px}
+ .checkout-content .lineitems{margin:10px 0}
+ .checkout-content .item{padding:10px 0}
+ .checkout-content .due{padding:10px 0}
+ .checkout-content .method-row{padding:10px 0}
+ .checkout-content .method-row button{padding:9px;min-height:48px}
+ .checkout-content .cash-panel{
+  display:grid;grid-template-columns:minmax(0,1.08fr) minmax(205px,.92fr);
+  gap:20px;align-items:center;padding:15px 18px
+ }
+ .checkout-content .cash-panel label{margin-bottom:4px}
+ .checkout-content .cash-panel input.tender{margin:5px 0 7px;min-height:54px;padding:8px 12px}
+ .checkout-content .cash-panel .hint{margin:0 0 8px}
+ .checkout-content .cash-panel .denominations{gap:5px}
+ .checkout-content .cash-panel .denominations button{min-width:48px;min-height:44px;padding:8px 4px}
+ .checkout-content .cash-panel .change{border-top:0;margin:0 0 12px;padding:0;flex-direction:column;align-items:flex-start;gap:4px}
+ .checkout-content .cash-panel .change strong{font-size:clamp(26px,2.8vw,36px);line-height:1.2;overflow-wrap:anywhere}
+ .checkout-content .cash-panel .big{min-height:52px;font-size:14px;line-height:1.4;padding:10px 12px}
+}
+@media(min-width:1024px) and (max-height:740px){
+ .checkout-pane{padding-top:7px}
+ .checkout-content .back-line{margin-bottom:4px}
+ .checkout-content .lineitems{margin:7px 0}
+ .checkout-content .due{padding:8px 0}
+ .checkout-content .method-row{padding:7px 0}
+ .checkout-content .cash-panel{padding:10px 14px;gap:12px}
+}

@@ -280,3 +280,29 @@ test('Cashier tender editing does not commit unchanged OrderQueue subtree',async
  );
  expect(commits.filter(c=>c.id==='cashier-queue')).toHaveLength(0);
 });
+
+test('Cash confirmation and change stay in visible checkout pane at standard counter heights',async({page})=>{
+ for(const [width,height] of [[1024,768],[1280,720]] as const){
+  await page.setViewportSize({width,height});
+  await mockHub(page);
+  await startCashier(page);
+  await page.getByRole('button',{name:/B00042/}).click();
+  await page.getByLabel('Khách đưa (VNĐ)').fill('100000');
+  await expect(page.getByText('10.000đ')).toBeVisible();
+  await page.evaluate(()=>{const pane=document.querySelector<HTMLElement>('.checkout-pane');if(pane)pane.scrollTop=0;});
+  const coordinates=await page.evaluate(()=>{
+   const pane=document.querySelector('.checkout-pane')?.getBoundingClientRect();
+   const action=document.querySelector('.cash-panel .primary.big')?.getBoundingClientRect();
+   const change=document.querySelector('.cash-panel .change strong')?.getBoundingClientRect();
+   return {paneTop:pane?.top,paneBottom:pane?.bottom,actionTop:action?.top,
+    actionBottom:action?.bottom,changeBottom:change?.bottom,height:innerHeight};
+  });
+  expect(coordinates.actionTop,'Missing cash confirmation '+JSON.stringify(coordinates)).toBeDefined();
+  expect(coordinates.actionTop!).toBeGreaterThanOrEqual(coordinates.paneTop!);
+  expect(coordinates.actionBottom!,'Cash confirmation below viewport '+JSON.stringify(coordinates))
+   .toBeLessThanOrEqual(Math.min(coordinates.paneBottom!,height)-4);
+  expect(coordinates.changeBottom!,'Change hidden from checkout '+JSON.stringify(coordinates))
+   .toBeLessThanOrEqual(Math.min(coordinates.paneBottom!,height)-4);
+  await assertNoViewportOverflow(page,width);
+ }
+});
