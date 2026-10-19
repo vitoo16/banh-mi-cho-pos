@@ -258,3 +258,23 @@ test('Printer UNKNOWN keyboard drill opens receipt exception without offering a 
  expect(captures).toHaveLength(0);
  await assertNoViewportOverflow(page,1024);
 });
+
+test('Cashier tender editing does not commit unchanged OrderQueue subtree',async({page})=>{
+ await page.addInitScript(()=>{
+  (window as Window&{__BMC_POS_RENDER_COMMITS__?:{id:string;phase:string}[]}).__BMC_POS_RENDER_COMMITS__=[];
+ });
+ await page.setViewportSize({width:1024,height:768});
+ await mockHub(page);
+ await startCashier(page);
+ await page.getByRole('button',{name:/B00042/}).click();
+ await expect(page.getByLabel('Khách đưa (VNĐ)')).toBeVisible();
+ await page.evaluate(()=>{
+  (window as Window&{__BMC_POS_RENDER_COMMITS__?:{id:string;phase:string}[]}).__BMC_POS_RENDER_COMMITS__=[];
+ });
+ await page.getByLabel('Khách đưa (VNĐ)').fill('100000');
+ await expect(page.getByText('10.000đ')).toBeVisible();
+ const commits=await page.evaluate(()=>
+  (window as Window&{__BMC_POS_RENDER_COMMITS__?:{id:string;phase:string}[]}).__BMC_POS_RENDER_COMMITS__??[]
+ );
+ expect(commits.filter(c=>c.id==='cashier-queue')).toHaveLength(0);
+});
