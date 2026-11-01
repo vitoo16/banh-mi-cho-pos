@@ -38,3 +38,7 @@ Both Web builds are now checked for emitted TTF/OTF/WOFF/WOFF2 in dist (all subd
 - Developer-only POS `DevProfiler` captures *commit identifiers only*, not money/customer/session data; the tender-entry test checks unchanged queue isolation. The production build excludes the profiler wrapper.
 - `browser-smoke.spec.ts` now saves screenshot **candidates** at more approved viewports. CI artifacts are not pixel-verified baselines and have not been visually approved.
 - Printer UNKNOWN keyboard test proves a paid order from the exception list does not offer a second cash capture. This does not replace a physical paper-out/reprint drill.
+
+## Physical pilot UAT handoff (2026-11-02)
+
+The operator-ready [pilot UAT sign-off sheet](PILOT_UAT_SIGNOFF_2026-11-02.md) lists 16 executable on-device, browser, settlement, printer, offline, recovery and reconciliation scenarios, with explicit PASS/FAIL/BLOCKED/NOT RUN evidence criteria and owner signatures. **No physical UAT has been executed or signed here.** Do not merge or release based only on mocked CI results; BANK provider verification remains BLOCKED pending approved sandbox access.
