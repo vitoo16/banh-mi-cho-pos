@@ -35,9 +35,23 @@ jobs:
       - name: Build shared typed API client
         run: npm run build -w @bmc/contracts
       - name: Install Chromium
-        run: npx playwright install --with-deps chromium
+        run: npx playwright install --with-deps chromium firefox webkit
       - name: Run responsive UI tests with mocked Hub API
         run: npm run test:ui
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ui-visual-candidates
+          path: test-results/**/owner-*.png
+          if-no-files-found: ignore
+          retention-days: 14
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ui-pos-visual-candidates
+          path: test-results/**/pos-*.png
+          if-no-files-found: ignore
+          retention-days: 14
       - if: failure()
         uses: actions/upload-artifact@v4
         with:

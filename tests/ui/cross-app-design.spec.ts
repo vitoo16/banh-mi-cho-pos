@@ -1,6 +1,6 @@
 import {test,expect} from '@playwright/test';
 
-const accent='#a84f10',secondary='#5d6760';
+const accent='#994515',secondary='#5a665b';
 function contrast(a:string,b:string){
  const channel=(n:number)=>{const c=n/255;return c<=.04045?c/12.92:((c+.055)/1.055)**2.4};
  const lum=(hex:string)=>{const bytes=[1,3,5].map(i=>Number.parseInt(hex.slice(i,i+2),16));return .2126*channel(bytes[0])+.7152*channel(bytes[1])+.0722*channel(bytes[2])};
@@ -19,7 +19,9 @@ test('UI-00: Owner and cashier both load semantic CSS tokens without Google Font
   });
   expect(result.accent).toBe(accent);
   expect(result.muted).toBe(secondary);
-  expect(result.font).not.toContain('be vietnam pro');
+  expect(result.font).toContain('be vietnam pro');
+  await page.evaluate(()=>document.fonts.ready);
+  expect(await page.evaluate(()=>document.fonts.check('400 16px "Be Vietnam Pro"'))).toBe(true);
   expect(result.bodyWidth).toBeLessThanOrEqual(1280);
  }
  expect(thirdParty).toEqual([]);
@@ -43,10 +45,10 @@ test('UI-00: Owner six-tab mobile navigation keeps readable hit targets with no 
  const loginButton=page.getByRole('button',{name:'Đăng nhập'});
  const loginBox=await loginButton.boundingBox();expect(loginBox!.height).toBeGreaterThanOrEqual(48);
  await loginButton.click();
- await expect(page.locator('.bottomnav button')).toHaveCount(6);
+ await expect(page.locator('.bottomnav a')).toHaveCount(6);
  const metrics=await page.evaluate(()=>{
   const nav=document.querySelector('.bottomnav') as HTMLElement;
-  const buttons=[...nav.querySelectorAll('button')];
+  const buttons=[...nav.querySelectorAll('a')];
   return {outer:document.documentElement.scrollWidth,viewport:innerWidth,
    navCanScroll:nav.scrollWidth>nav.clientWidth,
    minTap:Math.min(...buttons.map(x=>x.getBoundingClientRect().height)),
@@ -87,7 +89,7 @@ test('UI-01: mobile design tokens, legible inputs and reduced motion in Owner an
    };
   });
   expect(design.space).toBe('16px');
-  expect(design.dialogRadius).toBe('20px');
+  expect(design.dialogRadius).toBe('16px');
   expect(design.fastMotion).toBe('120ms');
   expect(design.inputPx).toBeGreaterThanOrEqual(16);
   expect(design.reducedDuration).not.toBe('180ms');

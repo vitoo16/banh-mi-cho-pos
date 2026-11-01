@@ -58,3 +58,85 @@
  border-radius:10px;font-weight:800;box-shadow:0 8px 25px #1d281d24}
 .pos-skip-link:focus-visible{transform:none}
 #pos-main:focus{outline:none}
+
+/* Taste refresh: compact, utilitarian checkout instead of stacked dashboard cards. */
+:root{font-family:var(--bmc-font)}
+.topbar{background:#F0EEE8;border-bottom-color:var(--bmc-border)}
+.mark{border-radius:9px}
+.mainnav{background:#F0EEE8;border-bottom-color:var(--bmc-border)}
+.mainnav button{border-radius:7px;font-weight:650}
+.mainnav button.active{background:#FFF;color:var(--bmc-ink);box-shadow:inset 0 -3px var(--bmc-accent)}
+.orders-pane{border-right-color:var(--bmc-border)}
+.order-tile{border-radius:8px;margin-bottom:6px;transition:background-color 120ms,border-color 120ms}
+.order-tile.selected{background:#F9F2EB;border-color:var(--bmc-accent);box-shadow:inset 3px 0 var(--bmc-accent)}
+.checkout-pane{background:var(--bmc-canvas)}
+.lineitems,.cash-panel,.surface,.bank-panel,.stat{border-radius:var(--bmc-radius-card);box-shadow:none}
+.due{border-top:2px solid var(--bmc-ink);border-bottom-color:var(--bmc-border)}
+.due strong,.change strong,.cashhero{font-variant-numeric:tabular-nums;letter-spacing:-.04em}
+.primary,.secondary{border-radius:var(--bmc-radius-control)}
+button:focus-visible,input:focus-visible{outline-color:var(--bmc-focus)}
+@media(max-width:700px){.topbar{padding:0 12px}.checkout-pane{padding-inline:14px}.due strong{white-space:normal;overflow-wrap:anywhere}}
+
+/* AA contrast on the warmer navigation surface; active/disabled status stays labeled. */
+.topbar .brand small,.mainnav button{color:#526256}
+.orders-pane .order-tile:focus-visible{outline:3px solid var(--bmc-focus);outline-offset:2px}
+.mainnav button.active{color:var(--bmc-ink)}
+
+/* Queue is a working list, not a group of promotional cards. */
+.tabs{gap:0;padding:0 18px;border-bottom:1px solid var(--bmc-border);margin-bottom:12px}
+.tabs button{background:transparent;border-bottom:3px solid transparent;border-radius:0;padding:12px 6px;color:#536157;min-height:48px}
+.tabs button.active{background:transparent;border-bottom-color:var(--bmc-accent);color:var(--bmc-ink)}
+.orders-scroll{padding-inline:12px}
+.order-tile{border-radius:7px;padding:16px;margin-bottom:5px}
+.order-tile .orderline strong{font-size:17px;font-variant-numeric:tabular-nums}
+.order-tile.selected{box-shadow:inset 4px 0 var(--bmc-accent)}
+.order-tile:hover:not(.selected){background:#F7F6F2;border-color:#BAC4B8}
+.checkout-content h1{font-size:clamp(26px,2.2vw,34px);letter-spacing:-.045em}
+.checkout-content .lineitems{padding-block:0}
+.checkout-content .due{padding:24px 0}
+.cash-panel .tender{border-width:2px;border-color:#7E9586}
+.denominations button:focus-visible,.method-row button:focus-visible{outline-color:var(--bmc-focus)}
+.welcome{max-width:390px}
+.welcome-icon{background:#EBE9E2;color:#25382D;border-radius:12px}
+.welcome-stat{border:1px solid var(--bmc-border);border-radius:8px}
+
+/* Large daily queues reveal older rows on demand; never silently cap total orders. */
+.queue-more{width:calc(100% - 24px);margin:10px 12px 22px;min-height:48px;background:var(--bmc-surface);border:1px solid var(--bmc-border);border-radius:8px;color:var(--bmc-ink);font-weight:700}
+.queue-more:hover{border-color:var(--bmc-accent);background:var(--bmc-accent-soft)}
+
+/* Operator screenshot acceptance: keep money/change/primary action simultaneously
+   visible at the normal Windows counter sizes (1024x768 / 1280x720).
+   Large text and unusually long tickets may still scroll vertically. */
+.cash-entry,.cash-confirm{min-width:0}
+@media(min-width:1024px) and (max-height:850px){
+ .checkout-pane{padding-block:12px 20px}
+ .checkout-content .back-line{margin-bottom:8px}
+ .checkout-content .eyebrow{margin-bottom:4px}
+ .checkout-content>p.muted{margin-bottom:6px}
+ .checkout-content h1{font-size:clamp(25px,2.1vw,30px);margin-bottom:5px}
+ .checkout-content .lineitems{margin:10px 0}
+ .checkout-content .item{padding:10px 0}
+ .checkout-content .due{padding:10px 0}
+ .checkout-content .method-row{padding:10px 0}
+ .checkout-content .method-row button{padding:9px;min-height:48px}
+ .checkout-content .cash-panel{
+  display:grid;grid-template-columns:minmax(0,1.08fr) minmax(205px,.92fr);
+  gap:20px;align-items:center;padding:15px 18px
+ }
+ .checkout-content .cash-panel label{margin-bottom:4px}
+ .checkout-content .cash-panel input.tender{margin:5px 0 7px;min-height:54px;padding:8px 12px}
+ .checkout-content .cash-panel .hint{margin:0 0 8px}
+ .checkout-content .cash-panel .denominations{gap:5px}
+ .checkout-content .cash-panel .denominations button{min-width:48px;min-height:44px;padding:8px 4px}
+ .checkout-content .cash-panel .change{border-top:0;margin:0 0 12px;padding:0;flex-direction:column;align-items:flex-start;gap:4px}
+ .checkout-content .cash-panel .change strong{font-size:clamp(26px,2.8vw,36px);line-height:1.2;overflow-wrap:anywhere}
+ .checkout-content .cash-panel .big{min-height:52px;font-size:14px;line-height:1.4;padding:10px 12px}
+}
+@media(min-width:1024px) and (max-height:740px){
+ .checkout-pane{padding-top:7px}
+ .checkout-content .back-line{margin-bottom:4px}
+ .checkout-content .lineitems{margin:7px 0}
+ .checkout-content .due{padding:8px 0}
+ .checkout-content .method-row{padding:7px 0}
+ .checkout-content .cash-panel{padding:10px 14px;gap:12px}
+}

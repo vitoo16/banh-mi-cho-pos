@@ -172,3 +172,243 @@ test('POS keyboard navigation announces Orders vs Shift and does not collect pay
  expect(captures).toHaveLength(0);
  await assertNoViewportOverflow(page,1024);
 });
+
+test('POS queue can browse more than 300 daily orders without truncation or unsafe writes',async({page})=>{
+ await page.setViewportSize({width:1024,height:768});
+ const otherOrders=Array.from({length:325},(_,i)=>({...order,
+  order_id:'f'+String(i+1).padStart(7,'0')+'-1111-4111-8111-111111111111',
+  display_code:'B'+String(i+100).padStart(5,'0'),
+  created_at:'2026-10-11T03:20:00.000Z',
+ }));
+ const {captures}=await mockHub(page,otherOrders);
+ await startCashier(page);
+ await expect(page.getByRole('heading',{name:/Hàng đợi/})).toBeVisible();
+ await expect(page.locator('.orders-scroll .order-tile')).toHaveCount(80);
+ const more=page.getByRole('button',{name:/Xem thêm 246 đơn cũ/});
+ await expect(more).toBeVisible();
+ await more.click();
+ await expect(page.locator('.orders-scroll .order-tile')).toHaveCount(160);
+ await page.getByRole('textbox',{name:'Tìm đơn hàng'}).fill('B00420');
+ await expect(page.locator('.orders-scroll .order-tile')).toHaveCount(1);
+ await expect(page.getByText('#B00420')).toBeVisible();
+ await assertNoViewportOverflow(page,1024);
+ expect(captures).toEqual([]);
+});
+
+test('Cashier login cannot present a connected/empty queue before Hub responds',async({page})=>{
+ await page.setViewportSize({width:1024,height:768});
+ const {captures}=await mockHub(page);
+ let releaseOrders:()=>void=()=>{};
+ const pending=new Promise<void>(resolve=>{releaseOrders=resolve});
+ await page.route('**/v1/orders',async route=>{await pending;await route.fallback()});
+ await page.goto('/');
+ await page.getByLabel('Mã PIN thu ngân').fill('cashier-test-secret');
+ await page.getByRole('button',{name:'Đăng nhập'}).click();
+ await expect(page.getByRole('status').filter({hasText:'Đang kết nối Store Hub'})).toBeVisible();
+ await expect(page.getByText('Chưa có đơn trong nhóm này')).toHaveCount(0);
+ await expect(page.getByRole('button',{name:'Xác nhận đã nhận tiền'})).toHaveCount(0);
+ releaseOrders();
+ await expect(page.getByText('#B00042').first()).toBeVisible();
+ expect(captures).toHaveLength(0);
+ await assertNoViewportOverflow(page,1024);
+});
+
+test('Disconnected cashier never enables opening shift or recording money',async({page})=>{
+ await page.setViewportSize({width:1024,height:768});
+ const {captures}=await mockHub(page);
+ await page.route('**/v1/orders',route=>route.fulfill({status:503,contentType:'application/json',
+  body:JSON.stringify({code:'HUB_DOWN',message:'Store Hub không trả lời'})}));
+ await page.goto('/');
+ await page.getByLabel('Mã PIN thu ngân').fill('cashier-test-secret');
+ await page.getByRole('button',{name:'Đăng nhập'}).click();
+ await expect(page.getByRole('alert').filter({hasText:'Không kết nối được Store Hub'})).toBeVisible();
+ await page.getByRole('button',{name:'Sổ quỹ & chốt ca'}).click();
+ await expect(page.getByRole('button',{name:'Mở ca thu ngân'})).toBeDisabled();
+ expect(captures).toHaveLength(0);
+ await assertNoViewportOverflow(page,1024);
+});
+
+test('Printer UNKNOWN keyboard drill opens receipt exception without offering a second capture',async({page})=>{
+ await page.setViewportSize({width:1024,height:768});
+ const {captures}=await mockHub(page);
+ const paidOrder={...order,payment_status:'PAID'};
+ await page.route('**/v1/orders',route=>route.fulfill({status:200,contentType:'application/json',
+  body:JSON.stringify([paidOrder])}));
+ await page.route('**/v1/orders/'+order.order_id,route=>route.fulfill({status:200,contentType:'application/json',
+  body:JSON.stringify(paidOrder)}));
+ await page.route('**/v1/cashier/operational-status',route=>route.fulfill({
+  status:200,contentType:'application/json',body:JSON.stringify({
+   ...operational,printer:{driver_configured:true,waiting_copies:0,unknown_copies:1,
+    unknown_receipts:[{id:'copy-unknown',order_id:order.order_id,display_code:'B00042',kind:'CUSTOMER'}]},
+  }),
+ }));
+ await page.goto('/');
+ await page.getByLabel('Mã PIN thu ngân').fill('cashier-test-secret');
+ await page.getByRole('button',{name:'Đăng nhập'}).click();
+ const alert=page.getByRole('alert',{name:'Cảnh báo biên nhận in chưa xác định'});
+ await expect(alert.getByText('1 liên in chưa xác định')).toBeVisible();
+ const disclosure=alert.getByText('Chọn đơn cần kiểm tra');
+ await disclosure.focus();
+ await page.keyboard.press('Enter');
+ const receipt=alert.getByRole('button',{name:/B00042.*Liên khách/});
+ await expect(receipt).toBeVisible();
+ await receipt.focus();
+ await page.keyboard.press('Enter');
+ await expect(page.getByText('Hai liên biên nhận')).toBeVisible();
+ await expect(page.getByLabel('Khách đưa (VNĐ)')).toHaveCount(0);
+ await expect(page.getByRole('button',{name:'Xác nhận đã nhận tiền'})).toHaveCount(0);
+ expect(captures).toHaveLength(0);
+ await assertNoViewportOverflow(page,1024);
+});
+
+test('Cashier tender editing does not commit unchanged OrderQueue subtree',async({page})=>{
+ await page.addInitScript(()=>{
+  (window as Window&{__BMC_POS_RENDER_COMMITS__?:{id:string;phase:string}[]}).__BMC_POS_RENDER_COMMITS__=[];
+ });
+ await page.setViewportSize({width:1024,height:768});
+ await mockHub(page);
+ await startCashier(page);
+ await page.getByRole('button',{name:/B00042/}).click();
+ await expect(page.getByLabel('Khách đưa (VNĐ)')).toBeVisible();
+ await page.evaluate(()=>{
+  (window as Window&{__BMC_POS_RENDER_COMMITS__?:{id:string;phase:string}[]}).__BMC_POS_RENDER_COMMITS__=[];
+ });
+ await page.getByLabel('Khách đưa (VNĐ)').fill('100000');
+ await expect(page.getByText('10.000đ')).toBeVisible();
+ const commits=await page.evaluate(()=>
+  (window as Window&{__BMC_POS_RENDER_COMMITS__?:{id:string;phase:string}[]}).__BMC_POS_RENDER_COMMITS__??[]
+ );
+ expect(commits.filter(c=>c.id==='cashier-queue')).toHaveLength(0);
+});
+
+test('Cash confirmation and change stay in visible checkout pane at standard counter heights',async({page})=>{
+ for(const [width,height] of [[1024,768],[1280,720]] as const){
+  await page.setViewportSize({width,height});
+  await mockHub(page);
+  await startCashier(page);
+  await page.getByRole('button',{name:/B00042/}).click();
+  await page.getByLabel('Khách đưa (VNĐ)').fill('100000');
+  await expect(page.getByText('10.000đ')).toBeVisible();
+  await page.evaluate(()=>{const pane=document.querySelector<HTMLElement>('.checkout-pane');if(pane)pane.scrollTop=0;});
+  const coordinates=await page.evaluate(()=>{
+   const pane=document.querySelector('.checkout-pane')?.getBoundingClientRect();
+   const action=document.querySelector('.cash-panel .primary.big')?.getBoundingClientRect();
+   const change=document.querySelector('.cash-panel .change strong')?.getBoundingClientRect();
+   return {paneTop:pane?.top,paneBottom:pane?.bottom,actionTop:action?.top,
+    actionBottom:action?.bottom,changeBottom:change?.bottom,height:innerHeight};
+  });
+  expect(coordinates.actionTop,'Missing cash confirmation '+JSON.stringify(coordinates)).toBeDefined();
+  expect(coordinates.actionTop!).toBeGreaterThanOrEqual(coordinates.paneTop!);
+  expect(coordinates.actionBottom!,'Cash confirmation below viewport '+JSON.stringify(coordinates))
+   .toBeLessThanOrEqual(Math.min(coordinates.paneBottom!,height)-4);
+  expect(coordinates.changeBottom!,'Change hidden from checkout '+JSON.stringify(coordinates))
+   .toBeLessThanOrEqual(Math.min(coordinates.paneBottom!,height)-4);
+  await assertNoViewportOverflow(page,width);
+ }
+});
+
+test('BANK request is disabled when Hub disconnects after a valid order read',async({page})=>{
+ await page.setViewportSize({width:1024,height:768});
+ let created=0;
+ await mockHub(page);
+ await page.route('**/v1/orders/*/payments/bank-intent',async route=>{
+  created++;await route.fulfill({status:200,contentType:'application/json',body:'{}'});
+ });
+ await startCashier(page);
+ await page.getByRole('button',{name:/B00042/}).click();
+ const options=page.locator('.method-row');
+ await options.getByRole('button',{name:'Chuyển khoản'}).click();
+ await expect(options.getByRole('button',{name:'Chuyển khoản'})).toHaveAttribute('aria-pressed','true');
+ await page.route('**/v1/orders',route=>route.fulfill({status:503,contentType:'application/json',
+  body:JSON.stringify({code:'HUB_DOWN',message:'Store Hub không trả lời'})}));
+ await page.getByRole('button',{name:'Tải lại đơn'}).click();
+ await expect(page.getByRole('alert').filter({hasText:'Không kết nối được Store Hub'})).toBeVisible();
+ await expect(page.getByRole('button',{name:'Tạo yêu cầu chuyển khoản'})).toBeDisabled();
+ await expect(page.getByText('Chưa thể tạo hoặc kiểm tra yêu cầu chuyển khoản.')).toBeVisible();
+ expect(created).toBe(0);
+ await assertNoViewportOverflow(page,1024);
+});
+
+test('Receipt refresh API failure is visible without allowing another payment',async({page})=>{
+ await page.setViewportSize({width:1024,height:768});
+ const paidOrder={...order,payment_status:'PAID'};
+ const {captures}=await mockHub(page);
+ await page.route('**/v1/orders',route=>route.fulfill({
+  status:200,contentType:'application/json',body:JSON.stringify([paidOrder])
+ }));
+ await page.route('**/v1/orders/*/receipts',route=>route.fulfill({
+  status:503,contentType:'application/json',body:JSON.stringify({code:'PRINTER_UNAVAILABLE',message:'Không đọc được trạng thái máy in'})
+ }));
+ await page.goto('/');
+ await page.getByLabel('Mã PIN thu ngân').fill('cashier-test-secret');
+ await page.getByRole('button',{name:'Đăng nhập'}).click();
+ await page.getByRole('button',{name:'Đã thu'}).click();
+ await page.getByRole('button',{name:/B00042/}).click();
+ await expect(page.getByRole('heading',{name:'Hai liên biên nhận'})).toBeVisible();
+ await page.getByRole('button',{name:'Xem trạng thái in'}).click();
+ await expect(page.getByRole('alert').filter({hasText:'Không thể kiểm tra trạng thái liên in'})).toBeVisible();
+ await expect(page.getByRole('button',{name:'Xác nhận đã nhận tiền'})).toHaveCount(0);
+ expect(captures).toEqual([]);
+});
+
+test('Partial cash/refund orders are labeled truthfully and never reopen cash capture',async({page})=>{
+ await page.setViewportSize({width:1024,height:768});
+ const partial={...order,order_id:'33333333-3333-4333-8333-333333333333',
+  display_code:'B00043',payment_status:'PARTIAL'};
+ const partiallyRefunded={...order,order_id:'44444444-4444-4444-8444-444444444444',
+  display_code:'B00044',payment_status:'PARTIALLY_REFUNDED'};
+ const {captures}=await mockHub(page,[partial,partiallyRefunded]);
+ await startCashier(page);
+ const partialButton=page.getByRole('button',{name:/B00043/});
+ await expect(partialButton.getByText('Đã thu một phần')).toBeVisible();
+ await partialButton.click();
+ await expect(page.getByText('Đơn đã thu một phần')).toBeVisible();
+ await expect(page.getByRole('button',{name:'Xác nhận đã nhận tiền'})).toHaveCount(0);
+ await page.getByRole('button',{name:'Tất cả'}).click();
+ const refundedButton=page.getByRole('button',{name:/B00044/});
+ await expect(refundedButton.getByText('Hoàn một phần')).toBeVisible();
+ await refundedButton.click();
+ await expect(page.getByText('Đơn đã hoàn tiền')).toBeVisible();
+ await expect(page.getByRole('button',{name:'Xác nhận đã nhận tiền'})).toHaveCount(0);
+ expect(captures).toHaveLength(0);
+ await assertNoViewportOverflow(page,1024);
+});
+
+test('Late receipt response for order A never appears while reviewing paid order B',async({page})=>{
+ await page.setViewportSize({width:1024,height:768});
+ const paidA={...order,payment_status:'PAID'};
+ const paidB={...order,order_id:'55555555-5555-4555-8555-555555555555',display_code:'B00043',
+  payment_status:'PAID'};
+ await mockHub(page);
+ await page.route('**/v1/orders',route=>route.fulfill({status:200,
+  contentType:'application/json',body:JSON.stringify([paidA,paidB])}));
+ let holdA=false;
+ let releaseA:()=>void=()=>{};
+ const deferred=new Promise<void>(resolve=>{releaseA=resolve});
+ const receiptA='/v1/orders/'+order.order_id+'/receipts';
+ await page.route('**'+receiptA,async route=>{
+  if(holdA)await deferred;
+  await route.fulfill({status:200,contentType:'application/json',body:JSON.stringify(
+   holdA?[{id:'old-a',order_id:order.order_id,kind:'CUSTOMER',status:'SENT'}]:[]
+  )});
+ });
+ await page.goto('/');
+ await page.getByLabel('Mã PIN thu ngân').fill('cashier-test-secret');
+ await page.getByRole('button',{name:'Đăng nhập'}).click();
+ await page.getByRole('button',{name:'Đã thu'}).click();
+ const firstAuto=page.waitForResponse(response=>new URL(response.url()).pathname===receiptA);
+ await page.getByRole('button',{name:/B00042/}).click();
+ await firstAuto;
+ await expect(page.getByRole('heading',{name:'Hai liên biên nhận'})).toBeVisible();
+ holdA=true;
+ await page.getByRole('button',{name:'Xem trạng thái in'}).click();
+ await expect(page.getByRole('button',{name:'Đang kiểm tra…'}).first()).toBeVisible();
+ await page.getByRole('button',{name:/B00043/}).click();
+ await expect(page.getByRole('heading',{name:'#B00043'})).toBeVisible();
+ const delayed=page.waitForResponse(response=>new URL(response.url()).pathname===receiptA);
+ releaseA();
+ await delayed;
+ await expect(page.locator('.receipt-row')).toHaveCount(0);
+ await expect(page.getByRole('button',{name:'Xem trạng thái in'})).toBeEnabled();
+ await assertNoViewportOverflow(page,1024);
+});
