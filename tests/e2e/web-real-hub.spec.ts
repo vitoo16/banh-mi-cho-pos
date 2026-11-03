@@ -130,4 +130,103 @@ test.describe('E2E Real Store Hub & Web Frontend Integration', () => {
     await expect(page.locator('h2:has-text("Menu và giá bán")')).toBeVisible();
   });
 
+
+  test('CASH-04: lost HTTP acknowledgement after committed cash capture replays original key after browser reload', async ({ page }) => {
+    const login = async (user_id: string, pin: string) => {
+      const response = await fetch(`${HUB_URL}/v1/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ user_id, pin })
+      });
+      expect(response.status).toBe(201);
+      return (await response.json()).token as string;
+    };
+    const ownerToken = await login('owner', OWNER_PIN);
+    const cashierToken = await login('cashier', CASHIER_PIN);
+    const readDashboard = async () => {
+      const res = await fetch(`${HUB_URL}/v1/owner/dashboard`, {
+        headers: { Authorization: `Bearer ${ownerToken}` }
+      });
+      expect(res.status).toBe(200);
+      return res.json();
+    };
+
+    const shiftResponse = await fetch(`${HUB_URL}/v1/cash-shifts/current`, {
+      headers: { Authorization: `Bearer ${cashierToken}` }
+    });
+    expect(shiftResponse.status).toBe(200);
+    const shift = await shiftResponse.json();
+    if (!shift) {
+      const opened = await fetch(`${HUB_URL}/v1/cash-shifts/open`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${cashierToken}`,
+          'Idempotency-Key': 'pw-cash-recovery-open-shift-001'
+        },
+        body: JSON.stringify({ opening_float_vnd: 500000 })
+      });
+      expect(opened.status).toBe(201);
+    }
+    const before = await readDashboard();
+    const order = await createStaffOrder();
+
+    let responseLost = false;
+    await page.route('**/v1/orders/*/payments/cash', async route => {
+      if (responseLost) {
+        await route.continue();
+        return;
+      }
+      responseLost = true;
+      // The Hub receives and commits the payment; only the browser ACK is lost.
+      const realResponse = await route.fetch();
+      expect(realResponse.status()).toBe(201);
+      await route.fulfill({
+        status: 503,
+        contentType: 'application/json',
+        body: JSON.stringify({ code: 'QA_LOST_ACK', message: 'Injected response loss after commit' })
+      });
+    });
+
+    await page.goto('http://127.0.0.1:5173');
+    await page.locator('#pin').fill(CASHIER_PIN);
+    await page.locator('button.primary').click();
+    await expect(page.locator('.brand b')).toContainText('Bánh Mì Chợ');
+    await page.locator('button[aria-label="Tải lại đơn"]').click();
+    const tile = page.locator(`.order-tile:has-text("#${order.display_code}")`);
+    await expect(tile).toBeVisible();
+    await tile.click();
+    await page.locator('#tender').fill('100000');
+    await page.locator('button:has-text("Xác nhận đã nhận tiền")').click();
+
+    const recovery = page.getByText('Thu tiền mặt cần xác minh');
+    await expect(recovery).toBeVisible();
+    expect(responseLost).toBe(true);
+    const afterFirst = await readDashboard();
+    expect(afterFirst.cash_vnd - before.cash_vnd).toBe(order.total_vnd);
+
+    // A browser reload is allowed to lose ordinary session state, but not the
+    // persisted request's amount/order/version/key.
+    await page.reload();
+    await page.locator('#pin').fill(CASHIER_PIN);
+    await page.locator('button.primary').click();
+    await expect(recovery).toBeVisible();
+    await page.getByRole('button', { name: 'Gửi lại đúng yêu cầu cũ để xác minh' }).click();
+    await expect(recovery).toHaveCount(0, { timeout: 10000 });
+
+    const afterRetry = await readDashboard();
+    expect(afterRetry.cash_vnd).toBe(afterFirst.cash_vnd);
+    const orderResponse = await fetch(`${HUB_URL}/v1/orders/${order.order_id}`, {
+      headers: { Authorization: `Bearer ${cashierToken}` }
+    });
+    expect(orderResponse.status).toBe(200);
+    expect((await orderResponse.json()).payment_status).toBe('PAID');
+    const receiptsResponse = await fetch(`${HUB_URL}/v1/orders/${order.order_id}/receipts`, {
+      headers: { Authorization: `Bearer ${cashierToken}` }
+    });
+    expect(receiptsResponse.status).toBe(200);
+    const copies = await receiptsResponse.json();
+    expect(copies.map((x: { kind: string }) => x.kind).sort()).toEqual(['CUSTOMER', 'STORE']);
+  });
+
 });
