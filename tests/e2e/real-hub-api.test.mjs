@@ -107,6 +107,44 @@ test('ENV-01 & ENV-02: Store Hub health and initial isolated state', async () =>
   assert.equal(health.body.mode, 'PILOT_LOCAL');
 });
 
+test('SEC-01: unauthorized finance, approved-origin CORS and response secret hygiene at real Hub', async () => {
+  // Check the real Fastify/Nest HTTP boundary, not a mocked browser route.
+  const allowed = await fetch(BASE_URL + '/v1/health', {
+    headers: { Origin: 'http://127.0.0.1:5173' }
+  });
+  assert.equal(allowed.status, 200);
+  assert.equal(allowed.headers.get('access-control-allow-origin'), 'http://127.0.0.1:5173');
+  const untrusted = await fetch(BASE_URL + '/v1/health', {
+    headers: { Origin: 'https://untrusted-pos.invalid' }
+  });
+  assert.equal(untrusted.status, 200);
+  assert.notEqual(untrusted.headers.get('access-control-allow-origin'), '*');
+  assert.notEqual(untrusted.headers.get('access-control-allow-origin'), 'https://untrusted-pos.invalid');
+
+  // Unauthorized data reads must not return finance, sessions or credentials.
+  for (const endpoint of ['/v1/owner/dashboard', '/v1/owner/products', '/v1/cash-shifts/current']) {
+    const response = await fetch(BASE_URL + endpoint, {headers: {Origin: 'https://untrusted-pos.invalid'}});
+    assert.equal(response.status, 401, 'Unauthenticated finance read: ' + endpoint);
+    const text = await response.text();
+    assert.doesNotMatch(text, /(?:pin_hash|token_hash|BANK_BRIDGE_SECRET|BOOTSTRAP_OWNER_PIN|stack)/i);
+    assert.ok(text.length < 1500, 'Unauthorized response should not expose diagnostics');
+  }
+
+  const owner = await login('owner', OWNER_PIN);
+  const staff = await login('staff_barrier_test', EXTRA_STAFF_PIN).catch(() => null);
+  // Existing AUTH-02 creates the extra staff separately. If its fixture has not
+  // run yet, bootstrap STAFF can be used without mutating employee state.
+  const staffToken = staff?.token || (await login('staff', STAFF_PIN)).token;
+  const crossRole = await fetch(BASE_URL + '/v1/owner/dashboard', {
+    headers: { Authorization: 'Bearer ' + staffToken }
+  });
+  assert.equal(crossRole.status, 403);
+  const leaked = await crossRole.text();
+  for (const secret of [OWNER_PIN, CASHIER_PIN, STAFF_PIN, BANK_SECRET, owner.token, staffToken]) {
+    assert.ok(!leaked.includes(secret), 'Authorization error echoed private token/PIN/secret');
+  }
+});
+
 test('AUTH-01: OWNER, CASHIER, STAFF login, logout, and rate limiting', async () => {
   // Valid logins
   const ownerSession = await login('owner', OWNER_PIN);
