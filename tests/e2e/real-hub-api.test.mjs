@@ -60,6 +60,13 @@ before(async () => {
     HUB_BIND_HOST: '127.0.0.1',
     HUB_PORT: String(PORT),
     SEED_DEMO_CATALOG: '1',
+    NODE_ENV: 'test',
+    DOTENV_CONFIG_PATH: join(tempDir, 'no-dotenv-file'),
+    PRINTER_HOST: '',
+    CLOUD_SYNC_URL: '',
+    CLOUD_SYNC_SECRET: '',
+    ENABLE_VERIFIED_BANK_INBOX: '',
+    CORS_ORIGINS: 'http://127.0.0.1:5173,http://127.0.0.1:5174',
     BOOTSTRAP_OWNER_PIN: OWNER_PIN,
     BOOTSTRAP_CASHIER_PIN: CASHIER_PIN,
     BOOTSTRAP_STAFF_PIN: STAFF_PIN,
@@ -131,10 +138,7 @@ test('SEC-01: unauthorized finance, approved-origin CORS and response secret hyg
   }
 
   const owner = await login('owner', OWNER_PIN);
-  const staff = await login('staff_barrier_test', EXTRA_STAFF_PIN).catch(() => null);
-  // Existing AUTH-02 creates the extra staff separately. If its fixture has not
-  // run yet, bootstrap STAFF can be used without mutating employee state.
-  const staffToken = staff?.token || (await login('staff', STAFF_PIN)).token;
+  const staffToken = (await login('staff', STAFF_PIN)).token;
   const crossRole = await fetch(BASE_URL + '/v1/owner/dashboard', {
     headers: { Authorization: 'Bearer ' + staffToken }
   });
