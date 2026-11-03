@@ -26,7 +26,7 @@ Tài liệu đặc tả chi tiết toàn bộ kịch bản kiểm thử E2E (End
 | **CASH-01** | P0 | Cash Settlement & Change Calculation | MVP-v1.2 §5 | POST /v1/orders/:id/capture | `apps/store-hub/src/domain.ts` | `tests/e2e/real-hub-api.test.mjs` (Suite 6) | **AUTOMATED** |
 | **CASH-02** | P0 | Insufficient Tender & Shift Guard | MVP-v1.2 §5 | HTTP 400 / 422 | `apps/store-hub/src/domain.ts` | `tests/e2e/real-hub-api.test.mjs` (Suite 6) | **AUTOMATED** |
 | **CASH-03** | P0 | Idempotent Cash Capture | MVP-v1.2 §5 | Idempotency-Key Header | `apps/store-hub/src/domain.ts` | `tests/e2e/real-hub-api.test.mjs` (Suite 6) | **AUTOMATED** |
-| **CASH-04** | P0 | Cashier UI Interruption & Recovery | MVP-v1.2 §5 | Client Resiliency | `apps/pos-web/src/` | `tests/e2e/web-real-hub.spec.ts` | **AUTOMATED** |
+| **CASH-04** | P0 | Cashier UI Interruption & Recovery | MVP-v1.2 §5 | Client Resiliency | `apps/pos-web/src/` | `tests/e2e/web-real-hub.spec.ts` | **PARTIAL — real browser lost-ACK test not executed** |
 | **CASH-05** | P0 | Requested Bank Settled with Cash | MVP-v1.2 §5 | Tender Truthfulness | `apps/store-hub/src/domain.ts` | `tests/e2e/real-hub-api.test.mjs` (Suite 6) | **AUTOMATED** |
 | **CASH-06** | P0 | Cash Refund with Audit Reason | MVP-v1.2 §5 | POST /v1/orders/:id/refund | `apps/store-hub/src/domain.ts` | `tests/e2e/real-hub-api.test.mjs` (Suite 6) | **AUTOMATED** |
 | **CASH-07** | P0 | Void Unpaid Order | MVP-v1.2 §3 | POST /v1/orders/:id/void | `apps/store-hub/src/domain.ts` | `tests/e2e/real-hub-api.test.mjs` (Suite 6) | **AUTOMATED** |
@@ -34,21 +34,21 @@ Tài liệu đặc tả chi tiết toàn bộ kịch bản kiểm thử E2E (End
 | **BANK-01** | P0 | Unverified Bank Intent (Screenshot Guard) | MVP-v1.2 §5 | POST /v1/orders/:id/bank-intent | `apps/store-hub/src/domain.ts` | `tests/e2e/real-hub-api.test.mjs` (Suite 7) | **AUTOMATED** |
 | **BANK-02** | P0 | HMAC Bank Callback Verification | MVP-v1.2 §5 | POST /v1/internal/bank-events | `apps/store-hub/src/domain.ts` | `tests/e2e/real-hub-api.test.mjs` (Suite 7) | **AUTOMATED** |
 | **BANK-03** | P1 | Cloud Outage Bank Failover | MVP-v1.2 §5 | Offline Fallback | `apps/store-hub/src/domain.ts` | `tests/store.test.mjs` | **AUTOMATED** |
-| **PRINT-01** | P0 | Dual Receipt Spooling (Customer/Store) | MVP-v1.2 §6 | ESC/POS Spooler | `apps/store-hub/src/domain.ts` | `tests/e2e/real-hub-api.test.mjs` (Suite 8) | **AUTOMATED (Sim)** / **BLOCKED (Phys)** |
+| **PRINT-01** | P0 | Dual Receipt Spooling (Customer/Store) | MVP-v1.2 §6 | ESC/POS Spooler | `apps/store-hub/src/domain.ts` | `tests/e2e/real-hub-api.test.mjs` (Suite 8) | **AUTOMATED (virtual TCP) / BLOCKED (physical printer)** |
 | **PRINT-02** | P0 | Printer Failure & Audited Reprint | MVP-v1.2 §6 | POST /v1/receipts/:id/reprint | `apps/store-hub/src/domain.ts` | `tests/printer.test.mjs` | **AUTOMATED** |
 | **ANALYTICS-01** | P0 | Daily Order Counts & Classification | MVP-v1.2 §7 | GET /v1/analytics/overview | `apps/store-hub/src/domain.ts` | `tests/e2e/real-hub-api.test.mjs` (Suite 9) | **AUTOMATED** |
 | **ANALYTICS-02** | P0 | Product Sales Units & Date Boundaries | MVP-v1.2 §7 | GET /v1/analytics/products | `apps/store-hub/src/domain.ts` | `tests/owner-analytics-hub.test.mjs` | **AUTOMATED** |
 | **ANALYTICS-03** | P0 | Financial Reconcile: Ledger vs Shift | MVP-v1.2 §7 | Audited Truth | `apps/store-hub/src/domain.ts` | `tests/e2e/real-hub-api.test.mjs` (Suite 9) | **AUTOMATED** |
-| **CLOUD-01** | P0 | Hub Outbox Sync to PostgreSQL | MVP-v1.2 §8 | POST /v1/cloud/sync | `apps/cloud-backend/` | `tests/sync-backfill.test.mjs` | **BLOCKED (Cloud PG)** |
+| **CLOUD-01** | P0 | Hub Outbox Sync to PostgreSQL | MVP-v1.2 §8 | POST /v1/cloud/sync | `apps/cloud-backend/` | `tests/sync-backfill.test.mjs` | **AUTOMATED (isolated PG CI where run) / BLOCKED staging** |
 | **CLOUD-02** | P0 | Remote Catalog Command Dispatch | MVP-v1.2 §8 | Remote Ingestion | `apps/store-hub/src/domain.ts` | `tests/remote-gateway.test.mjs` | **AUTOMATED** |
-| **CLOUD-03** | P0 | Cloud HMAC Security & RBAC | MVP-v1.2 §8 | Gateway Security | `apps/cloud-backend/` | `tests/remote-gateway.test.mjs` | **BLOCKED (Cloud PG)** |
+| **CLOUD-03** | P0 | Cloud HMAC Security & RBAC | MVP-v1.2 §8 | Gateway Security | `apps/cloud-backend/` | `tests/remote-gateway.test.mjs` | **AUTOMATED (isolated PG CI where run) / BLOCKED staging** |
 | **RESILIENCE-01** | P0 | Crash Recovery Before ACK | MVP-v1.2 §8 | SQLite WAL Integrity | `apps/store-hub/src/domain.ts` | `tests/concurrency.test.mjs` | **AUTOMATED** |
 | **RESILIENCE-02** | P0 | Backup Integrity & Non-destructive Restore | MVP-v1.2 §8 | Backup Service | `apps/store-hub/` | Manual / Host Windows CLI | **BLOCKED (Ops Env)** |
-| **SEC-01** | P0 | Security Controls & Information Leakage | MVP-v1.2 §4 | HTTP Headers / Logs | `apps/store-hub/src/main.ts` | `tests/e2e/real-hub-api.test.mjs` (Suite 1) | **AUTOMATED** |
-| **UI-01** | P1 | Cross-browser & Touch POS Viewport | MVP-v1.2 §9 | Responsive Layout | `apps/pos-web/`, `apps/owner-web/` | `tests/e2e/web-real-hub.spec.ts` | **AUTOMATED** |
-| **UI-02** | P1 | UI Network Failure & Error Boundary | MVP-v1.2 §9 | Error States | `apps/pos-web/` | `tests/cashier-queue.test.mjs` | **AUTOMATED** |
+| **SEC-01** | P0 | Security Controls & Information Leakage | MVP-v1.2 §4 | HTTP Headers / Logs | `apps/store-hub/src/main.ts` | `tests/e2e/real-hub-api.test.mjs` (Suite 1) | **PARTIAL — security headers/log redaction unverified** |
+| **UI-01** | P1 | Cross-browser & Touch POS Viewport | MVP-v1.2 §9 | Responsive Layout | `apps/pos-web/`, `apps/owner-web/` | `tests/e2e/web-real-hub.spec.ts` | **PARTIAL — Chromium real Hub, mocked Firefox/WebKit smoke** |
+| **UI-02** | P1 | UI Network Failure & Error Boundary | MVP-v1.2 §9 | Error States | `apps/pos-web/` | `tests/cashier-queue.test.mjs` | **NOT VERIFIED by cited file** |
 | **LOAD-01** | P0 | 8 Staff Burst (>=150 orders/hour) | MVP-v1.2 §10 | Store Hub Concurrency | `apps/store-hub/src/domain.ts` | `tests/e2e/concurrency-load.e2e.test.mjs` | **AUTOMATED** |
-| **LOAD-02** | P1 | 100k Order Cursor Performance | MVP-v1.2 §10 | SQLite Indexing | `apps/store-hub/src/domain.ts` | Synthetic Load Benchmark | **AUTOMATED** |
+| **LOAD-02** | P1 | 100k Order Cursor Performance | MVP-v1.2 §10 | SQLite Indexing | `apps/store-hub/src/domain.ts` | Synthetic Load Benchmark | **NOT VERIFIED — 100k benchmark pending** |
 | **OPS-01** | P0 | Operational Health & Backup Freshness | MVP-v1.2 §8 | GET /v1/health | `apps/store-hub/src/domain.ts` | `tests/operational-status.test.mjs` | **AUTOMATED** |
 
 ---
@@ -384,3 +384,22 @@ Tài liệu đặc tả chi tiết toàn bộ kịch bản kiểm thử E2E (End
 #### LOAD-02: Hiệu năng Truy vấn với Lịch sử 100.000 đơn hàng
 - **Mục tiêu:** Bảng `orders` được đánh index thích hợp (`idx_orders_created_at`, `idx_orders_status`, `idx_orders_shift_id`). Truy vấn phân trang cursor-based trên tập dữ liệu lớn vẫn giữ thời gian phản hồi dưới 50ms.
 
+
+
+## 3. Independent coverage notes (2026-11-03)
+
+**Count:** the traceability table defines **42 unique scenario IDs**. These are requirement IDs, **not** the number of test runner test cases. Existing reports stating 37 IDs or 155 PASS are outdated; GitHub CI baseline at QA HEAD `7145f726...` shows **158 separately executed node:test/Playwright cases** and planning check of 36 required files (not tests). See `E2E_RUN_REPORT.md §9` for provenance. Coverage state below is intentionally conservative.
+
+| ID | Audit classification | Additional test/acceptance needed |
+|---|---|---|
+| CASH-04 | PARTIAL | `tests/e2e/web-real-hub.spec.ts` proves successful checkout, **not** cash-capture browser crash/reload/lost ACK; add real browser fault injection and DB reconciliation |
+| SEC-01 | PARTIAL | Real-Hub suite has health and auth checks, but does not prove all CORS/security headers or secrets redaction; add dedicated assertions |
+| UI-01 | PARTIAL | Firefox/WebKit smoke runs with mocked HTTP; real-hub browser E2E is Chromium only |
+| UI-02 | NOT VERIFIED by cited source | `tests/cashier-queue.test.mjs` exercises DB queue, not HTTP 500/timeout/browser error states; use UI failure-injection E2E |
+| LOAD-02 | NOT VERIFIED | No measured 100k-order cursor benchmark in this QA pack; implement synthetic safe benchmark and record SQL latency, indexes and UI impact |
+| CLOUD-01, CLOUD-03 | PG CI evidence separate; external staging BLOCKED | `.github/workflows/cloud-ci.yml` runs isolated PostgreSQL integration, while real WAN outage, staged recovery and production RBAC acceptance are not inferred |
+| PRINT-01 | virtual spooler exercised; physical BLOCKED | Inspect actual printer model, 2 paper copies, cutter, glyphs, failure/reprint |
+| DRAWER-PHYS (additional field gate) | NOT IMPLEMENTED / BLOCKED | Do **not** use CASH-01 as hardware proof. Drawer Kick driver is not present in `apps/store-hub/src/printer.ts`; verify model/SDK and authorized audited kick before field acceptance |
+| BANK-01, BANK-02 | Hub fake bridge HMAC covered; real merchant/provider BLOCKED | SePay Cloud adapter + isolated PG tests exist, but physical bank merchant sandbox and end-to-end transfer still require external sign-off |
+
+No hardware/sandbox/field acceptance is marked PASS by this document. A failed, missing, or blocked acceptance must remain explicit, even when all implemented software tests pass.
