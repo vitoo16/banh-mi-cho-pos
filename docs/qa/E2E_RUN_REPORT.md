@@ -30,8 +30,8 @@ Hệ thống đã trải qua toàn bộ 9 cổng kiểm thử tự động (Qual
 ========================================================================================
                           KẾT QUẢ KIỂM THỬ ĐỊNH LƯỢNG (TEST METRICS)
 ========================================================================================
- Tổng số test runner cases trong CI đã đối chiếu       :  158
-   - Số kịch bản ĐẠT (PASS)                          :  158  (100.0%)
+ Tổng số test runner cases trong CI đã đối chiếu       :  159
+   - Số kịch bản ĐẠT (PASS)                          :  159  (100.0%)
    - Số kịch bản THẤT BẠI (FAIL)                     :    0  (0.0%)
    - Số kịch bản BỎ QUA (SKIPPED)                    :    0  (0.0%)
 
@@ -53,7 +53,7 @@ Hệ thống đã trải qua toàn bộ 9 cổng kiểm thử tự động (Qual
 | **UI Components Tests** | `npm run test:ui` | 4.2s | **104 / 104 PASS**| UI mocked HTTP, Chromium và các smoke Firefox/WebKit; đây là log CI Linux, không phải Windows run time |
 | **E2E Store Hub API** | `node --test tests/e2e/real-hub-api.test.mjs` | 2.1s | **9 / 9 PASS** | Kiểm thử API trên tiến trình thật, database SQLite cô lập |
 | **E2E Concurrency Load** | `node --test tests/e2e/concurrency-load.e2e.test.mjs` | 1.9s | **1 / 1 PASS** | 8 nhân viên đồng thời, 150 đơn bùng nổ (Burst Rate: 314 đơn/s) |
-| **E2E Web POS & Owner** | `npx playwright test --config=playwright.e2e.config.ts` | 5.3s | **2 / 2 PASS** | Trình duyệt Chromium thật điều khiển Cashier POS & Owner; kết quả thuộc commit CI đã ghi, trước QA remediation |
+| **E2E Web POS & Owner** | `npx playwright test --config=playwright.e2e.config.ts` | 5.3s | **3 / 3 PASS** | Real Chromium: Cashier/Owner + CASH-04 committed-capture lost-ACK recovery; CI run 41657806452 |
 
 ---
 
@@ -180,8 +180,13 @@ Dựa trên toàn bộ bằng chứng kiểm thử thực tế và các quy đ�
 ## 9. Independent QA reconciliation — bổ sung ngày 2026-11-03
 
 - **Provenance:** các workflow GitHub Actions của PR #77 tại QA HEAD `7145f726bdd7e62d5ef520b11c915adc0c893818` đã báo SUCCESS. Ghi rõ run ids: E2E `41647090297`, App checks `41647090332`, Docs `41647090271`, UI `41647090250`, HTTP perf `41647090275`, Windows backup `41647090262`, Expo bundle `41647090364`. CI kiểm tra PR merge ref; khác với Windows report nguồn `42480e8...`.
-- **Count audited (CI baseline):** domain 9 + bundle 2 + integration 29 + perf smoke 2 + UI 104 + real Hub API 9 + burst 1 + Chromium real Hub browser 2 = **158 node:test / Playwright cases**, 0 FAIL trong các log này. **36 là số file planning/docs được kiểm tra**, không phải 36 unit tests. Windows backup tests và HTTP burst profile thuộc workflow bổ sung, không tự cộng vào baseline 158 để tránh đếm trùng.
-- **Traceability:** `E2E_CASES.md` có **42 IDs**, không phải 37; 6 BLOCKED là **nhóm nghiệm thu**, không phải số lượng test. CASH-04 (browser crash during capture), LOAD-02 (100k cursor benchmark), SEC-01 (HTTP header/redaction), UI-02 (network failure) chưa đủ test tự động tương ứng để gọi verified; UI-01 Firefox/WebKit là mocked smoke, không phải real-Hub cross-engine.
+- **Count audited:** previous QA baseline had 158 cases; after new browser CASH-04 case, domain 9 + bundle 2 + integration 29 + perf smoke 2 + UI 104 + real Hub API 9 + burst 1 + Chromium real Hub browser 3 = **159 node:test / Playwright cases**, 0 FAIL in corresponding CI logs. Browser test `CASH-04` independently completed as 3/3 in [run 41657806452](https://github.com/vitoo16/banh-mi-cho-pos/actions/runs/41657806452) on commit `3f5c86570e8cc7d2703a21a8ee98c97dfb69ef16`. **36 là số file planning/docs được kiểm tra**, không phải 36 unit tests. Windows backup tests và HTTP burst profile thuộc workflow bổ sung, không tự cộng vào baseline 158 để tránh đếm trùng.
+- **Traceability:** `E2E_CASES.md` có **42 IDs**, không phải 37; 6 BLOCKED là **nhóm nghiệm thu**, không phải số lượng test. CASH-04 đã có browser HTTP 503 after committed payment + reload/retry E2E, nhưng physical host crash chưa được nghiệm thu. LOAD-02 (100k cursor benchmark), SEC-01 (HTTP header/redaction), UI-02 (network failure) chưa đủ test tự động tương ứng để gọi verified; UI-01 Firefox/WebKit là mocked smoke, không phải real-Hub cross-engine.
 - **CI caveat:** loopback HTTP p95 25,12 ms ở profile smoke Linux; không phải p95 của thiết bị Windows/Wi-Fi. `concurrency-load.e2e.test.mjs` đo burst và ghi latency nhưng chỉ assert correctness, không enforce 400 ms field target.
-- **QA remediation in progress:** sau commit `7145f726...`, test harness đã được cập nhật thành Playwright Hub database tạm mỗi run, loại các integration secrets và bắt buộc mở ca từ dữ liệu sạch. **Chưa tự tuyên bố PASS trên các commit mới** cho đến khi GitHub Actions hoàn tất.
+- **QA remediation in progress:** sau commit `7145f726...`, test harness đã được cập nhật thành Playwright Hub database tạm mỗi run, loại các integration secrets và bắt buộc mở ca từ dữ liệu sạch. Browser recovery đã được xác thực qua GitHub Actions run 41657806452; các thay đổi documentation sau đó không biến hardware/field BLOCKED thành PASS.
 - **Release:** Software core đã có bằng chứng CI tốt cho pilot logic; Commercial Go-Live vẫn **NO-GO**, đặc biệt chưa có Cash Drawer Kick implementation/physical proof, provider sandbox, native phones, staging/cloud WAN và Windows operations acceptance. Đây là correction/addendum, không thay thế acceptance thực địa.
+
+
+### 9.1. CASH-04 verified addendum
+
+CI [Senior E2E Test Suite run 41657806452](https://github.com/vitoo16/banh-mi-cho-pos/actions/runs/41657806452) trên mã QA commit `3f5c86570e8cc7d2703a21a8ee98c97dfb69ef16` báo **10/10 Node real API/burst + 3/3 Chromium browser**; case mới dùng `route.fetch()` gửi lệnh thu tiền thật, sau khi Hub 201 thì ép browser thấy 503, reload/đăng nhập lại, replay pending idempotency key. Báo cáo cash_vnd chỉ tăng đúng `order.total_vnd`, order PAID và chỉ có CUSTOMER/STORE receipt intents. **PASS này áp dụng phần mềm browser/Hub, không phải Windows power loss và RJ11 hardware**.
