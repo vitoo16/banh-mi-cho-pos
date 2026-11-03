@@ -41,14 +41,27 @@ function cleanup() {
   rmSync(tempDir, { recursive: true, force: true });
 }
 
+const childEnv = {
+  ...process.env,
+  NODE_ENV: 'test',
+  STORE_DB_PATH: dbPath,
+  HUB_BIND_HOST: host,
+  HUB_PORT: String(port),
+  SEED_DEMO_CATALOG: '1',
+};
+// A test run must never connect to external devices or financial services even
+// if those secrets are present in the invoking developer's shell.
+for (const key of [
+  'PRINTER_HOST', 'PRINTER_PORT', 'BANK_CODE', 'BANK_ACCOUNT_NUMBER',
+  'BANK_BRIDGE_SECRET', 'ENABLE_VERIFIED_BANK_INBOX', 'CLOUD_SYNC_URL',
+  'CLOUD_SYNC_SECRET', 'CLOUD_STORE_ID', 'ALLOW_INSECURE_LAN_DEV',
+  'PAIRING_ENFORCED', 'HUB_TLS_CERT_PATH', 'HUB_TLS_KEY_PATH',
+]) {
+  delete childEnv[key];
+}
+
 const child = spawn(process.execPath, [resolve('apps/store-hub/dist/main.js')], {
-  env: {
-    ...process.env,
-    STORE_DB_PATH: dbPath,
-    HUB_BIND_HOST: host,
-    HUB_PORT: String(port),
-    SEED_DEMO_CATALOG: '1',
-  },
+  env: childEnv,
   stdio: 'inherit',
   windowsHide: true,
 });
