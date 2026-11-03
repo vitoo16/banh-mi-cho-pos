@@ -21,7 +21,7 @@ async function virtualPrinter(){
 test('80mm ESC/POS jobs: exactly two original copies, audited sends, UNKNOWN on offline and explicit watermarked reprint',async()=>{
  const folder=mkdtempSync(join(tmpdir(),'bmc-printer-'));
  const env={path:process.env.STORE_DB_PATH,printer:process.env.PRINTER_HOST,port:process.env.PRINTER_PORT,seed:process.env.SEED_DEMO_CATALOG};
- let emulator=null;
+ let emulator=null, store=null;
  try{
   process.env.STORE_DB_PATH=join(folder,'printer.sqlite');
   process.env.BOOTSTRAP_OWNER_PIN='test-printer-owner';
@@ -30,7 +30,7 @@ test('80mm ESC/POS jobs: exactly two original copies, audited sends, UNKNOWN on 
   process.env.SEED_DEMO_CATALOG='1';
   const {StoreService}=require('../apps/store-hub/dist/service.js');
   const {ReceiptPrinter}=require('../apps/store-hub/dist/printer.js');
-  const store=new StoreService();store.onModuleInit();
+  store=new StoreService();store.onModuleInit();
   const staff=store.actor('Bearer '+store.login('staff','test-printer-staff').token,['STAFF']);
   const cashier=store.actor('Bearer '+store.login('cashier','test-printer-cashier').token,['CASHIER']);
   const catalog=store.catalog();
@@ -99,6 +99,6 @@ test('80mm ESC/POS jobs: exactly two original copies, audited sends, UNKNOWN on 
   for(const [k,v] of Object.entries({STORE_DB_PATH:env.path,PRINTER_HOST:env.printer,PRINTER_PORT:env.port,SEED_DEMO_CATALOG:env.seed})){
    if(v===undefined)delete process.env[k];else process.env[k]=v;
   }
-  rmSync(folder,{recursive:true,force:true});
+  store?.store?.db?.close();rmSync(folder,{recursive:true,force:true});
  }
 });

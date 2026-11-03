@@ -10,6 +10,7 @@ test('340 orders with 230 cash captures never hide an old unpaid cashier order',
  const dir=mkdtempSync(join(tmpdir(),'bmc-cashier-queue-'));
  const vars=['STORE_DB_PATH','SEED_DEMO_CATALOG','PAIRING_ENFORCED','BOOTSTRAP_OWNER_PIN','BOOTSTRAP_CASHIER_PIN','BOOTSTRAP_STAFF_PIN'];
  const saved=Object.fromEntries(vars.map(k=>[k,process.env[k]]));
+ let hub, reopened;
  try{
   process.env.STORE_DB_PATH=join(dir,'cashier.sqlite');
   process.env.SEED_DEMO_CATALOG='1';
@@ -18,7 +19,7 @@ test('340 orders with 230 cash captures never hide an old unpaid cashier order',
   process.env.BOOTSTRAP_CASHIER_PIN='queue-cashier-pin';
   process.env.BOOTSTRAP_STAFF_PIN='queue-staff-pin';
   const {StoreService}=require('../apps/store-hub/dist/service.js');
-  const hub=new StoreService();hub.onModuleInit();
+  hub=new StoreService();hub.onModuleInit();
   const staff=hub.actor('Bearer '+hub.login('staff',process.env.BOOTSTRAP_STAFF_PIN).token,['STAFF']);
   const cashier=hub.actor('Bearer '+hub.login('cashier',process.env.BOOTSTRAP_CASHIER_PIN).token,['CASHIER']);
   const owner=hub.actor('Bearer '+hub.login('owner',process.env.BOOTSTRAP_OWNER_PIN).token,['OWNER']);
@@ -60,10 +61,10 @@ test('340 orders with 230 cash captures never hide an old unpaid cashier order',
   while(page.next_cursor){page=hub.history(cashier,page.next_cursor,100);count+=page.items.length}
   assert.equal(count,340,'cursor history still contains all paid, voided and pending orders');
   // A new service process against the same WAL must see the same actionable set.
-  const reopened=new StoreService();
+  reopened=new StoreService();
   assert.equal(reopened.orders(cashier).filter(o=>o.status==='COMMITTED'&&o.payment_status==='UNPAID').length,109);
  }finally{
   for(const [k,v] of Object.entries(saved))if(v===undefined)delete process.env[k];else process.env[k]=v;
-  rmSync(dir,{recursive:true,force:true});
+  reopened?.store?.db?.close();hub?.store?.db?.close();rmSync(dir,{recursive:true,force:true});
  }
 });

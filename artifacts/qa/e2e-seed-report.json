@@ -1,0 +1,3455 @@
+{
+  "seed_version": 2,
+  "store": "LOCAL_ISOLATED",
+  "run_id": "082bcce7-0168-4c93-b1d2-d670386c233b",
+  "created_at": "2026-11-03T12:43:34.882Z",
+  "catalog_version": 1,
+  "shift_id": "09d8a323-9a2f-437c-8628-74edd4c36da8",
+  "employees": [
+    "qa_staff_1",
+    "qa_staff_2",
+    "qa_staff_3",
+    "qa_staff_4",
+    "qa_staff_5",
+    "qa_staff_6",
+    "qa_staff_7"
+  ],
+  "orders": [
+    {
+      "i": 0,
+      "order_id": "d1ea1f40-e888-4b8d-9fcd-7060323dc146",
+      "display_code": "B00001",
+      "total_vnd": 45000,
+      "qty": 1,
+      "product_id": "bm-dacbiet",
+      "requested_method": "BANK",
+      "expected_status": "VOIDED"
+    },
+    {
+      "i": 1,
+      "order_id": "d7efb7d4-0a0f-4a12-b20b-433d4f836f05",
+      "display_code": "B00002",
+      "total_vnd": 70000,
+      "qty": 2,
+      "product_id": "bm-thit",
+      "requested_method": "CASH",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 2,
+      "order_id": "3d77edd4-6cf3-44db-9f81-95e96e1bf5bb",
+      "display_code": "B00003",
+      "total_vnd": 105000,
+      "qty": 3,
+      "product_id": "bm-thit",
+      "requested_method": "CASH",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 3,
+      "order_id": "4b64ee6b-0178-40cb-bd5c-7079a4831f28",
+      "display_code": "B00004",
+      "total_vnd": 45000,
+      "qty": 1,
+      "product_id": "bm-dacbiet",
+      "requested_method": "CASH",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 4,
+      "order_id": "f2f107fd-0cfc-4006-8925-8a215ba78ab9",
+      "display_code": "B00005",
+      "total_vnd": 70000,
+      "qty": 2,
+      "product_id": "bm-thit",
+      "requested_method": "CASH",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 5,
+      "order_id": "f05c3eef-1bde-4e82-a5a8-ce409700166e",
+      "display_code": "B00006",
+      "total_vnd": 105000,
+      "qty": 3,
+      "product_id": "bm-thit",
+      "requested_method": "BANK",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 6,
+      "order_id": "91249dc2-fcbd-4a5b-83a8-6e4123c7d95a",
+      "display_code": "B00007",
+      "total_vnd": 45000,
+      "qty": 1,
+      "product_id": "bm-dacbiet",
+      "requested_method": "CASH",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 7,
+      "order_id": "5e286427-aa8e-4f0e-aac3-2e146162f45f",
+      "display_code": "B00008",
+      "total_vnd": 70000,
+      "qty": 2,
+      "product_id": "bm-thit",
+      "requested_method": "CASH",
+      "expected_status": "REFUNDED"
+    },
+    {
+      "i": 8,
+      "order_id": "e3d093d8-fa60-469b-b062-df9a5ceed4dc",
+      "display_code": "B00009",
+      "total_vnd": 105000,
+      "qty": 3,
+      "product_id": "bm-thit",
+      "requested_method": "CASH",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 9,
+      "order_id": "42bd4743-6520-41ed-b34d-ec84ec5d1b35",
+      "display_code": "B00010",
+      "total_vnd": 45000,
+      "qty": 1,
+      "product_id": "bm-dacbiet",
+      "requested_method": "CASH",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 10,
+      "order_id": "002537c0-2d25-4e28-b7b5-6fb3374ae176",
+      "display_code": "B00011",
+      "total_vnd": 70000,
+      "qty": 2,
+      "product_id": "bm-thit",
+      "requested_method": "BANK",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 11,
+      "order_id": "1993bb86-667c-4fc1-ab73-37ec8cef60e8",
+      "display_code": "B00012",
+      "total_vnd": 105000,
+      "qty": 3,
+      "product_id": "bm-thit",
+      "requested_method": "CASH",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 12,
+      "order_id": "9f5c904b-14d2-4a33-a656-65b7f23e7c22",
+      "display_code": "B00013",
+      "total_vnd": 45000,
+      "qty": 1,
+      "product_id": "bm-dacbiet",
+      "requested_method": "CASH",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 13,
+      "order_id": "028a66cf-508b-4dcb-9535-4b565be05b9b",
+      "display_code": "B00014",
+      "total_vnd": 70000,
+      "qty": 2,
+      "product_id": "bm-thit",
+      "requested_method": "CASH",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 14,
+      "order_id": "42ebe487-7b93-4d82-ac5b-66662d1573f2",
+      "display_code": "B00015",
+      "total_vnd": 105000,
+      "qty": 3,
+      "product_id": "bm-thit",
+      "requested_method": "CASH",
+      "expected_status": "PAID"
+    },
+    {
+      "i": 15,
+      "order_id": "870e1212-4999-41a8-b21c-201eecc42461",
+      "display_code": "B00016",
+      "total_vnd": 45000,
+      "qty": 1,
+      "product_id": "bm-dacbiet",
+      "requested_method": "BANK",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 16,
+      "order_id": "87bd6252-f113-46a1-9e14-4d149937920f",
+      "display_code": "B00017",
+      "total_vnd": 70000,
+      "qty": 2,
+      "product_id": "bm-thit",
+      "requested_method": "CASH",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 17,
+      "order_id": "fda8ce1c-0524-458c-b6a9-8b0c540a2a6e",
+      "display_code": "B00018",
+      "total_vnd": 105000,
+      "qty": 3,
+      "product_id": "bm-thit",
+      "requested_method": "CASH",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 18,
+      "order_id": "0701f63d-4083-47bc-9fc4-5c507ef61b53",
+      "display_code": "B00019",
+      "total_vnd": 45000,
+      "qty": 1,
+      "product_id": "bm-dacbiet",
+      "requested_method": "CASH",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 19,
+      "order_id": "57635ee8-391d-4f5a-92b4-f946a4f45d52",
+      "display_code": "B00020",
+      "total_vnd": 70000,
+      "qty": 2,
+      "product_id": "bm-thit",
+      "requested_method": "CASH",
+      "expected_status": "VOIDED"
+    },
+    {
+      "i": 20,
+      "order_id": "00395141-3f5b-4fe8-8cc0-6373c106c31f",
+      "display_code": "B00021",
+      "total_vnd": 105000,
+      "qty": 3,
+      "product_id": "bm-thit",
+      "requested_method": "BANK",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 21,
+      "order_id": "c70c2d3f-f614-479a-a1b9-b18ba5e9f111",
+      "display_code": "B00022",
+      "total_vnd": 45000,
+      "qty": 1,
+      "product_id": "bm-dacbiet",
+      "requested_method": "CASH",
+      "expected_status": "PAID"
+    },
+    {
+      "i": 22,
+      "order_id": "a4aeb0bd-70b9-4783-8ed7-c64e126e99a6",
+      "display_code": "B00023",
+      "total_vnd": 70000,
+      "qty": 2,
+      "product_id": "bm-thit",
+      "requested_method": "CASH",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 23,
+      "order_id": "f50b8638-f102-4fa3-9e15-0e2d394793d7",
+      "display_code": "B00024",
+      "total_vnd": 105000,
+      "qty": 3,
+      "product_id": "bm-thit",
+      "requested_method": "CASH",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 24,
+      "order_id": "2d2006ba-dfe8-446a-bcc6-21fcb1fd9352",
+      "display_code": "B00025",
+      "total_vnd": 45000,
+      "qty": 1,
+      "product_id": "bm-dacbiet",
+      "requested_method": "CASH",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 25,
+      "order_id": "a56f8f90-c0ad-490c-9d6e-09f740ed0709",
+      "display_code": "B00026",
+      "total_vnd": 70000,
+      "qty": 2,
+      "product_id": "bm-thit",
+      "requested_method": "BANK",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 26,
+      "order_id": "90d427a6-b1c5-4b9e-a153-08c4c95cf548",
+      "display_code": "B00027",
+      "total_vnd": 105000,
+      "qty": 3,
+      "product_id": "bm-thit",
+      "requested_method": "CASH",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 27,
+      "order_id": "61c249a0-dd26-4e8a-ac17-7fa7de48f283",
+      "display_code": "B00028",
+      "total_vnd": 45000,
+      "qty": 1,
+      "product_id": "bm-dacbiet",
+      "requested_method": "CASH",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 28,
+      "order_id": "187d3285-8ca7-4e5a-9b4d-932063d9ce26",
+      "display_code": "B00029",
+      "total_vnd": 70000,
+      "qty": 2,
+      "product_id": "bm-thit",
+      "requested_method": "CASH",
+      "expected_status": "PAID"
+    },
+    {
+      "i": 29,
+      "order_id": "3a598250-bc25-4d33-8278-7a9d3ed3ea62",
+      "display_code": "B00030",
+      "total_vnd": 105000,
+      "qty": 3,
+      "product_id": "bm-thit",
+      "requested_method": "CASH",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 30,
+      "order_id": "74eb0471-03a0-4df2-be0c-0545252f7665",
+      "display_code": "B00031",
+      "total_vnd": 45000,
+      "qty": 1,
+      "product_id": "bm-dacbiet",
+      "requested_method": "BANK",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 31,
+      "order_id": "4e627ca9-6ac1-4d36-a38e-e1870f7c3b3f",
+      "display_code": "B00032",
+      "total_vnd": 70000,
+      "qty": 2,
+      "product_id": "bm-thit",
+      "requested_method": "CASH",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 32,
+      "order_id": "2017ae3f-b696-4d5c-b633-3db901f639a0",
+      "display_code": "B00033",
+      "total_vnd": 105000,
+      "qty": 3,
+      "product_id": "bm-thit",
+      "requested_method": "CASH",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 33,
+      "order_id": "189970b1-d6fc-4710-aab3-feea12bb7999",
+      "display_code": "B00034",
+      "total_vnd": 45000,
+      "qty": 1,
+      "product_id": "bm-dacbiet",
+      "requested_method": "CASH",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 34,
+      "order_id": "2962857a-30b1-4b9d-97b1-9c02081f37a3",
+      "display_code": "B00035",
+      "total_vnd": 70000,
+      "qty": 2,
+      "product_id": "bm-thit",
+      "requested_method": "CASH",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 35,
+      "order_id": "476334af-54a5-43ab-9bf8-4e5fc5226e23",
+      "display_code": "B00036",
+      "total_vnd": 105000,
+      "qty": 3,
+      "product_id": "bm-thit",
+      "requested_method": "BANK",
+      "expected_status": "PAID"
+    },
+    {
+      "i": 36,
+      "order_id": "e10fe90a-8fb8-4a85-bec3-d3f0a9c205cf",
+      "display_code": "B00037",
+      "total_vnd": 45000,
+      "qty": 1,
+      "product_id": "bm-dacbiet",
+      "requested_method": "CASH",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 37,
+      "order_id": "a60c70a6-bd3e-4b8a-8a28-555d9f20883c",
+      "display_code": "B00038",
+      "total_vnd": 70000,
+      "qty": 2,
+      "product_id": "bm-thit",
+      "requested_method": "CASH",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 38,
+      "order_id": "c75b1eda-58fe-4ed5-ae2f-d573c5e14025",
+      "display_code": "B00039",
+      "total_vnd": 105000,
+      "qty": 3,
+      "product_id": "bm-thit",
+      "requested_method": "CASH",
+      "expected_status": "VOIDED"
+    },
+    {
+      "i": 39,
+      "order_id": "4dbf4cd6-0df4-4588-8730-83190bcee700",
+      "display_code": "B00040",
+      "total_vnd": 45000,
+      "qty": 1,
+      "product_id": "bm-dacbiet",
+      "requested_method": "CASH",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 40,
+      "order_id": "187467c6-d1ff-4139-a6f1-5e9e3d1458b5",
+      "display_code": "B00041",
+      "total_vnd": 70000,
+      "qty": 2,
+      "product_id": "bm-thit",
+      "requested_method": "BANK",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 41,
+      "order_id": "d700f5ff-627d-456c-a3cf-44bbf6b83b1e",
+      "display_code": "B00042",
+      "total_vnd": 105000,
+      "qty": 3,
+      "product_id": "bm-thit",
+      "requested_method": "CASH",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 42,
+      "order_id": "4e7514c3-9e8c-4df6-b6b8-853763c59078",
+      "display_code": "B00043",
+      "total_vnd": 45000,
+      "qty": 1,
+      "product_id": "bm-dacbiet",
+      "requested_method": "CASH",
+      "expected_status": "PAID"
+    },
+    {
+      "i": 43,
+      "order_id": "6a1dd66a-c52d-4912-b939-b8b365756aff",
+      "display_code": "B00044",
+      "total_vnd": 70000,
+      "qty": 2,
+      "product_id": "bm-thit",
+      "requested_method": "CASH",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 44,
+      "order_id": "ed1e545f-ae42-43b5-b11a-625425f0c67d",
+      "display_code": "B00045",
+      "total_vnd": 105000,
+      "qty": 3,
+      "product_id": "bm-thit",
+      "requested_method": "CASH",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 45,
+      "order_id": "660b5e18-8fc5-4c24-b8b7-09926ee46240",
+      "display_code": "B00046",
+      "total_vnd": 45000,
+      "qty": 1,
+      "product_id": "bm-dacbiet",
+      "requested_method": "BANK",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 46,
+      "order_id": "72c81c26-b5cd-4ed9-82ad-4b20252fb676",
+      "display_code": "B00047",
+      "total_vnd": 70000,
+      "qty": 2,
+      "product_id": "bm-thit",
+      "requested_method": "CASH",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 47,
+      "order_id": "30c165d9-d2ee-47ff-b343-54852af781cf",
+      "display_code": "B00048",
+      "total_vnd": 105000,
+      "qty": 3,
+      "product_id": "bm-thit",
+      "requested_method": "CASH",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 48,
+      "order_id": "3f05c0ea-744c-4f6a-b42e-edf0fb85dd8f",
+      "display_code": "B00049",
+      "total_vnd": 45000,
+      "qty": 1,
+      "product_id": "bm-dacbiet",
+      "requested_method": "CASH",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 49,
+      "order_id": "a71503e9-bcae-47bd-afd7-3e614f816d9a",
+      "display_code": "B00050",
+      "total_vnd": 70000,
+      "qty": 2,
+      "product_id": "bm-thit",
+      "requested_method": "CASH",
+      "expected_status": "PAID"
+    },
+    {
+      "i": 50,
+      "order_id": "f0e80d4e-36b0-48a5-b3db-95cb7f670541",
+      "display_code": "B00051",
+      "total_vnd": 105000,
+      "qty": 3,
+      "product_id": "bm-thit",
+      "requested_method": "BANK",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 51,
+      "order_id": "045a26cd-8938-450f-92a0-36a518efb919",
+      "display_code": "B00052",
+      "total_vnd": 45000,
+      "qty": 1,
+      "product_id": "bm-dacbiet",
+      "requested_method": "CASH",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 52,
+      "order_id": "d432879d-45bb-4ec0-a1a8-74b9401c16b7",
+      "display_code": "B00053",
+      "total_vnd": 70000,
+      "qty": 2,
+      "product_id": "bm-thit",
+      "requested_method": "CASH",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 53,
+      "order_id": "5c886504-60df-4ac0-9665-b5dab583795c",
+      "display_code": "B00054",
+      "total_vnd": 105000,
+      "qty": 3,
+      "product_id": "bm-thit",
+      "requested_method": "CASH",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 54,
+      "order_id": "706b5b84-7ab1-4f35-beef-f24046116a6d",
+      "display_code": "B00055",
+      "total_vnd": 45000,
+      "qty": 1,
+      "product_id": "bm-dacbiet",
+      "requested_method": "CASH",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 55,
+      "order_id": "1685ed02-884f-4bcd-bd36-535ddfdad258",
+      "display_code": "B00056",
+      "total_vnd": 70000,
+      "qty": 2,
+      "product_id": "bm-thit",
+      "requested_method": "BANK",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 56,
+      "order_id": "8af77e8f-da87-4e96-9980-a16c5d11c74c",
+      "display_code": "B00057",
+      "total_vnd": 105000,
+      "qty": 3,
+      "product_id": "bm-thit",
+      "requested_method": "CASH",
+      "expected_status": "REFUNDED"
+    },
+    {
+      "i": 57,
+      "order_id": "d09be3a2-a7fa-4968-9232-c53dacda29c1",
+      "display_code": "B00058",
+      "total_vnd": 45000,
+      "qty": 1,
+      "product_id": "bm-dacbiet",
+      "requested_method": "CASH",
+      "expected_status": "VOIDED"
+    },
+    {
+      "i": 58,
+      "order_id": "70d5c07a-bd3f-4fd1-b8b8-d91f1fd01b18",
+      "display_code": "B00059",
+      "total_vnd": 70000,
+      "qty": 2,
+      "product_id": "bm-thit",
+      "requested_method": "CASH",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 59,
+      "order_id": "f36659a6-ce8a-4d2e-a8a8-e5ae97dd6b3f",
+      "display_code": "B00060",
+      "total_vnd": 105000,
+      "qty": 3,
+      "product_id": "bm-thit",
+      "requested_method": "CASH",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 60,
+      "order_id": "2d3ddd68-a9bc-443e-a504-562762c6dbb6",
+      "display_code": "B00061",
+      "total_vnd": 45000,
+      "qty": 1,
+      "product_id": "bm-dacbiet",
+      "requested_method": "BANK",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 61,
+      "order_id": "5b56522d-ca21-48da-887b-656d19099a7d",
+      "display_code": "B00062",
+      "total_vnd": 70000,
+      "qty": 2,
+      "product_id": "bm-thit",
+      "requested_method": "CASH",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 62,
+      "order_id": "704e25eb-6206-41c6-b0e5-c260cc757248",
+      "display_code": "B00063",
+      "total_vnd": 105000,
+      "qty": 3,
+      "product_id": "bm-thit",
+      "requested_method": "CASH",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 63,
+      "order_id": "26eeed8b-a179-4eb3-bcb7-0ef4b2a7e48e",
+      "display_code": "B00064",
+      "total_vnd": 45000,
+      "qty": 1,
+      "product_id": "bm-dacbiet",
+      "requested_method": "CASH",
+      "expected_status": "PAID"
+    },
+    {
+      "i": 64,
+      "order_id": "85df3cc0-6c01-4bb2-a938-f75b0bafbd54",
+      "display_code": "B00065",
+      "total_vnd": 70000,
+      "qty": 2,
+      "product_id": "bm-thit",
+      "requested_method": "CASH",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 65,
+      "order_id": "1dfef39d-9b2e-4084-90d7-57eebd330118",
+      "display_code": "B00066",
+      "total_vnd": 105000,
+      "qty": 3,
+      "product_id": "bm-thit",
+      "requested_method": "BANK",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 66,
+      "order_id": "20eb1daf-5108-4335-b9f6-2999498d33c5",
+      "display_code": "B00067",
+      "total_vnd": 45000,
+      "qty": 1,
+      "product_id": "bm-dacbiet",
+      "requested_method": "CASH",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 67,
+      "order_id": "ff7919e5-df29-40c3-9ca8-d96ed2ed7b4c",
+      "display_code": "B00068",
+      "total_vnd": 70000,
+      "qty": 2,
+      "product_id": "bm-thit",
+      "requested_method": "CASH",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 68,
+      "order_id": "164b80be-b5b8-46e3-b303-d65e59a239f3",
+      "display_code": "B00069",
+      "total_vnd": 105000,
+      "qty": 3,
+      "product_id": "bm-thit",
+      "requested_method": "CASH",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 69,
+      "order_id": "803fbb97-599b-4fb5-90ac-96f37a86260d",
+      "display_code": "B00070",
+      "total_vnd": 45000,
+      "qty": 1,
+      "product_id": "bm-dacbiet",
+      "requested_method": "CASH",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 70,
+      "order_id": "f4ac0482-771e-4b5b-95e2-64b01099ba21",
+      "display_code": "B00071",
+      "total_vnd": 70000,
+      "qty": 2,
+      "product_id": "bm-thit",
+      "requested_method": "BANK",
+      "expected_status": "PAID"
+    },
+    {
+      "i": 71,
+      "order_id": "7b81545f-aa5e-49c6-9709-50db8e3a9d92",
+      "display_code": "B00072",
+      "total_vnd": 105000,
+      "qty": 3,
+      "product_id": "bm-thit",
+      "requested_method": "CASH",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 72,
+      "order_id": "c6f9808a-b03a-4e9a-a546-e5730b75a993",
+      "display_code": "B00073",
+      "total_vnd": 45000,
+      "qty": 1,
+      "product_id": "bm-dacbiet",
+      "requested_method": "CASH",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 73,
+      "order_id": "cbbdca3c-37a2-4222-a2eb-9be800388085",
+      "display_code": "B00074",
+      "total_vnd": 70000,
+      "qty": 2,
+      "product_id": "bm-thit",
+      "requested_method": "CASH",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 74,
+      "order_id": "ca259f2f-6856-44c3-acc8-8ddad03436bb",
+      "display_code": "B00075",
+      "total_vnd": 105000,
+      "qty": 3,
+      "product_id": "bm-thit",
+      "requested_method": "CASH",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 75,
+      "order_id": "8d57acf9-3056-48d9-b11d-f089690aebf2",
+      "display_code": "B00076",
+      "total_vnd": 45000,
+      "qty": 1,
+      "product_id": "bm-dacbiet",
+      "requested_method": "BANK",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 76,
+      "order_id": "7fad145c-fa9e-4113-9e35-2e5c505b6ab1",
+      "display_code": "B00077",
+      "total_vnd": 70000,
+      "qty": 2,
+      "product_id": "bm-thit",
+      "requested_method": "CASH",
+      "expected_status": "VOIDED"
+    },
+    {
+      "i": 77,
+      "order_id": "c3b8c8c4-3e07-466c-84fd-7d0d4359aa68",
+      "display_code": "B00078",
+      "total_vnd": 105000,
+      "qty": 3,
+      "product_id": "bm-thit",
+      "requested_method": "CASH",
+      "expected_status": "PAID"
+    },
+    {
+      "i": 78,
+      "order_id": "1ab56b4a-183a-4b8d-ad62-456a1c3e5f50",
+      "display_code": "B00079",
+      "total_vnd": 45000,
+      "qty": 1,
+      "product_id": "bm-dacbiet",
+      "requested_method": "CASH",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 79,
+      "order_id": "21f5e83c-2d00-441b-b9b9-1d07eb775e0e",
+      "display_code": "B00080",
+      "total_vnd": 70000,
+      "qty": 2,
+      "product_id": "bm-thit",
+      "requested_method": "CASH",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 80,
+      "order_id": "ad81af36-e7de-464a-8089-476b132e5794",
+      "display_code": "B00081",
+      "total_vnd": 105000,
+      "qty": 3,
+      "product_id": "bm-thit",
+      "requested_method": "BANK",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 81,
+      "order_id": "e59cb02f-ff12-4ac8-bfa0-990dbb3aaf72",
+      "display_code": "B00082",
+      "total_vnd": 45000,
+      "qty": 1,
+      "product_id": "bm-dacbiet",
+      "requested_method": "CASH",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 82,
+      "order_id": "6ac30049-bee4-4203-ba1c-328687930624",
+      "display_code": "B00083",
+      "total_vnd": 70000,
+      "qty": 2,
+      "product_id": "bm-thit",
+      "requested_method": "CASH",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 83,
+      "order_id": "8138c7f1-b28f-462e-8a78-3cff1e5ae377",
+      "display_code": "B00084",
+      "total_vnd": 105000,
+      "qty": 3,
+      "product_id": "bm-thit",
+      "requested_method": "CASH",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 84,
+      "order_id": "a9b63281-daa2-4744-83dc-b99ad9c1ebde",
+      "display_code": "B00085",
+      "total_vnd": 45000,
+      "qty": 1,
+      "product_id": "bm-dacbiet",
+      "requested_method": "CASH",
+      "expected_status": "PAID"
+    },
+    {
+      "i": 85,
+      "order_id": "0d390cc8-ed36-48d8-9646-278b885d652e",
+      "display_code": "B00086",
+      "total_vnd": 70000,
+      "qty": 2,
+      "product_id": "bm-thit",
+      "requested_method": "BANK",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 86,
+      "order_id": "6c3b1faf-8b45-4d8b-950c-f716fabc2ae6",
+      "display_code": "B00087",
+      "total_vnd": 105000,
+      "qty": 3,
+      "product_id": "bm-thit",
+      "requested_method": "CASH",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 87,
+      "order_id": "89ecd9c1-60eb-4e19-b98d-685b21a7c8f6",
+      "display_code": "B00088",
+      "total_vnd": 45000,
+      "qty": 1,
+      "product_id": "bm-dacbiet",
+      "requested_method": "CASH",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 88,
+      "order_id": "40a3b97b-0362-4107-8d02-4164128939ea",
+      "display_code": "B00089",
+      "total_vnd": 70000,
+      "qty": 2,
+      "product_id": "bm-thit",
+      "requested_method": "CASH",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 89,
+      "order_id": "7e62966c-77b4-4e99-b8e5-edbaf0c6435a",
+      "display_code": "B00090",
+      "total_vnd": 105000,
+      "qty": 3,
+      "product_id": "bm-thit",
+      "requested_method": "CASH",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 90,
+      "order_id": "4445f9e8-aabd-42e3-bdb2-c1838b2ce7fe",
+      "display_code": "B00091",
+      "total_vnd": 45000,
+      "qty": 1,
+      "product_id": "bm-dacbiet",
+      "requested_method": "BANK",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 91,
+      "order_id": "7878b775-7ff2-48b0-bb47-d9da086115d1",
+      "display_code": "B00092",
+      "total_vnd": 70000,
+      "qty": 2,
+      "product_id": "bm-thit",
+      "requested_method": "CASH",
+      "expected_status": "PAID"
+    },
+    {
+      "i": 92,
+      "order_id": "59c371de-7af4-4890-9982-4df3574bd0a7",
+      "display_code": "B00093",
+      "total_vnd": 105000,
+      "qty": 3,
+      "product_id": "bm-thit",
+      "requested_method": "CASH",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 93,
+      "order_id": "447e8f85-6c7b-49e8-8e8c-d0ec340f9119",
+      "display_code": "B00094",
+      "total_vnd": 45000,
+      "qty": 1,
+      "product_id": "bm-dacbiet",
+      "requested_method": "CASH",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 94,
+      "order_id": "dfa19102-4cdc-4c16-a8d9-180d412c83d8",
+      "display_code": "B00095",
+      "total_vnd": 70000,
+      "qty": 2,
+      "product_id": "bm-thit",
+      "requested_method": "CASH",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 95,
+      "order_id": "17f04b0f-bdcb-4da0-bf14-7684976c8b7a",
+      "display_code": "B00096",
+      "total_vnd": 105000,
+      "qty": 3,
+      "product_id": "bm-thit",
+      "requested_method": "BANK",
+      "expected_status": "VOIDED"
+    },
+    {
+      "i": 96,
+      "order_id": "dbebe47e-2e1b-4e1a-8ef8-efbaca0a62d8",
+      "display_code": "B00097",
+      "total_vnd": 45000,
+      "qty": 1,
+      "product_id": "bm-dacbiet",
+      "requested_method": "CASH",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 97,
+      "order_id": "dc133100-c25e-497a-be2c-3a5c029d2751",
+      "display_code": "B00098",
+      "total_vnd": 70000,
+      "qty": 2,
+      "product_id": "bm-thit",
+      "requested_method": "CASH",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 98,
+      "order_id": "51e4f17d-e093-4dd7-8964-73a30c2c2852",
+      "display_code": "B00099",
+      "total_vnd": 105000,
+      "qty": 3,
+      "product_id": "bm-thit",
+      "requested_method": "CASH",
+      "expected_status": "PAID"
+    },
+    {
+      "i": 99,
+      "order_id": "b13705ab-b73c-4135-8768-523fdd14787f",
+      "display_code": "B00100",
+      "total_vnd": 45000,
+      "qty": 1,
+      "product_id": "bm-dacbiet",
+      "requested_method": "CASH",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 100,
+      "order_id": "a9c624d8-350e-4690-b62a-2ccaa4d6f46e",
+      "display_code": "B00101",
+      "total_vnd": 70000,
+      "qty": 2,
+      "product_id": "bm-thit",
+      "requested_method": "BANK",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 101,
+      "order_id": "99495af9-babe-40e0-a7dd-e220e7b92209",
+      "display_code": "B00102",
+      "total_vnd": 105000,
+      "qty": 3,
+      "product_id": "bm-thit",
+      "requested_method": "CASH",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 102,
+      "order_id": "e63d547a-8c3a-4bd4-85ec-7835590a2691",
+      "display_code": "B00103",
+      "total_vnd": 45000,
+      "qty": 1,
+      "product_id": "bm-dacbiet",
+      "requested_method": "CASH",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 103,
+      "order_id": "d96fbf34-86a0-43e3-99d7-096a506a5518",
+      "display_code": "B00104",
+      "total_vnd": 70000,
+      "qty": 2,
+      "product_id": "bm-thit",
+      "requested_method": "CASH",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 104,
+      "order_id": "7b99b394-ecd4-4131-9912-9cfe489db2d8",
+      "display_code": "B00105",
+      "total_vnd": 105000,
+      "qty": 3,
+      "product_id": "bm-thit",
+      "requested_method": "CASH",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 105,
+      "order_id": "d023f6c2-2a63-4bdf-84b6-34fad54da960",
+      "display_code": "B00106",
+      "total_vnd": 45000,
+      "qty": 1,
+      "product_id": "bm-dacbiet",
+      "requested_method": "BANK",
+      "expected_status": "REFUNDED"
+    },
+    {
+      "i": 106,
+      "order_id": "ab4d407e-3909-4b1c-9447-3ebdb7fa6912",
+      "display_code": "B00107",
+      "total_vnd": 70000,
+      "qty": 2,
+      "product_id": "bm-thit",
+      "requested_method": "CASH",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 107,
+      "order_id": "64d1a5dd-e0bc-43ac-a80c-2bbac2be53a2",
+      "display_code": "B00108",
+      "total_vnd": 105000,
+      "qty": 3,
+      "product_id": "bm-thit",
+      "requested_method": "CASH",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 108,
+      "order_id": "bfdf17e7-9e2b-4cab-9cab-25865df9b437",
+      "display_code": "B00109",
+      "total_vnd": 45000,
+      "qty": 1,
+      "product_id": "bm-dacbiet",
+      "requested_method": "CASH",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 109,
+      "order_id": "43dbfbd5-f063-4996-a68c-4114690a2114",
+      "display_code": "B00110",
+      "total_vnd": 70000,
+      "qty": 2,
+      "product_id": "bm-thit",
+      "requested_method": "CASH",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 110,
+      "order_id": "f6a1e721-6c48-4126-b3c4-659f5869e0c6",
+      "display_code": "B00111",
+      "total_vnd": 105000,
+      "qty": 3,
+      "product_id": "bm-thit",
+      "requested_method": "BANK",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 111,
+      "order_id": "fadb9492-30ee-4065-8fde-097add852694",
+      "display_code": "B00112",
+      "total_vnd": 45000,
+      "qty": 1,
+      "product_id": "bm-dacbiet",
+      "requested_method": "CASH",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 112,
+      "order_id": "7774b4b2-4420-46e1-a60e-6ccb06e5c66a",
+      "display_code": "B00113",
+      "total_vnd": 70000,
+      "qty": 2,
+      "product_id": "bm-thit",
+      "requested_method": "CASH",
+      "expected_status": "PAID"
+    },
+    {
+      "i": 113,
+      "order_id": "0210c30f-83b4-4949-94e6-7074ab343abf",
+      "display_code": "B00114",
+      "total_vnd": 105000,
+      "qty": 3,
+      "product_id": "bm-thit",
+      "requested_method": "CASH",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 114,
+      "order_id": "ee58edfb-18af-44da-aa23-905ddbbc405b",
+      "display_code": "B00115",
+      "total_vnd": 45000,
+      "qty": 1,
+      "product_id": "bm-dacbiet",
+      "requested_method": "CASH",
+      "expected_status": "VOIDED"
+    },
+    {
+      "i": 115,
+      "order_id": "7b962871-3eb8-45a0-9097-acc3c94b5a16",
+      "display_code": "B00116",
+      "total_vnd": 70000,
+      "qty": 2,
+      "product_id": "bm-thit",
+      "requested_method": "BANK",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 116,
+      "order_id": "575afcb2-8650-45d5-a057-70ddf84295cc",
+      "display_code": "B00117",
+      "total_vnd": 105000,
+      "qty": 3,
+      "product_id": "bm-thit",
+      "requested_method": "CASH",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 117,
+      "order_id": "569174ba-614b-486b-8401-caa519bfe6f4",
+      "display_code": "B00118",
+      "total_vnd": 45000,
+      "qty": 1,
+      "product_id": "bm-dacbiet",
+      "requested_method": "CASH",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 118,
+      "order_id": "84411b22-263c-413c-ba15-260d3522b896",
+      "display_code": "B00119",
+      "total_vnd": 70000,
+      "qty": 2,
+      "product_id": "bm-thit",
+      "requested_method": "CASH",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 119,
+      "order_id": "0998c3cb-49a6-4efe-8f33-012124bc1f89",
+      "display_code": "B00120",
+      "total_vnd": 105000,
+      "qty": 3,
+      "product_id": "bm-thit",
+      "requested_method": "CASH",
+      "expected_status": "PAID"
+    },
+    {
+      "i": 120,
+      "order_id": "c10c00e4-55e5-42da-b197-05b78e16e062",
+      "display_code": "B00121",
+      "total_vnd": 45000,
+      "qty": 1,
+      "product_id": "bm-dacbiet",
+      "requested_method": "BANK",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 121,
+      "order_id": "8993febf-4792-4591-9621-5c230f14a987",
+      "display_code": "B00122",
+      "total_vnd": 70000,
+      "qty": 2,
+      "product_id": "bm-thit",
+      "requested_method": "CASH",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 122,
+      "order_id": "330e9270-6978-464d-8bca-67c602e6d23c",
+      "display_code": "B00123",
+      "total_vnd": 105000,
+      "qty": 3,
+      "product_id": "bm-thit",
+      "requested_method": "CASH",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 123,
+      "order_id": "eaa1e1a2-a479-4ee3-b3df-51ad63c618d5",
+      "display_code": "B00124",
+      "total_vnd": 45000,
+      "qty": 1,
+      "product_id": "bm-dacbiet",
+      "requested_method": "CASH",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 124,
+      "order_id": "8c3d11ba-d5b3-4e42-ba9a-c9f0a6b082e8",
+      "display_code": "B00125",
+      "total_vnd": 70000,
+      "qty": 2,
+      "product_id": "bm-thit",
+      "requested_method": "CASH",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 125,
+      "order_id": "ab18f31f-c5c8-4a19-9cda-f2925e0dd8e0",
+      "display_code": "B00126",
+      "total_vnd": 105000,
+      "qty": 3,
+      "product_id": "bm-thit",
+      "requested_method": "BANK",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 126,
+      "order_id": "1c5f856e-b8db-460e-b825-5d97bdf78f9f",
+      "display_code": "B00127",
+      "total_vnd": 45000,
+      "qty": 1,
+      "product_id": "bm-dacbiet",
+      "requested_method": "CASH",
+      "expected_status": "PAID"
+    },
+    {
+      "i": 127,
+      "order_id": "8bf2e1ae-d0fb-4d61-9416-0243aa8ecbfc",
+      "display_code": "B00128",
+      "total_vnd": 70000,
+      "qty": 2,
+      "product_id": "bm-thit",
+      "requested_method": "CASH",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 128,
+      "order_id": "5a5a0197-f646-422d-ad5d-e062e6e4e8f3",
+      "display_code": "B00129",
+      "total_vnd": 105000,
+      "qty": 3,
+      "product_id": "bm-thit",
+      "requested_method": "CASH",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 129,
+      "order_id": "418ea14f-72a1-4dea-b05a-9b0f08d208e2",
+      "display_code": "B00130",
+      "total_vnd": 45000,
+      "qty": 1,
+      "product_id": "bm-dacbiet",
+      "requested_method": "CASH",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 130,
+      "order_id": "063712e2-7f14-4da4-9442-7c30da2a284c",
+      "display_code": "B00131",
+      "total_vnd": 70000,
+      "qty": 2,
+      "product_id": "bm-thit",
+      "requested_method": "BANK",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 131,
+      "order_id": "2dbe4adc-76b1-4f42-b2b7-b250711b1ccc",
+      "display_code": "B00132",
+      "total_vnd": 105000,
+      "qty": 3,
+      "product_id": "bm-thit",
+      "requested_method": "CASH",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 132,
+      "order_id": "87a6241b-e6ce-4a51-ab7f-c2daf2f2dda4",
+      "display_code": "B00133",
+      "total_vnd": 45000,
+      "qty": 1,
+      "product_id": "bm-dacbiet",
+      "requested_method": "CASH",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 133,
+      "order_id": "d9eb4340-9bc4-4030-97ef-cd30d777e0f7",
+      "display_code": "B00134",
+      "total_vnd": 70000,
+      "qty": 2,
+      "product_id": "bm-thit",
+      "requested_method": "CASH",
+      "expected_status": "VOIDED"
+    },
+    {
+      "i": 134,
+      "order_id": "2ca5231f-36aa-4ecb-b57a-51bb945aff2d",
+      "display_code": "B00135",
+      "total_vnd": 105000,
+      "qty": 3,
+      "product_id": "bm-thit",
+      "requested_method": "CASH",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 135,
+      "order_id": "dbe1bf0a-14a4-4aba-b436-d736c6d2b01d",
+      "display_code": "B00136",
+      "total_vnd": 45000,
+      "qty": 1,
+      "product_id": "bm-dacbiet",
+      "requested_method": "BANK",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 136,
+      "order_id": "16b71b31-3248-46f3-844a-5e8a4b4d44f0",
+      "display_code": "B00137",
+      "total_vnd": 70000,
+      "qty": 2,
+      "product_id": "bm-thit",
+      "requested_method": "CASH",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 137,
+      "order_id": "7eddf973-1e04-42d0-9369-57a60b043cf5",
+      "display_code": "B00138",
+      "total_vnd": 105000,
+      "qty": 3,
+      "product_id": "bm-thit",
+      "requested_method": "CASH",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 138,
+      "order_id": "33e4e6b1-00f5-42fe-981a-582528e17a3c",
+      "display_code": "B00139",
+      "total_vnd": 45000,
+      "qty": 1,
+      "product_id": "bm-dacbiet",
+      "requested_method": "CASH",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 139,
+      "order_id": "f225e5fb-bfb9-4a43-978e-11c991380861",
+      "display_code": "B00140",
+      "total_vnd": 70000,
+      "qty": 2,
+      "product_id": "bm-thit",
+      "requested_method": "CASH",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 140,
+      "order_id": "ab62fcb5-fd79-4d30-bf50-f5b78d67dde4",
+      "display_code": "B00141",
+      "total_vnd": 105000,
+      "qty": 3,
+      "product_id": "bm-thit",
+      "requested_method": "BANK",
+      "expected_status": "PAID"
+    },
+    {
+      "i": 141,
+      "order_id": "4802f054-a202-4d39-b912-569fe05a5cf0",
+      "display_code": "B00142",
+      "total_vnd": 45000,
+      "qty": 1,
+      "product_id": "bm-dacbiet",
+      "requested_method": "CASH",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 142,
+      "order_id": "0ff8319e-5fa8-4c62-bfcf-a51f2d2b0664",
+      "display_code": "B00143",
+      "total_vnd": 70000,
+      "qty": 2,
+      "product_id": "bm-thit",
+      "requested_method": "CASH",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 143,
+      "order_id": "3703af0f-bf57-4d6d-be9e-40c157093687",
+      "display_code": "B00144",
+      "total_vnd": 105000,
+      "qty": 3,
+      "product_id": "bm-thit",
+      "requested_method": "CASH",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 144,
+      "order_id": "74eb5c9f-6b09-40db-bc81-8b8a14612140",
+      "display_code": "B00145",
+      "total_vnd": 45000,
+      "qty": 1,
+      "product_id": "bm-dacbiet",
+      "requested_method": "CASH",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 145,
+      "order_id": "88701bba-2d08-4afe-832a-ec96f762d52b",
+      "display_code": "B00146",
+      "total_vnd": 70000,
+      "qty": 2,
+      "product_id": "bm-thit",
+      "requested_method": "BANK",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 146,
+      "order_id": "8b9afe8f-72ef-4cf2-9360-5e024b40d626",
+      "display_code": "B00147",
+      "total_vnd": 105000,
+      "qty": 3,
+      "product_id": "bm-thit",
+      "requested_method": "CASH",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 147,
+      "order_id": "d3f20721-bc70-4534-994e-f8d899f29096",
+      "display_code": "B00148",
+      "total_vnd": 45000,
+      "qty": 1,
+      "product_id": "bm-dacbiet",
+      "requested_method": "CASH",
+      "expected_status": "PAID"
+    },
+    {
+      "i": 148,
+      "order_id": "f9843251-c910-496b-b3a7-a16a9a39c273",
+      "display_code": "B00149",
+      "total_vnd": 70000,
+      "qty": 2,
+      "product_id": "bm-thit",
+      "requested_method": "CASH",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 149,
+      "order_id": "9ba06b8d-9623-4382-be77-8fcde41a44dc",
+      "display_code": "B00150",
+      "total_vnd": 105000,
+      "qty": 3,
+      "product_id": "bm-thit",
+      "requested_method": "CASH",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 150,
+      "order_id": "566c10a4-366a-4446-b698-c8b99bf59caf",
+      "display_code": "B00151",
+      "total_vnd": 45000,
+      "qty": 1,
+      "product_id": "bm-dacbiet",
+      "requested_method": "BANK",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 151,
+      "order_id": "2ad87bfd-e688-4e76-80d2-0a249b3d53f5",
+      "display_code": "B00152",
+      "total_vnd": 70000,
+      "qty": 2,
+      "product_id": "bm-thit",
+      "requested_method": "CASH",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 152,
+      "order_id": "62632ed5-bb2d-4bdb-a655-80ba5168c6ca",
+      "display_code": "B00153",
+      "total_vnd": 105000,
+      "qty": 3,
+      "product_id": "bm-thit",
+      "requested_method": "CASH",
+      "expected_status": "VOIDED"
+    },
+    {
+      "i": 153,
+      "order_id": "7451d635-c1ec-47cd-82b9-2f2468a630e7",
+      "display_code": "B00154",
+      "total_vnd": 45000,
+      "qty": 1,
+      "product_id": "bm-dacbiet",
+      "requested_method": "CASH",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 154,
+      "order_id": "91f823b1-bbb1-4d19-b407-251a78a59c25",
+      "display_code": "B00155",
+      "total_vnd": 70000,
+      "qty": 2,
+      "product_id": "bm-thit",
+      "requested_method": "CASH",
+      "expected_status": "REFUNDED"
+    },
+    {
+      "i": 155,
+      "order_id": "5bdb7c85-ecff-438f-8f67-bc22671eeba7",
+      "display_code": "B00156",
+      "total_vnd": 105000,
+      "qty": 3,
+      "product_id": "bm-thit",
+      "requested_method": "BANK",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 156,
+      "order_id": "737864a4-cd95-4f07-834a-a1aa65d52eee",
+      "display_code": "B00157",
+      "total_vnd": 45000,
+      "qty": 1,
+      "product_id": "bm-dacbiet",
+      "requested_method": "CASH",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 157,
+      "order_id": "98175ca5-e2e8-4f42-b1c5-98b33510e9d2",
+      "display_code": "B00158",
+      "total_vnd": 70000,
+      "qty": 2,
+      "product_id": "bm-thit",
+      "requested_method": "CASH",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 158,
+      "order_id": "00960df8-6b65-4158-89c6-2bd3a84b3d0e",
+      "display_code": "B00159",
+      "total_vnd": 105000,
+      "qty": 3,
+      "product_id": "bm-thit",
+      "requested_method": "CASH",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 159,
+      "order_id": "823f513b-06ee-4c61-a9d2-f0a7249e0488",
+      "display_code": "B00160",
+      "total_vnd": 45000,
+      "qty": 1,
+      "product_id": "bm-dacbiet",
+      "requested_method": "CASH",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 160,
+      "order_id": "048be575-01d9-400d-b79c-8221a3703585",
+      "display_code": "B00161",
+      "total_vnd": 70000,
+      "qty": 2,
+      "product_id": "bm-thit",
+      "requested_method": "BANK",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 161,
+      "order_id": "e6622c2e-ca19-499b-984d-aaad368d9d88",
+      "display_code": "B00162",
+      "total_vnd": 105000,
+      "qty": 3,
+      "product_id": "bm-thit",
+      "requested_method": "CASH",
+      "expected_status": "PAID"
+    },
+    {
+      "i": 162,
+      "order_id": "81bdb9b9-f683-4bdc-a8f0-0ede2370cb00",
+      "display_code": "B00163",
+      "total_vnd": 45000,
+      "qty": 1,
+      "product_id": "bm-dacbiet",
+      "requested_method": "CASH",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 163,
+      "order_id": "6c65bd72-1885-4f03-aa45-175c9d44ae92",
+      "display_code": "B00164",
+      "total_vnd": 70000,
+      "qty": 2,
+      "product_id": "bm-thit",
+      "requested_method": "CASH",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 164,
+      "order_id": "6ee48480-b230-4771-80ed-14ff27c12b2a",
+      "display_code": "B00165",
+      "total_vnd": 105000,
+      "qty": 3,
+      "product_id": "bm-thit",
+      "requested_method": "CASH",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 165,
+      "order_id": "ffe2964a-60e4-47c2-a83e-f2fa543a6453",
+      "display_code": "B00166",
+      "total_vnd": 45000,
+      "qty": 1,
+      "product_id": "bm-dacbiet",
+      "requested_method": "BANK",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 166,
+      "order_id": "c95021de-fb24-4e06-bdf0-df5b04a3edb2",
+      "display_code": "B00167",
+      "total_vnd": 70000,
+      "qty": 2,
+      "product_id": "bm-thit",
+      "requested_method": "CASH",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 167,
+      "order_id": "7cd75ebc-c0e6-4d0f-93a5-514943d79bad",
+      "display_code": "B00168",
+      "total_vnd": 105000,
+      "qty": 3,
+      "product_id": "bm-thit",
+      "requested_method": "CASH",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 168,
+      "order_id": "8532d8f7-865c-4570-afb8-f74bcb85c16e",
+      "display_code": "B00169",
+      "total_vnd": 45000,
+      "qty": 1,
+      "product_id": "bm-dacbiet",
+      "requested_method": "CASH",
+      "expected_status": "PAID"
+    },
+    {
+      "i": 169,
+      "order_id": "12d42745-47d1-4e78-a9ad-1ba68ea603b6",
+      "display_code": "B00170",
+      "total_vnd": 70000,
+      "qty": 2,
+      "product_id": "bm-thit",
+      "requested_method": "CASH",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 170,
+      "order_id": "0ef9a0cc-206a-4c95-a058-32baba31e9fe",
+      "display_code": "B00171",
+      "total_vnd": 105000,
+      "qty": 3,
+      "product_id": "bm-thit",
+      "requested_method": "BANK",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 171,
+      "order_id": "b44cb9b9-0862-42e7-8785-094f9969d8ac",
+      "display_code": "B00172",
+      "total_vnd": 45000,
+      "qty": 1,
+      "product_id": "bm-dacbiet",
+      "requested_method": "CASH",
+      "expected_status": "VOIDED"
+    },
+    {
+      "i": 172,
+      "order_id": "128aeea8-0e56-4c8c-9453-436f2e7ed336",
+      "display_code": "B00173",
+      "total_vnd": 70000,
+      "qty": 2,
+      "product_id": "bm-thit",
+      "requested_method": "CASH",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 173,
+      "order_id": "3522895d-a4be-4c21-82a1-55f779e89b16",
+      "display_code": "B00174",
+      "total_vnd": 105000,
+      "qty": 3,
+      "product_id": "bm-thit",
+      "requested_method": "CASH",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 174,
+      "order_id": "a2d29f38-527d-4341-95e3-3a1438fe13ea",
+      "display_code": "B00175",
+      "total_vnd": 45000,
+      "qty": 1,
+      "product_id": "bm-dacbiet",
+      "requested_method": "CASH",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 175,
+      "order_id": "017304bd-abc2-42ce-b9d8-103b94851ba6",
+      "display_code": "B00176",
+      "total_vnd": 70000,
+      "qty": 2,
+      "product_id": "bm-thit",
+      "requested_method": "BANK",
+      "expected_status": "PAID"
+    },
+    {
+      "i": 176,
+      "order_id": "134a8306-6d05-470d-a483-5ac991baf6fd",
+      "display_code": "B00177",
+      "total_vnd": 105000,
+      "qty": 3,
+      "product_id": "bm-thit",
+      "requested_method": "CASH",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 177,
+      "order_id": "4527387f-ffc5-4faf-9b77-634187b95cf1",
+      "display_code": "B00178",
+      "total_vnd": 45000,
+      "qty": 1,
+      "product_id": "bm-dacbiet",
+      "requested_method": "CASH",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 178,
+      "order_id": "fca81ce6-1fdf-4ddd-9719-b09176dd0b4c",
+      "display_code": "B00179",
+      "total_vnd": 70000,
+      "qty": 2,
+      "product_id": "bm-thit",
+      "requested_method": "CASH",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 179,
+      "order_id": "2ece3183-459d-463d-bc46-00a00bc58a29",
+      "display_code": "B00180",
+      "total_vnd": 105000,
+      "qty": 3,
+      "product_id": "bm-thit",
+      "requested_method": "CASH",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 180,
+      "order_id": "944b4000-2269-4f69-8df7-2a83101c0b92",
+      "display_code": "B00181",
+      "total_vnd": 45000,
+      "qty": 1,
+      "product_id": "bm-dacbiet",
+      "requested_method": "BANK",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 181,
+      "order_id": "7948213b-8c49-4d72-9ff3-0389a15aff21",
+      "display_code": "B00182",
+      "total_vnd": 70000,
+      "qty": 2,
+      "product_id": "bm-thit",
+      "requested_method": "CASH",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 182,
+      "order_id": "4f7866cd-65c7-4607-b49e-861d00f704b5",
+      "display_code": "B00183",
+      "total_vnd": 105000,
+      "qty": 3,
+      "product_id": "bm-thit",
+      "requested_method": "CASH",
+      "expected_status": "PAID"
+    },
+    {
+      "i": 183,
+      "order_id": "044fe36c-6248-4697-9b5b-6866b080e320",
+      "display_code": "B00184",
+      "total_vnd": 45000,
+      "qty": 1,
+      "product_id": "bm-dacbiet",
+      "requested_method": "CASH",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 184,
+      "order_id": "07e487dd-2e7c-4870-82f5-0765174cf333",
+      "display_code": "B00185",
+      "total_vnd": 70000,
+      "qty": 2,
+      "product_id": "bm-thit",
+      "requested_method": "CASH",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 185,
+      "order_id": "affe0275-985e-41ce-9720-84cd45bf9147",
+      "display_code": "B00186",
+      "total_vnd": 105000,
+      "qty": 3,
+      "product_id": "bm-thit",
+      "requested_method": "BANK",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 186,
+      "order_id": "2a2f13a4-32dd-4847-92aa-6154e4c476be",
+      "display_code": "B00187",
+      "total_vnd": 45000,
+      "qty": 1,
+      "product_id": "bm-dacbiet",
+      "requested_method": "CASH",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 187,
+      "order_id": "70660ad0-d5f8-4845-882f-48d753162b99",
+      "display_code": "B00188",
+      "total_vnd": 70000,
+      "qty": 2,
+      "product_id": "bm-thit",
+      "requested_method": "CASH",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 188,
+      "order_id": "181612ee-97a8-48fb-9502-d062f35d23ef",
+      "display_code": "B00189",
+      "total_vnd": 105000,
+      "qty": 3,
+      "product_id": "bm-thit",
+      "requested_method": "CASH",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 189,
+      "order_id": "e8f19694-87bb-4de2-b2c9-568459556ef9",
+      "display_code": "B00190",
+      "total_vnd": 45000,
+      "qty": 1,
+      "product_id": "bm-dacbiet",
+      "requested_method": "CASH",
+      "expected_status": "PAID"
+    },
+    {
+      "i": 190,
+      "order_id": "73961fe1-b06e-4d4a-a52d-7b0dbe6accb9",
+      "display_code": "B00191",
+      "total_vnd": 70000,
+      "qty": 2,
+      "product_id": "bm-thit",
+      "requested_method": "BANK",
+      "expected_status": "VOIDED"
+    },
+    {
+      "i": 191,
+      "order_id": "93cf4d34-0ee3-492c-8892-e384163a324a",
+      "display_code": "B00192",
+      "total_vnd": 105000,
+      "qty": 3,
+      "product_id": "bm-thit",
+      "requested_method": "CASH",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 192,
+      "order_id": "7b04223f-4d31-4e15-a39d-dea29619eede",
+      "display_code": "B00193",
+      "total_vnd": 45000,
+      "qty": 1,
+      "product_id": "bm-dacbiet",
+      "requested_method": "CASH",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 193,
+      "order_id": "34285c87-9749-4a4b-9d4e-fe029361c16a",
+      "display_code": "B00194",
+      "total_vnd": 70000,
+      "qty": 2,
+      "product_id": "bm-thit",
+      "requested_method": "CASH",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 194,
+      "order_id": "fedfdc45-b5ef-4f7a-a101-5a10671c1d30",
+      "display_code": "B00195",
+      "total_vnd": 105000,
+      "qty": 3,
+      "product_id": "bm-thit",
+      "requested_method": "CASH",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 195,
+      "order_id": "60c9a552-7b72-4209-9f64-1f02e8aa169b",
+      "display_code": "B00196",
+      "total_vnd": 45000,
+      "qty": 1,
+      "product_id": "bm-dacbiet",
+      "requested_method": "BANK",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 196,
+      "order_id": "9e6f9e2f-aba6-4d7d-b660-44dc73f603b6",
+      "display_code": "B00197",
+      "total_vnd": 70000,
+      "qty": 2,
+      "product_id": "bm-thit",
+      "requested_method": "CASH",
+      "expected_status": "PAID"
+    },
+    {
+      "i": 197,
+      "order_id": "25775be4-aff3-4e98-8b53-1247efca3aca",
+      "display_code": "B00198",
+      "total_vnd": 105000,
+      "qty": 3,
+      "product_id": "bm-thit",
+      "requested_method": "CASH",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 198,
+      "order_id": "f0f29161-669e-4737-8898-11d2d21b98f6",
+      "display_code": "B00199",
+      "total_vnd": 45000,
+      "qty": 1,
+      "product_id": "bm-dacbiet",
+      "requested_method": "CASH",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 199,
+      "order_id": "75d7c14a-489d-47fb-af4e-140dbf145da3",
+      "display_code": "B00200",
+      "total_vnd": 70000,
+      "qty": 2,
+      "product_id": "bm-thit",
+      "requested_method": "CASH",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 200,
+      "order_id": "2ef264d1-22d2-429f-a110-b886c0970616",
+      "display_code": "B00201",
+      "total_vnd": 105000,
+      "qty": 3,
+      "product_id": "bm-thit",
+      "requested_method": "BANK",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 201,
+      "order_id": "1f81579d-00c0-4b1b-938a-03ab7fd9c8e5",
+      "display_code": "B00202",
+      "total_vnd": 45000,
+      "qty": 1,
+      "product_id": "bm-dacbiet",
+      "requested_method": "CASH",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 202,
+      "order_id": "3a483ee1-aaef-4333-8aee-994779800228",
+      "display_code": "B00203",
+      "total_vnd": 70000,
+      "qty": 2,
+      "product_id": "bm-thit",
+      "requested_method": "CASH",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 203,
+      "order_id": "b83a5e65-fb9b-4074-a7ec-76dd1e74403d",
+      "display_code": "B00204",
+      "total_vnd": 105000,
+      "qty": 3,
+      "product_id": "bm-thit",
+      "requested_method": "CASH",
+      "expected_status": "REFUNDED"
+    },
+    {
+      "i": 204,
+      "order_id": "b019b1ef-2682-4d95-ade8-b3234ee563f2",
+      "display_code": "B00205",
+      "total_vnd": 45000,
+      "qty": 1,
+      "product_id": "bm-dacbiet",
+      "requested_method": "CASH",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 205,
+      "order_id": "d1d2ff33-02f3-467b-9024-26e070c9a5cc",
+      "display_code": "B00206",
+      "total_vnd": 70000,
+      "qty": 2,
+      "product_id": "bm-thit",
+      "requested_method": "BANK",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 206,
+      "order_id": "d758a951-5dc5-4de1-9b04-2668afa5d102",
+      "display_code": "B00207",
+      "total_vnd": 105000,
+      "qty": 3,
+      "product_id": "bm-thit",
+      "requested_method": "CASH",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 207,
+      "order_id": "754aac09-41e4-4e4b-be60-bb621a3d6145",
+      "display_code": "B00208",
+      "total_vnd": 45000,
+      "qty": 1,
+      "product_id": "bm-dacbiet",
+      "requested_method": "CASH",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 208,
+      "order_id": "8fa4a88d-410e-496c-abe1-8b0ce0b8f6d3",
+      "display_code": "B00209",
+      "total_vnd": 70000,
+      "qty": 2,
+      "product_id": "bm-thit",
+      "requested_method": "CASH",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 209,
+      "order_id": "68c5defb-f449-4931-aaf0-7982e0dd5b2d",
+      "display_code": "B00210",
+      "total_vnd": 105000,
+      "qty": 3,
+      "product_id": "bm-thit",
+      "requested_method": "CASH",
+      "expected_status": "VOIDED"
+    },
+    {
+      "i": 210,
+      "order_id": "61e18a2c-e3d3-4f6f-a97c-e109afa936ea",
+      "display_code": "B00211",
+      "total_vnd": 45000,
+      "qty": 1,
+      "product_id": "bm-dacbiet",
+      "requested_method": "BANK",
+      "expected_status": "PAID"
+    },
+    {
+      "i": 211,
+      "order_id": "a490dd3d-a067-4d7b-9390-f4ee9b045d00",
+      "display_code": "B00212",
+      "total_vnd": 70000,
+      "qty": 2,
+      "product_id": "bm-thit",
+      "requested_method": "CASH",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 212,
+      "order_id": "4ab080b0-411c-4997-8ed8-554272604fa5",
+      "display_code": "B00213",
+      "total_vnd": 105000,
+      "qty": 3,
+      "product_id": "bm-thit",
+      "requested_method": "CASH",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 213,
+      "order_id": "31807586-65bd-497d-bc5f-b4bfe7f77f3d",
+      "display_code": "B00214",
+      "total_vnd": 45000,
+      "qty": 1,
+      "product_id": "bm-dacbiet",
+      "requested_method": "CASH",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 214,
+      "order_id": "5c349d31-c503-46d0-adfd-829cec51cea2",
+      "display_code": "B00215",
+      "total_vnd": 70000,
+      "qty": 2,
+      "product_id": "bm-thit",
+      "requested_method": "CASH",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 215,
+      "order_id": "217a2a04-41d6-46ae-bca3-b897cf6f7646",
+      "display_code": "B00216",
+      "total_vnd": 105000,
+      "qty": 3,
+      "product_id": "bm-thit",
+      "requested_method": "BANK",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 216,
+      "order_id": "55533d17-6df5-48f8-93f3-66345ca30db8",
+      "display_code": "B00217",
+      "total_vnd": 45000,
+      "qty": 1,
+      "product_id": "bm-dacbiet",
+      "requested_method": "CASH",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 217,
+      "order_id": "fa7eeb2c-effc-48ca-a63d-6bc28c2c4919",
+      "display_code": "B00218",
+      "total_vnd": 70000,
+      "qty": 2,
+      "product_id": "bm-thit",
+      "requested_method": "CASH",
+      "expected_status": "PAID"
+    },
+    {
+      "i": 218,
+      "order_id": "eba61427-27e4-4353-a71c-f40a8b295e8e",
+      "display_code": "B00219",
+      "total_vnd": 105000,
+      "qty": 3,
+      "product_id": "bm-thit",
+      "requested_method": "CASH",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 219,
+      "order_id": "d2b58561-9bf3-4886-b0d3-0e665f4eb3d1",
+      "display_code": "B00220",
+      "total_vnd": 45000,
+      "qty": 1,
+      "product_id": "bm-dacbiet",
+      "requested_method": "CASH",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 220,
+      "order_id": "17a4a5ab-3d84-4c27-9bee-80fa95189272",
+      "display_code": "B00221",
+      "total_vnd": 70000,
+      "qty": 2,
+      "product_id": "bm-thit",
+      "requested_method": "BANK",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 221,
+      "order_id": "7211ba5b-5d84-4897-a658-c9bfd80a13c6",
+      "display_code": "B00222",
+      "total_vnd": 105000,
+      "qty": 3,
+      "product_id": "bm-thit",
+      "requested_method": "CASH",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 222,
+      "order_id": "e762b570-0448-412e-a6d5-0cbb1fbc5339",
+      "display_code": "B00223",
+      "total_vnd": 45000,
+      "qty": 1,
+      "product_id": "bm-dacbiet",
+      "requested_method": "CASH",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 223,
+      "order_id": "f0377043-c643-4393-a7d2-6364ea436304",
+      "display_code": "B00224",
+      "total_vnd": 70000,
+      "qty": 2,
+      "product_id": "bm-thit",
+      "requested_method": "CASH",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 224,
+      "order_id": "0aea999a-5d1a-4d33-a2cb-25e74c4c20fb",
+      "display_code": "B00225",
+      "total_vnd": 105000,
+      "qty": 3,
+      "product_id": "bm-thit",
+      "requested_method": "CASH",
+      "expected_status": "PAID"
+    },
+    {
+      "i": 225,
+      "order_id": "4aa681b3-feac-46ea-a455-65ac1a235cd0",
+      "display_code": "B00226",
+      "total_vnd": 45000,
+      "qty": 1,
+      "product_id": "bm-dacbiet",
+      "requested_method": "BANK",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 226,
+      "order_id": "cf800885-0f0d-4685-b3ee-2879fbe83093",
+      "display_code": "B00227",
+      "total_vnd": 70000,
+      "qty": 2,
+      "product_id": "bm-thit",
+      "requested_method": "CASH",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 227,
+      "order_id": "f7a15cab-e033-4ba8-badf-3501eead2e81",
+      "display_code": "B00228",
+      "total_vnd": 105000,
+      "qty": 3,
+      "product_id": "bm-thit",
+      "requested_method": "CASH",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 228,
+      "order_id": "6ee3081f-bf22-4c72-9113-ba87c8657d50",
+      "display_code": "B00229",
+      "total_vnd": 45000,
+      "qty": 1,
+      "product_id": "bm-dacbiet",
+      "requested_method": "CASH",
+      "expected_status": "VOIDED"
+    },
+    {
+      "i": 229,
+      "order_id": "c0138ff7-f7f2-4782-a6ee-b1392e7a7f1f",
+      "display_code": "B00230",
+      "total_vnd": 70000,
+      "qty": 2,
+      "product_id": "bm-thit",
+      "requested_method": "CASH",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 230,
+      "order_id": "91e2ec86-dc7a-4983-84e6-5771232dac64",
+      "display_code": "B00231",
+      "total_vnd": 105000,
+      "qty": 3,
+      "product_id": "bm-thit",
+      "requested_method": "BANK",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 231,
+      "order_id": "b0c2e8b2-7ae0-476c-a7d2-916b07b2aa00",
+      "display_code": "B00232",
+      "total_vnd": 45000,
+      "qty": 1,
+      "product_id": "bm-dacbiet",
+      "requested_method": "CASH",
+      "expected_status": "PAID"
+    },
+    {
+      "i": 232,
+      "order_id": "fde8b547-9c83-477e-b2c0-252271efae64",
+      "display_code": "B00233",
+      "total_vnd": 70000,
+      "qty": 2,
+      "product_id": "bm-thit",
+      "requested_method": "CASH",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 233,
+      "order_id": "8389b5f5-c500-4ab1-9f01-21575771c0ee",
+      "display_code": "B00234",
+      "total_vnd": 105000,
+      "qty": 3,
+      "product_id": "bm-thit",
+      "requested_method": "CASH",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 234,
+      "order_id": "69fb939e-e981-4e72-aeef-275d14725a83",
+      "display_code": "B00235",
+      "total_vnd": 45000,
+      "qty": 1,
+      "product_id": "bm-dacbiet",
+      "requested_method": "CASH",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 235,
+      "order_id": "7caf2817-6049-4797-a395-c7f5e3487fa6",
+      "display_code": "B00236",
+      "total_vnd": 70000,
+      "qty": 2,
+      "product_id": "bm-thit",
+      "requested_method": "BANK",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 236,
+      "order_id": "1f84cb2d-348b-4016-8e3a-2cb648f5aacf",
+      "display_code": "B00237",
+      "total_vnd": 105000,
+      "qty": 3,
+      "product_id": "bm-thit",
+      "requested_method": "CASH",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 237,
+      "order_id": "2f18fe9d-2e00-4daf-bbfd-8e92b1ee0a42",
+      "display_code": "B00238",
+      "total_vnd": 45000,
+      "qty": 1,
+      "product_id": "bm-dacbiet",
+      "requested_method": "CASH",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 238,
+      "order_id": "a0a908d2-b3a4-498e-93ec-5e59aec8aae5",
+      "display_code": "B00239",
+      "total_vnd": 70000,
+      "qty": 2,
+      "product_id": "bm-thit",
+      "requested_method": "CASH",
+      "expected_status": "PAID"
+    },
+    {
+      "i": 239,
+      "order_id": "39cbf12f-0c8b-4390-aead-1e82f66ca37f",
+      "display_code": "B00240",
+      "total_vnd": 105000,
+      "qty": 3,
+      "product_id": "bm-thit",
+      "requested_method": "CASH",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 240,
+      "order_id": "d86a6368-3aff-4b5c-b5a1-9ff2f04ff108",
+      "display_code": "B00241",
+      "total_vnd": 45000,
+      "qty": 1,
+      "product_id": "bm-dacbiet",
+      "requested_method": "BANK",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 241,
+      "order_id": "d57f0590-1a6d-450a-8f19-5a29fa678641",
+      "display_code": "B00242",
+      "total_vnd": 70000,
+      "qty": 2,
+      "product_id": "bm-thit",
+      "requested_method": "CASH",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 242,
+      "order_id": "11858a45-67e9-4271-9f94-999ba22ea2e2",
+      "display_code": "B00243",
+      "total_vnd": 105000,
+      "qty": 3,
+      "product_id": "bm-thit",
+      "requested_method": "CASH",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 243,
+      "order_id": "1e2e42a6-6072-4365-9493-c31e47e0dc42",
+      "display_code": "B00244",
+      "total_vnd": 45000,
+      "qty": 1,
+      "product_id": "bm-dacbiet",
+      "requested_method": "CASH",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 244,
+      "order_id": "20d0115d-1022-4f90-9c4b-4dfcb4c02124",
+      "display_code": "B00245",
+      "total_vnd": 70000,
+      "qty": 2,
+      "product_id": "bm-thit",
+      "requested_method": "CASH",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 245,
+      "order_id": "3c56d107-d1d0-41ac-8425-8649bee9d287",
+      "display_code": "B00246",
+      "total_vnd": 105000,
+      "qty": 3,
+      "product_id": "bm-thit",
+      "requested_method": "BANK",
+      "expected_status": "PAID"
+    },
+    {
+      "i": 246,
+      "order_id": "a5ebcc37-025d-4fe7-904f-85ecfc733186",
+      "display_code": "B00247",
+      "total_vnd": 45000,
+      "qty": 1,
+      "product_id": "bm-dacbiet",
+      "requested_method": "CASH",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 247,
+      "order_id": "0653f5b0-92dd-4fbf-9273-f5eefbef2d16",
+      "display_code": "B00248",
+      "total_vnd": 70000,
+      "qty": 2,
+      "product_id": "bm-thit",
+      "requested_method": "CASH",
+      "expected_status": "VOIDED"
+    },
+    {
+      "i": 248,
+      "order_id": "2d787828-f1fb-407d-b74b-95c96d162fba",
+      "display_code": "B00249",
+      "total_vnd": 105000,
+      "qty": 3,
+      "product_id": "bm-thit",
+      "requested_method": "CASH",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 249,
+      "order_id": "0577883f-d96e-4d7b-b3a0-d196a2d9a2dd",
+      "display_code": "B00250",
+      "total_vnd": 45000,
+      "qty": 1,
+      "product_id": "bm-dacbiet",
+      "requested_method": "CASH",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 250,
+      "order_id": "52c74899-3231-4a52-972e-6ce599cafd9d",
+      "display_code": "B00251",
+      "total_vnd": 70000,
+      "qty": 2,
+      "product_id": "bm-thit",
+      "requested_method": "BANK",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 251,
+      "order_id": "5c4c0d91-9204-4f97-b7b6-0477ce2b2b0f",
+      "display_code": "B00252",
+      "total_vnd": 105000,
+      "qty": 3,
+      "product_id": "bm-thit",
+      "requested_method": "CASH",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 252,
+      "order_id": "60c39a10-ab82-41c9-9bd6-13c71f3791c2",
+      "display_code": "B00253",
+      "total_vnd": 45000,
+      "qty": 1,
+      "product_id": "bm-dacbiet",
+      "requested_method": "CASH",
+      "expected_status": "REFUNDED"
+    },
+    {
+      "i": 253,
+      "order_id": "d293d6a7-3e8d-443e-a5c2-3ddd8751e69a",
+      "display_code": "B00254",
+      "total_vnd": 70000,
+      "qty": 2,
+      "product_id": "bm-thit",
+      "requested_method": "CASH",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 254,
+      "order_id": "5d6bf4ef-6255-4c85-b4df-eced47418748",
+      "display_code": "B00255",
+      "total_vnd": 105000,
+      "qty": 3,
+      "product_id": "bm-thit",
+      "requested_method": "CASH",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 255,
+      "order_id": "9466815a-721a-4e83-8d6e-8769d9070e7e",
+      "display_code": "B00256",
+      "total_vnd": 45000,
+      "qty": 1,
+      "product_id": "bm-dacbiet",
+      "requested_method": "BANK",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 256,
+      "order_id": "97e6ad15-e74a-4bb6-8f4d-91ecee2a5e9f",
+      "display_code": "B00257",
+      "total_vnd": 70000,
+      "qty": 2,
+      "product_id": "bm-thit",
+      "requested_method": "CASH",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 257,
+      "order_id": "0492d5f5-4321-49ea-89ec-875c60cef72b",
+      "display_code": "B00258",
+      "total_vnd": 105000,
+      "qty": 3,
+      "product_id": "bm-thit",
+      "requested_method": "CASH",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 258,
+      "order_id": "5ba7e18d-8d4d-4791-9724-2e2fd497eff1",
+      "display_code": "B00259",
+      "total_vnd": 45000,
+      "qty": 1,
+      "product_id": "bm-dacbiet",
+      "requested_method": "CASH",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 259,
+      "order_id": "22ac49e8-faab-4dfd-b4d9-cda22b6313a3",
+      "display_code": "B00260",
+      "total_vnd": 70000,
+      "qty": 2,
+      "product_id": "bm-thit",
+      "requested_method": "CASH",
+      "expected_status": "PAID"
+    },
+    {
+      "i": 260,
+      "order_id": "c6d27729-521d-40df-a27e-1e12244f5927",
+      "display_code": "B00261",
+      "total_vnd": 105000,
+      "qty": 3,
+      "product_id": "bm-thit",
+      "requested_method": "BANK",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 261,
+      "order_id": "ef00df97-836e-4f34-8f65-c5ea5df42b67",
+      "display_code": "B00262",
+      "total_vnd": 45000,
+      "qty": 1,
+      "product_id": "bm-dacbiet",
+      "requested_method": "CASH",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 262,
+      "order_id": "71f87883-23b9-4544-b978-d681d39bf532",
+      "display_code": "B00263",
+      "total_vnd": 70000,
+      "qty": 2,
+      "product_id": "bm-thit",
+      "requested_method": "CASH",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 263,
+      "order_id": "80e5402c-798a-4d4e-a78b-723b485fa879",
+      "display_code": "B00264",
+      "total_vnd": 105000,
+      "qty": 3,
+      "product_id": "bm-thit",
+      "requested_method": "CASH",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 264,
+      "order_id": "61d3de2c-1360-46e6-b713-6cbb2e17b7e7",
+      "display_code": "B00265",
+      "total_vnd": 45000,
+      "qty": 1,
+      "product_id": "bm-dacbiet",
+      "requested_method": "CASH",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 265,
+      "order_id": "0875debd-6301-4ed9-bacd-0a243b8f5389",
+      "display_code": "B00266",
+      "total_vnd": 70000,
+      "qty": 2,
+      "product_id": "bm-thit",
+      "requested_method": "BANK",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 266,
+      "order_id": "e97797a6-e3d2-49b2-83af-b17ef710d1c3",
+      "display_code": "B00267",
+      "total_vnd": 105000,
+      "qty": 3,
+      "product_id": "bm-thit",
+      "requested_method": "CASH",
+      "expected_status": "VOIDED"
+    },
+    {
+      "i": 267,
+      "order_id": "3ff3d3f0-9038-42d3-b25c-1ea44e562532",
+      "display_code": "B00268",
+      "total_vnd": 45000,
+      "qty": 1,
+      "product_id": "bm-dacbiet",
+      "requested_method": "CASH",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 268,
+      "order_id": "1405f47c-8243-44ea-8260-9b0ea5615e62",
+      "display_code": "B00269",
+      "total_vnd": 70000,
+      "qty": 2,
+      "product_id": "bm-thit",
+      "requested_method": "CASH",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 269,
+      "order_id": "74b80bb8-2ce5-4c94-8a0c-a0e072d0fb8e",
+      "display_code": "B00270",
+      "total_vnd": 105000,
+      "qty": 3,
+      "product_id": "bm-thit",
+      "requested_method": "CASH",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 270,
+      "order_id": "08c793ec-b02e-4ab7-829a-030b1ca3b54a",
+      "display_code": "B00271",
+      "total_vnd": 45000,
+      "qty": 1,
+      "product_id": "bm-dacbiet",
+      "requested_method": "BANK",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 271,
+      "order_id": "ac1f1ec9-2f0b-4ca2-9d93-2354da9c52c5",
+      "display_code": "B00272",
+      "total_vnd": 70000,
+      "qty": 2,
+      "product_id": "bm-thit",
+      "requested_method": "CASH",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 272,
+      "order_id": "76cabb4b-8998-4b27-b3ec-9a882459e63a",
+      "display_code": "B00273",
+      "total_vnd": 105000,
+      "qty": 3,
+      "product_id": "bm-thit",
+      "requested_method": "CASH",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 273,
+      "order_id": "5f9a13e7-5cd8-4a36-a0f0-3a0968696aad",
+      "display_code": "B00274",
+      "total_vnd": 45000,
+      "qty": 1,
+      "product_id": "bm-dacbiet",
+      "requested_method": "CASH",
+      "expected_status": "PAID"
+    },
+    {
+      "i": 274,
+      "order_id": "c8d2f518-9a26-48bd-b4d3-3afcff629b7f",
+      "display_code": "B00275",
+      "total_vnd": 70000,
+      "qty": 2,
+      "product_id": "bm-thit",
+      "requested_method": "CASH",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 275,
+      "order_id": "c914369a-761a-49cc-8d4c-4093cef464c0",
+      "display_code": "B00276",
+      "total_vnd": 105000,
+      "qty": 3,
+      "product_id": "bm-thit",
+      "requested_method": "BANK",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 276,
+      "order_id": "ed243e50-a0fe-4590-bd17-000a754f3eb8",
+      "display_code": "B00277",
+      "total_vnd": 45000,
+      "qty": 1,
+      "product_id": "bm-dacbiet",
+      "requested_method": "CASH",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 277,
+      "order_id": "3d7b7ea2-262e-47d2-a829-02496dfd34ee",
+      "display_code": "B00278",
+      "total_vnd": 70000,
+      "qty": 2,
+      "product_id": "bm-thit",
+      "requested_method": "CASH",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 278,
+      "order_id": "6a5dd4cd-a9e9-4a00-b02d-d107e12d785f",
+      "display_code": "B00279",
+      "total_vnd": 105000,
+      "qty": 3,
+      "product_id": "bm-thit",
+      "requested_method": "CASH",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 279,
+      "order_id": "a99ee358-92bf-4b70-9047-cd9e68b280fb",
+      "display_code": "B00280",
+      "total_vnd": 45000,
+      "qty": 1,
+      "product_id": "bm-dacbiet",
+      "requested_method": "CASH",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 280,
+      "order_id": "4063bb2d-0edb-490b-8771-b1a6d04040c9",
+      "display_code": "B00281",
+      "total_vnd": 70000,
+      "qty": 2,
+      "product_id": "bm-thit",
+      "requested_method": "BANK",
+      "expected_status": "PAID"
+    },
+    {
+      "i": 281,
+      "order_id": "73996baf-b621-4d8a-a7c0-992b87ca9f3e",
+      "display_code": "B00282",
+      "total_vnd": 105000,
+      "qty": 3,
+      "product_id": "bm-thit",
+      "requested_method": "CASH",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 282,
+      "order_id": "89ea83f4-3ad6-4f5f-8d74-00f89ae95cd0",
+      "display_code": "B00283",
+      "total_vnd": 45000,
+      "qty": 1,
+      "product_id": "bm-dacbiet",
+      "requested_method": "CASH",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 283,
+      "order_id": "3b4e1021-a70e-4a03-b8ea-1cfb7201c11b",
+      "display_code": "B00284",
+      "total_vnd": 70000,
+      "qty": 2,
+      "product_id": "bm-thit",
+      "requested_method": "CASH",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 284,
+      "order_id": "dc9a29ed-a704-48dc-8cee-16a07cadd99b",
+      "display_code": "B00285",
+      "total_vnd": 105000,
+      "qty": 3,
+      "product_id": "bm-thit",
+      "requested_method": "CASH",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 285,
+      "order_id": "8fc7f330-f60e-4bbb-a339-a90f9533bce7",
+      "display_code": "B00286",
+      "total_vnd": 45000,
+      "qty": 1,
+      "product_id": "bm-dacbiet",
+      "requested_method": "BANK",
+      "expected_status": "VOIDED"
+    },
+    {
+      "i": 286,
+      "order_id": "95a2f825-3d79-499d-bb63-824a0660029d",
+      "display_code": "B00287",
+      "total_vnd": 70000,
+      "qty": 2,
+      "product_id": "bm-thit",
+      "requested_method": "CASH",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 287,
+      "order_id": "b35e3956-e07d-4255-b9c5-e383fa9ee973",
+      "display_code": "B00288",
+      "total_vnd": 105000,
+      "qty": 3,
+      "product_id": "bm-thit",
+      "requested_method": "CASH",
+      "expected_status": "PAID"
+    },
+    {
+      "i": 288,
+      "order_id": "637175cd-2d6e-46d7-9947-e87dcc86ac0a",
+      "display_code": "B00289",
+      "total_vnd": 45000,
+      "qty": 1,
+      "product_id": "bm-dacbiet",
+      "requested_method": "CASH",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 289,
+      "order_id": "404e01a0-5eaf-42cf-a61b-31928992043d",
+      "display_code": "B00290",
+      "total_vnd": 70000,
+      "qty": 2,
+      "product_id": "bm-thit",
+      "requested_method": "CASH",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 290,
+      "order_id": "a8812643-794f-4f7c-9b86-4c9a0138afe9",
+      "display_code": "B00291",
+      "total_vnd": 105000,
+      "qty": 3,
+      "product_id": "bm-thit",
+      "requested_method": "BANK",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 291,
+      "order_id": "80a95e4d-ccfe-4d2c-bd87-8cca86a9fcac",
+      "display_code": "B00292",
+      "total_vnd": 45000,
+      "qty": 1,
+      "product_id": "bm-dacbiet",
+      "requested_method": "CASH",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 292,
+      "order_id": "e45dfa2e-d4b4-46dd-9b50-3f4c19caa16a",
+      "display_code": "B00293",
+      "total_vnd": 70000,
+      "qty": 2,
+      "product_id": "bm-thit",
+      "requested_method": "CASH",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 293,
+      "order_id": "c918fdc8-c1d5-453f-8325-859e58a6136d",
+      "display_code": "B00294",
+      "total_vnd": 105000,
+      "qty": 3,
+      "product_id": "bm-thit",
+      "requested_method": "CASH",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 294,
+      "order_id": "ff7a1626-7095-4c77-acbc-d93b597a5d20",
+      "display_code": "B00295",
+      "total_vnd": 45000,
+      "qty": 1,
+      "product_id": "bm-dacbiet",
+      "requested_method": "CASH",
+      "expected_status": "PAID"
+    },
+    {
+      "i": 295,
+      "order_id": "5055123a-4855-4c7e-b1f7-b6b8423062cb",
+      "display_code": "B00296",
+      "total_vnd": 70000,
+      "qty": 2,
+      "product_id": "bm-thit",
+      "requested_method": "BANK",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 296,
+      "order_id": "6f1fdf39-7c44-4079-afe8-7cf80cb28b23",
+      "display_code": "B00297",
+      "total_vnd": 105000,
+      "qty": 3,
+      "product_id": "bm-thit",
+      "requested_method": "CASH",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 297,
+      "order_id": "d931c9c2-bb99-4022-b480-92c6f8e5d726",
+      "display_code": "B00298",
+      "total_vnd": 45000,
+      "qty": 1,
+      "product_id": "bm-dacbiet",
+      "requested_method": "CASH",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 298,
+      "order_id": "80a4931a-cb6d-42b3-bc64-619fd3fd325d",
+      "display_code": "B00299",
+      "total_vnd": 70000,
+      "qty": 2,
+      "product_id": "bm-thit",
+      "requested_method": "CASH",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 299,
+      "order_id": "003fc75b-b88e-4203-8407-64f6a1728600",
+      "display_code": "B00300",
+      "total_vnd": 105000,
+      "qty": 3,
+      "product_id": "bm-thit",
+      "requested_method": "CASH",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 300,
+      "order_id": "7d1554a4-2adb-461d-bc0f-7bec6d78e65c",
+      "display_code": "B00301",
+      "total_vnd": 45000,
+      "qty": 1,
+      "product_id": "bm-dacbiet",
+      "requested_method": "BANK",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 301,
+      "order_id": "db700589-0452-4f1c-868a-3ebcbb454bcf",
+      "display_code": "B00302",
+      "total_vnd": 70000,
+      "qty": 2,
+      "product_id": "bm-thit",
+      "requested_method": "CASH",
+      "expected_status": "REFUNDED"
+    },
+    {
+      "i": 302,
+      "order_id": "fcc3981a-a92e-4777-b9f3-cb2c780bbf57",
+      "display_code": "B00303",
+      "total_vnd": 105000,
+      "qty": 3,
+      "product_id": "bm-thit",
+      "requested_method": "CASH",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 303,
+      "order_id": "54f9bf18-6ab8-4fc2-8018-f828250b0ca5",
+      "display_code": "B00304",
+      "total_vnd": 45000,
+      "qty": 1,
+      "product_id": "bm-dacbiet",
+      "requested_method": "CASH",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 304,
+      "order_id": "57b793bf-c3aa-4abc-b526-563885009fb8",
+      "display_code": "B00305",
+      "total_vnd": 70000,
+      "qty": 2,
+      "product_id": "bm-thit",
+      "requested_method": "CASH",
+      "expected_status": "VOIDED"
+    },
+    {
+      "i": 305,
+      "order_id": "5e1ca91a-b131-4c78-a78c-66900a165c57",
+      "display_code": "B00306",
+      "total_vnd": 105000,
+      "qty": 3,
+      "product_id": "bm-thit",
+      "requested_method": "BANK",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 306,
+      "order_id": "7c988d5e-b4a4-40b3-bbe8-b5a5c7806121",
+      "display_code": "B00307",
+      "total_vnd": 45000,
+      "qty": 1,
+      "product_id": "bm-dacbiet",
+      "requested_method": "CASH",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 307,
+      "order_id": "e1101886-97d2-4233-9dfc-2137ee01afbe",
+      "display_code": "B00308",
+      "total_vnd": 70000,
+      "qty": 2,
+      "product_id": "bm-thit",
+      "requested_method": "CASH",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 308,
+      "order_id": "9d68c360-5838-497a-9f96-aacc662bcde2",
+      "display_code": "B00309",
+      "total_vnd": 105000,
+      "qty": 3,
+      "product_id": "bm-thit",
+      "requested_method": "CASH",
+      "expected_status": "PAID"
+    },
+    {
+      "i": 309,
+      "order_id": "a83c8864-0e5c-4437-9789-b3e5c59af5bb",
+      "display_code": "B00310",
+      "total_vnd": 45000,
+      "qty": 1,
+      "product_id": "bm-dacbiet",
+      "requested_method": "CASH",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 310,
+      "order_id": "df79fb79-6767-4393-9184-b4312d1c7635",
+      "display_code": "B00311",
+      "total_vnd": 70000,
+      "qty": 2,
+      "product_id": "bm-thit",
+      "requested_method": "BANK",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 311,
+      "order_id": "f2779eda-f17f-48b2-94e8-c84b02915229",
+      "display_code": "B00312",
+      "total_vnd": 105000,
+      "qty": 3,
+      "product_id": "bm-thit",
+      "requested_method": "CASH",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 312,
+      "order_id": "cf39d11a-2e66-4265-bf42-4dc29a59041e",
+      "display_code": "B00313",
+      "total_vnd": 45000,
+      "qty": 1,
+      "product_id": "bm-dacbiet",
+      "requested_method": "CASH",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 313,
+      "order_id": "7f43aee0-aac0-4518-ad1c-ba40630eab7e",
+      "display_code": "B00314",
+      "total_vnd": 70000,
+      "qty": 2,
+      "product_id": "bm-thit",
+      "requested_method": "CASH",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 314,
+      "order_id": "17ae3332-c852-4e26-a658-a975c28b8ebe",
+      "display_code": "B00315",
+      "total_vnd": 105000,
+      "qty": 3,
+      "product_id": "bm-thit",
+      "requested_method": "CASH",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 315,
+      "order_id": "488089da-4368-4fd5-a41b-bccf53ff878c",
+      "display_code": "B00316",
+      "total_vnd": 45000,
+      "qty": 1,
+      "product_id": "bm-dacbiet",
+      "requested_method": "BANK",
+      "expected_status": "PAID"
+    },
+    {
+      "i": 316,
+      "order_id": "e2406dd8-a823-462f-bde7-a5ae4d234e3a",
+      "display_code": "B00317",
+      "total_vnd": 70000,
+      "qty": 2,
+      "product_id": "bm-thit",
+      "requested_method": "CASH",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 317,
+      "order_id": "67873af7-a124-4f99-9c60-5dfc24d6fb5d",
+      "display_code": "B00318",
+      "total_vnd": 105000,
+      "qty": 3,
+      "product_id": "bm-thit",
+      "requested_method": "CASH",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 318,
+      "order_id": "0c581189-1d93-4f89-b173-9ea22e64e68e",
+      "display_code": "B00319",
+      "total_vnd": 45000,
+      "qty": 1,
+      "product_id": "bm-dacbiet",
+      "requested_method": "CASH",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 319,
+      "order_id": "7fa8d4e5-313b-4ae6-b3db-7af256c91d21",
+      "display_code": "B00320",
+      "total_vnd": 70000,
+      "qty": 2,
+      "product_id": "bm-thit",
+      "requested_method": "CASH",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 320,
+      "order_id": "930cf7b3-08e8-4cd0-88c9-636e5e314d6e",
+      "display_code": "B00321",
+      "total_vnd": 105000,
+      "qty": 3,
+      "product_id": "bm-thit",
+      "requested_method": "BANK",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 321,
+      "order_id": "4908990d-c4a3-402a-87f5-82898e2d2aab",
+      "display_code": "B00322",
+      "total_vnd": 45000,
+      "qty": 1,
+      "product_id": "bm-dacbiet",
+      "requested_method": "CASH",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 322,
+      "order_id": "ee5ec955-cc45-4644-98bb-f4b86353aeee",
+      "display_code": "B00323",
+      "total_vnd": 70000,
+      "qty": 2,
+      "product_id": "bm-thit",
+      "requested_method": "CASH",
+      "expected_status": "PAID"
+    },
+    {
+      "i": 323,
+      "order_id": "84455947-f684-4139-8132-1553a82738ae",
+      "display_code": "B00324",
+      "total_vnd": 105000,
+      "qty": 3,
+      "product_id": "bm-thit",
+      "requested_method": "CASH",
+      "expected_status": "VOIDED"
+    },
+    {
+      "i": 324,
+      "order_id": "ccab4d9e-8b16-45a9-8f3c-c82a244cfab6",
+      "display_code": "B00325",
+      "total_vnd": 45000,
+      "qty": 1,
+      "product_id": "bm-dacbiet",
+      "requested_method": "CASH",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 325,
+      "order_id": "e4163efe-c2d1-46a7-88c2-a58cccc7c261",
+      "display_code": "B00326",
+      "total_vnd": 70000,
+      "qty": 2,
+      "product_id": "bm-thit",
+      "requested_method": "BANK",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 326,
+      "order_id": "e866eea0-ecfa-4408-a5c7-4f5f51b8dfab",
+      "display_code": "B00327",
+      "total_vnd": 105000,
+      "qty": 3,
+      "product_id": "bm-thit",
+      "requested_method": "CASH",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 327,
+      "order_id": "3b34cd02-582d-4c56-9820-353be30a29aa",
+      "display_code": "B00328",
+      "total_vnd": 45000,
+      "qty": 1,
+      "product_id": "bm-dacbiet",
+      "requested_method": "CASH",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 328,
+      "order_id": "081fd2cb-989a-4e35-84fb-22abe6d2edee",
+      "display_code": "B00329",
+      "total_vnd": 70000,
+      "qty": 2,
+      "product_id": "bm-thit",
+      "requested_method": "CASH",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 329,
+      "order_id": "cb07599e-9769-4bc8-a8a6-73de7da6a1a3",
+      "display_code": "B00330",
+      "total_vnd": 105000,
+      "qty": 3,
+      "product_id": "bm-thit",
+      "requested_method": "CASH",
+      "expected_status": "PAID"
+    },
+    {
+      "i": 330,
+      "order_id": "99d54a3f-8890-496a-8793-97bf17971d66",
+      "display_code": "B00331",
+      "total_vnd": 45000,
+      "qty": 1,
+      "product_id": "bm-dacbiet",
+      "requested_method": "BANK",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 331,
+      "order_id": "61b4c529-3f15-44f7-b4e7-96e231f1f9c8",
+      "display_code": "B00332",
+      "total_vnd": 70000,
+      "qty": 2,
+      "product_id": "bm-thit",
+      "requested_method": "CASH",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 332,
+      "order_id": "07c17555-8f58-4c2a-950a-174e13ffa32b",
+      "display_code": "B00333",
+      "total_vnd": 105000,
+      "qty": 3,
+      "product_id": "bm-thit",
+      "requested_method": "CASH",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 333,
+      "order_id": "af836fa8-13a9-41aa-ac85-b3afe4e6b711",
+      "display_code": "B00334",
+      "total_vnd": 45000,
+      "qty": 1,
+      "product_id": "bm-dacbiet",
+      "requested_method": "CASH",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 334,
+      "order_id": "30ee55dd-2798-4e1f-86d0-4a179b222492",
+      "display_code": "B00335",
+      "total_vnd": 70000,
+      "qty": 2,
+      "product_id": "bm-thit",
+      "requested_method": "CASH",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 335,
+      "order_id": "f867b85c-32f0-4fd7-8604-6e5ea8f1c880",
+      "display_code": "B00336",
+      "total_vnd": 105000,
+      "qty": 3,
+      "product_id": "bm-thit",
+      "requested_method": "BANK",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 336,
+      "order_id": "a0a26775-d832-4289-8bb2-08fc01bfdf72",
+      "display_code": "B00337",
+      "total_vnd": 45000,
+      "qty": 1,
+      "product_id": "bm-dacbiet",
+      "requested_method": "CASH",
+      "expected_status": "PAID"
+    },
+    {
+      "i": 337,
+      "order_id": "c7acaf51-1860-45ae-8f54-bb455ddee8f9",
+      "display_code": "B00338",
+      "total_vnd": 70000,
+      "qty": 2,
+      "product_id": "bm-thit",
+      "requested_method": "CASH",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 338,
+      "order_id": "ec2aa0d0-3d26-471b-8595-cb54352222df",
+      "display_code": "B00339",
+      "total_vnd": 105000,
+      "qty": 3,
+      "product_id": "bm-thit",
+      "requested_method": "CASH",
+      "expected_status": "UNPAID"
+    },
+    {
+      "i": 339,
+      "order_id": "ad14ba1b-cc50-424a-9b78-77ece7862d5b",
+      "display_code": "B00340",
+      "total_vnd": 45000,
+      "qty": 1,
+      "product_id": "bm-dacbiet",
+      "requested_method": "CASH",
+      "expected_status": "UNPAID"
+    }
+  ],
+  "expected": {
+    "total_orders": 340,
+    "paid_orders": 39,
+    "voided_orders": 18,
+    "refunded_orders": 7,
+    "pending_orders": 276,
+    "paid_units_by_product": {
+      "bm-thit": 63,
+      "bm-dacbiet": 14
+    },
+    "net_cash_vnd": 2835000
+  },
+  "actual_dashboard": {
+    "paid_orders": 39,
+    "net_revenue_vnd": 2835000,
+    "cash_vnd": 2835000,
+    "bank_vnd": 0,
+    "pending_orders": 276,
+    "bank_pending": 55,
+    "last_synced_at": null,
+    "shift": {
+      "id": "09d8a323-9a2f-437c-8628-74edd4c36da8",
+      "cashier_id": "cashier",
+      "opening_float_vnd": 500000,
+      "status": "OPEN",
+      "opened_at": "2026-11-03T12:43:34.879Z",
+      "expected_cash_vnd": 3335000
+    }
+  },
+  "actual_today": {
+    "total_orders": 340,
+    "voided_orders": 18,
+    "paid_orders": 39,
+    "refunded_orders": 7,
+    "pending_orders": 276
+  }
+}

@@ -7,6 +7,7 @@ import {createRequire} from 'node:module';
 const require=createRequire(import.meta.url);
 test('existing SQLite financial history is backfilled atomically once per cloud store and new changes still trigger',()=>{
  const dir=mkdtempSync(join(tmpdir(),'bmc-backfill-'));
+ let svc;
  try{
   process.env.STORE_DB_PATH=join(dir,'shop.sqlite');
   process.env.BOOTSTRAP_OWNER_PIN='owner-backfill-passphrase';
@@ -14,7 +15,7 @@ test('existing SQLite financial history is backfilled atomically once per cloud 
   process.env.BOOTSTRAP_STAFF_PIN='staff-backfill-passphrase';
   process.env.SEED_DEMO_CATALOG='1';
   const {StoreService}=require('../apps/store-hub/dist/service.js');
-  const svc=new StoreService();svc.onModuleInit();
+  svc=new StoreService();svc.onModuleInit();
   const staff=svc.actor('Bearer '+svc.login('staff',process.env.BOOTSTRAP_STAFF_PIN).token,['STAFF']);
   const cashier=svc.actor('Bearer '+svc.login('cashier',process.env.BOOTSTRAP_CASHIER_PIN).token,['CASHIER']);
   const catalog=svc.catalog();
@@ -38,7 +39,7 @@ test('existing SQLite financial history is backfilled atomically once per cloud 
   const future=svc.createOrder(staff,{catalog_version:catalog.version,requested_payment_method:'CASH',items:[{product_id:catalog.products[0].id,qty:1}]},'backfill-future-order-0002');
   assert.equal(svc.store.row('SELECT COUNT(*) n FROM sync_outbox').n,1);
   assert.equal(JSON.parse(svc.store.row('SELECT payload_json FROM sync_outbox').payload_json).id,future.order_id);
- }finally{rmSync(dir,{recursive:true,force:true})}
+ }finally{svc?.store?.db?.close();rmSync(dir,{recursive:true,force:true})}
 });
 
 test('Hub transmits signed positive monotonic SQLite outbox sequences, not just opaque event IDs',async()=>{
@@ -47,6 +48,7 @@ test('Hub transmits signed positive monotonic SQLite outbox sequences, not just 
  const keys=['STORE_DB_PATH','SEED_DEMO_CATALOG','BOOTSTRAP_OWNER_PIN','BOOTSTRAP_CASHIER_PIN','BOOTSTRAP_STAFF_PIN','CLOUD_SYNC_URL','CLOUD_SYNC_SECRET','CLOUD_STORE_ID'];
  const previous=Object.fromEntries(keys.map(k=>[k,process.env[k]]));
  const originalFetch=globalThis.fetch;
+ let hub;
  try{
   process.env.STORE_DB_PATH=join(dir,'shop.sqlite');
   process.env.SEED_DEMO_CATALOG='1';
@@ -58,7 +60,7 @@ test('Hub transmits signed positive monotonic SQLite outbox sequences, not just 
   process.env.CLOUD_STORE_ID='ci-hub-outbox-seq-store';
   const {StoreService}=require('../apps/store-hub/dist/service.js');
   const {CloudSyncWorker}=require('../apps/store-hub/dist/sync.js');
-  const hub=new StoreService();hub.onModuleInit();
+  hub=new StoreService();hub.onModuleInit();
   const actor=hub.actor('Bearer '+hub.login('owner',process.env.BOOTSTRAP_OWNER_PIN).token,['OWNER']);
   hub.updateProduct(actor,'bm-thit',{name:'Món giá mới',price_vnd:44000,is_active:false},'hub-seq-update-prod-key');
   const rows=hub.store.all('SELECT seq,id,entity,payload_json FROM sync_outbox ORDER BY seq');
@@ -85,6 +87,6 @@ test('Hub transmits signed positive monotonic SQLite outbox sequences, not just 
   globalThis.fetch=originalFetch;
   for(const [key,value] of Object.entries(previous))
    if(value===undefined)delete process.env[key];else process.env[key]=value;
-  rmSync(dir,{recursive:true,force:true});
+  hub?.store?.db?.close();rmSync(dir,{recursive:true,force:true});
  }
 });
