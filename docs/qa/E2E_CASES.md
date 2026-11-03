@@ -26,7 +26,7 @@ Tài liệu đặc tả chi tiết toàn bộ kịch bản kiểm thử E2E (End
 | **CASH-01** | P0 | Cash Settlement & Change Calculation | MVP-v1.2 §5 | POST /v1/orders/:id/capture | `apps/store-hub/src/domain.ts` | `tests/e2e/real-hub-api.test.mjs` (Suite 6) | **AUTOMATED** |
 | **CASH-02** | P0 | Insufficient Tender & Shift Guard | MVP-v1.2 §5 | HTTP 400 / 422 | `apps/store-hub/src/domain.ts` | `tests/e2e/real-hub-api.test.mjs` (Suite 6) | **AUTOMATED** |
 | **CASH-03** | P0 | Idempotent Cash Capture | MVP-v1.2 §5 | Idempotency-Key Header | `apps/store-hub/src/domain.ts` | `tests/e2e/real-hub-api.test.mjs` (Suite 6) | **AUTOMATED** |
-| **CASH-04** | P0 | Cashier UI Interruption & Recovery | MVP-v1.2 §5 | Client Resiliency | `apps/pos-web/src/` | `tests/e2e/web-real-hub.spec.ts` | **PARTIAL — real browser lost-ACK test not executed** |
+| **CASH-04** | P0 | Cashier UI Interruption & Recovery | MVP-v1.2 §5 | Client Resiliency | `apps/pos-web/src/` | `tests/e2e/web-real-hub.spec.ts` | **AUTOMATED — real Chromium Hub lost-ACK recovery (CI 3/3)** |
 | **CASH-05** | P0 | Requested Bank Settled with Cash | MVP-v1.2 §5 | Tender Truthfulness | `apps/store-hub/src/domain.ts` | `tests/e2e/real-hub-api.test.mjs` (Suite 6) | **AUTOMATED** |
 | **CASH-06** | P0 | Cash Refund with Audit Reason | MVP-v1.2 §5 | POST /v1/orders/:id/refund | `apps/store-hub/src/domain.ts` | `tests/e2e/real-hub-api.test.mjs` (Suite 6) | **AUTOMATED** |
 | **CASH-07** | P0 | Void Unpaid Order | MVP-v1.2 §3 | POST /v1/orders/:id/void | `apps/store-hub/src/domain.ts` | `tests/e2e/real-hub-api.test.mjs` (Suite 6) | **AUTOMATED** |
@@ -392,7 +392,7 @@ Tài liệu đặc tả chi tiết toàn bộ kịch bản kiểm thử E2E (End
 
 | ID | Audit classification | Additional test/acceptance needed |
 |---|---|---|
-| CASH-04 | PARTIAL | `tests/e2e/web-real-hub.spec.ts` proves successful checkout, **not** cash-capture browser crash/reload/lost ACK; add real browser fault injection and DB reconciliation |
+| CASH-04 | AUTOMATED (real Chromium + Hub) | The third browser case commits cash, substitutes a 503 after the actual Hub 201, reloads/relogs, replays the immutable pending request, verifies exactly one cash revenue increment and two receipt intents. Real power loss / physical drawer still blocked |
 | SEC-01 | PARTIAL | Real-Hub suite has health and auth checks, but does not prove all CORS/security headers or secrets redaction; add dedicated assertions |
 | UI-01 | PARTIAL | Firefox/WebKit smoke runs with mocked HTTP; real-hub browser E2E is Chromium only |
 | UI-02 | NOT VERIFIED by cited source | `tests/cashier-queue.test.mjs` exercises DB queue, not HTTP 500/timeout/browser error states; use UI failure-injection E2E |
@@ -403,3 +403,10 @@ Tài liệu đặc tả chi tiết toàn bộ kịch bản kiểm thử E2E (End
 | BANK-01, BANK-02 | Hub fake bridge HMAC covered; real merchant/provider BLOCKED | SePay Cloud adapter + isolated PG tests exist, but physical bank merchant sandbox and end-to-end transfer still require external sign-off |
 
 No hardware/sandbox/field acceptance is marked PASS by this document. A failed, missing, or blocked acceptance must remain explicit, even when all implemented software tests pass.
+
+
+### New QA browser acceptance (2026-11-03, verified CI)
+
+- `CASH-04`: **PASS** in [Senior E2E CI run 41657806452](https://github.com/vitoo16/banh-mi-cho-pos/actions/runs/41657806452) on QA commit `3f5c86570e8cc7d2703a21a8ee98c97dfb69ef16` (GitHub may execute the generated PR merge ref). `node --test` real-Hub API/burst: 10/10; Playwright Chromium real-Hub cases: **3/3** including this failure-injection test.
+- Test count for same code revision after new case: **159** across baseline suites (9 domain + 2 bundle + 29 integration + 2 HTTP perf smoke + 104 mocked UI + 9 real Hub API + 1 burst + 3 real-Hub browser); 36 planning files validated separately. The earlier 158 was valid *before* adding this case, not current full-suite count.
+- The recovered browser request is not equivalent to a physical Windows power-cut or drawer test. Those release gates remain BLOCKED.
