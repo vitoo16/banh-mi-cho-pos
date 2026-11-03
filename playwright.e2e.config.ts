@@ -6,6 +6,7 @@ export default defineConfig({
   timeout: 60_000,
   expect: { timeout: 10_000 },
   fullyParallel: false,
+  forbidOnly: !!process.env.CI,
   workers: 1,
   reporter: process.env.CI ? 'github' : 'list',
   use: {
@@ -19,10 +20,9 @@ export default defineConfig({
   ],
   webServer: [
     {
-      command: 'node apps/store-hub/dist/main.js',
+      command: 'node scripts/e2e-playwright-hub.mjs',
       url: 'http://127.0.0.1:4400/v1/health',
       env: {
-        STORE_DB_PATH: './store-data/e2e-disposable/bmc-e2e-playwright.sqlite',
         HUB_BIND_HOST: '127.0.0.1',
         HUB_PORT: '4400',
         SEED_DEMO_CATALOG: '1',
