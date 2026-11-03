@@ -155,10 +155,13 @@ test('LOAD-01: 8 concurrent staff sessions create 150 orders burst without dupli
   assert.equal(new Set(orderIds).size, TOTAL_ORDERS, 'All order IDs must be unique');
   assert.equal(new Set(displayCodes).size, TOTAL_ORDERS, 'All display codes must be unique');
 
-  // 6. Invariant check: all orders are UNPAID
-  for (const r of results) {
+  // 6. Invariant check: backend-price authority, integer VND, no false settlement.
+  for (const [i, r] of results.entries()) {
     assert.equal(r.body.payment_status, 'UNPAID');
-    assert.ok(r.body.total_vnd > 0);
+    assert.equal(r.body.status, 'COMMITTED');
+    assert.ok(Number.isSafeInteger(r.body.total_vnd), 'All money must be integer VND');
+    assert.equal(r.body.total_vnd, p.price_vnd * (1 + (i % 3)),
+      'Hub must compute exact total from current catalog snapshot');
   }
 
   // 7. Calculate and report latencies
@@ -172,7 +175,8 @@ test('LOAD-01: 8 concurrent staff sessions create 150 orders burst without dupli
   console.log(`  Throughput: ${throughput} orders/sec (Elapsed: ${totalElapsed.toFixed(2)}ms)`);
   console.log(`  Latencies: p50 = ${p50.toFixed(2)}ms, p95 = ${p95.toFixed(2)}ms, p99 = ${p99.toFixed(2)}ms`);
 
-  // Reporting and comparison with target (p95 <= 400ms goal under real LAN conditions)
-  console.log(`  Comparison: p95 ${p95.toFixed(2)}ms ${p95 <= 400 ? 'MEETS' : 'EXCEEDS'} target LAN SLO (<= 400ms) under unpaced burst.`);
+  // Loopback burst metrics are informational. Real LAN SLO must be measured on
+  // the shop's Windows/phone network before commercial sign-off.
+  console.log(`  Informational loopback comparison: p95 ${p95.toFixed(2)}ms vs field LAN target 400ms (NOT a real LAN acceptance result).`);
 });
 
