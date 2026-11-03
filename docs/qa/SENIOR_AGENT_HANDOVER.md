@@ -1,5 +1,7 @@
 # Bánh Mì Chợ POS — Báo Cáo Tiến Độ & Prompt Bàn Giao Cho Senior Agent
 
+> **Independent reviewer addendum — 2026-11-03:** Con số 155 PASS và 37 test IDs trong handover bên dưới là số liệu lịch sử **không còn hợp lệ làm release claim**. GitHub CI baseline của PR #77 kiểm chứng **158 test runner cases** và **42 scenario IDs**; `docs:check` kiểm tra 36 file quy hoạch. Nhánh QA đang có remediation mới, phải kiểm tra HEAD và CI mới trước khi tuyên bố PASS. Xem `docs/qa/E2E_RUN_REPORT.md §9` và `docs/qa/E2E_CASES.md §3`. **Không merge, Commercial Go-Live vẫn NO-GO.**
+
 > **LƯU Ý QUAN TRỌNG:** Nhánh `qa/senior-e2e-audit-pack` là **NHÁNH CHUYÊN DÙNG ĐỂ KIỂM THỬ (TEST-ONLY BRANCH)**. Tuyệt đối **KHÔNG ĐƯỢC TỰ ĐỘNG MERGE VÀO `main`** trước khi hoàn thành kiểm thử thực địa với phần cứng thật (máy in nhiệt ESC/POS, két tiền RJ11, điện thoại cảm ứng và tài khoản sandbox ngân hàng).
 
 ---
