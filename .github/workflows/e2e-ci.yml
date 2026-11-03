@@ -6,6 +6,7 @@ on:
       - 'packages/**'
       - 'tests/**'
       - 'scripts/seed-e2e.mjs'
+      - 'scripts/e2e-playwright-hub.mjs'
       - 'package.json'
       - 'playwright.e2e.config.ts'
       - '.github/workflows/e2e-ci.yml'
