@@ -11,7 +11,8 @@ Tài liệu được lập bởi Senior SDET / QA Architect theo quy chuẩn b�
 |---|---|
 | **Dự án** | Bánh Mì Chợ POS (Hệ thống bán hàng tiệm bánh mì đa kênh) |
 | **Nhánh kiểm thử (Branch)** | `qa/senior-e2e-audit-pack` |
-| **Commit SHA tham chiếu** | `42480e8ea6ce19791e9da5bbc000fa4b7dedb47e` |
+| **Commit SHA tham chiếu (original Windows execution)** | `42480e8ea6ce19791e9da5bbc000fa4b7dedb47e` (historical run, not current branch head) |
+| **Verified GitHub PR run ref** | PR #77 run group on original QA HEAD `7145f726bdd7e62d5ef520b11c915adc0c893818`; the latest QA remediation commits require fresh CI confirmation |
 | **Hệ điều hành kiểm thử** | Windows 11 Pro (NT 10.0.26200.0) |
 | **Môi trường Runtime** | Node.js `v26.7.0`, npm `11.19.0` |
 | **Công cụ E2E** | Playwright v1.64.1 (Chromium 1248, Firefox 1555, WebKit 2370), Node test runner (`node:test`) |
@@ -29,12 +30,12 @@ Hệ thống đã trải qua toàn bộ 9 cổng kiểm thử tự động (Qual
 ========================================================================================
                           KẾT QUẢ KIỂM THỬ ĐỊNH LƯỢNG (TEST METRICS)
 ========================================================================================
- Tổng số kịch bản kiểm thử tự động (Automated Tests) :  155
-   - Số kịch bản ĐẠT (PASS)                          :  155  (100.0%)
+ Tổng số test runner cases trong CI đã đối chiếu       :  158
+   - Số kịch bản ĐẠT (PASS)                          :  158  (100.0%)
    - Số kịch bản THẤT BẠI (FAIL)                     :    0  (0.0%)
    - Số kịch bản BỎ QUA (SKIPPED)                    :    0  (0.0%)
 
- Số kịch bản BỊ NGHẼN DO THIẾU PHẦN CỨNG (BLOCKED)   :    6  (Phần cứng/Cổng đối tác)
+ Số nhóm nghiệm thu thực địa còn BLOCKED             :    6  (không phải 6 test runner cases)
 ========================================================================================
 ```
 
@@ -46,13 +47,13 @@ Hệ thống đã trải qua toàn bộ 9 cổng kiểm thử tự động (Qual
 | **Build & Bundle** | `npm run build` | ~4.8s | **PASS** | Đóng gói thành công Store Hub, POS Web, Owner Web |
 | **Domain Logic Tests** | `npm run test:domain` | 0.8s | **9 / 9 PASS** | Kiểm tra nghiệp vụ lõi: Giá, Tiền thối, Sổ cái, Idempotency |
 | **Bundle Size Budgets** | `npm run test:bundle` | 1.1s | **2 / 2 PASS** | POS Web < 200KB gzipped; Owner Web < 250KB gzipped |
-| **Docs Consistency** | `npm run docs:check` | 0.4s | **36 / 36 PASS** | Đối chiếu hợp đồng API, tài liệu và mã nguồn |
+| **Docs Consistency** | `npm run docs:check` | 0.4s | **PASS (36 required files present)** | Script xác minh hồ sơ quy hoạch, không xác thực toàn bộ API contract |
 | **Integration Suites** | `npm run test:integration` | 7.8s | **29 / 29 PASS** | Kiểm thử tích hợp Store Hub, In ấn, Gateway, Đồng bộ |
-| **HTTP Performance Smoke**| `npm run test:perf:http` | 1.2s | **2 / 2 PASS** | Độ trễ API trên loopback đáp ứng chuẩn LAN (<10ms) |
-| **UI Components Tests** | `npm run test:ui` | 4.2s | **104 / 104 PASS**| Kiểm thử thành phần giao diện trên Chromium, Firefox, WebKit |
+| **HTTP Performance Smoke**| `npm run test:perf:http` | 1.2s | **2 / 2 PASS** | Loopback CI smoke p95 25,12 ms; không chứng minh p95 LAN thiết bị thật |
+| **UI Components Tests** | `npm run test:ui` | 4.2s | **104 / 104 PASS**| UI mocked HTTP, Chromium và các smoke Firefox/WebKit; đây là log CI Linux, không phải Windows run time |
 | **E2E Store Hub API** | `node --test tests/e2e/real-hub-api.test.mjs` | 2.1s | **9 / 9 PASS** | Kiểm thử API trên tiến trình thật, database SQLite cô lập |
 | **E2E Concurrency Load** | `node --test tests/e2e/concurrency-load.e2e.test.mjs` | 1.9s | **1 / 1 PASS** | 8 nhân viên đồng thời, 150 đơn bùng nổ (Burst Rate: 314 đơn/s) |
-| **E2E Web POS & Owner** | `npx playwright test --config=playwright.e2e.config.ts` | 5.3s | **2 / 2 PASS** | Trình duyệt thật điều khiển Cashier POS & Owner Dashboard |
+| **E2E Web POS & Owner** | `npx playwright test --config=playwright.e2e.config.ts` | 5.3s | **2 / 2 PASS** | Trình duyệt Chromium thật điều khiển Cashier POS & Owner; kết quả thuộc commit CI đã ghi, trước QA remediation |
 
 ---
 
@@ -117,34 +118,38 @@ Dưới đây là 6 hạng mục được ghi nhận trạng thái **BLOCKED**:
 
 Dành cho đội ngũ Triển khai (DevOps/Ops) và QA Thực địa trước ngày khai trương cửa hàng:
 
-### Quy trình 1: Nghiệm thu Máy in Hóa đơn ESC/POS và Két tiền (PRINT-01 & CASH-01)
-1. Cắm cáp nguồn và cáp USB của máy in nhiệt (khuyên dùng Xprinter XP-N160I hoặc Epson TM-T82III) vào máy tính Store Hub.
-2. Cắm đầu dây RJ11 từ két tiền vào cổng `DK` (Drawer Kick) phía sau máy in.
-3. Chạy lệnh in thử mẫu biên nhận: `node scripts/test-printer-hardware.mjs --device=usb`.
-4. Quan sát:
-   - Két tiền có tự động bung ra không?
-   - Máy in có in đủ 2 liên: LIÊN KHÁCH HÀNG và LIÊN CỬA HÀNG không?
-   - Chữ tiếng Việt có bị lỗi font (Unicode UTF-8 / ESC/POS CodePage 255) không?
-   - Dao cắt giấy tự động có cắt đứt 90% không?
-5. Nếu đạt tất cả các tiêu chí trên: Chuyển trạng thái `PRINT-01` sang **PASS**.
+### Quy trình 1: Máy in mạng ESC/POS 80mm (PRINT-01)
+1. **Trạng thái:** spooler đã kiểm thử bằng virtual TCP printer; **không có bằng chứng giấy nhiệt thật**.
+2. Chọn máy in có hỗ trợ ESC/POS raster TCP 9100, cấp IP nội bộ và cấu hình `PRINTER_HOST` / `PRINTER_PORT` trên **máy QA biệt lập**. Driver hiện có **không triển khai USB trực tiếp**. Không dùng database hoặc tài khoản bán hàng thật.
+3. Tạo đơn QA và thu tiền trong ca QA; kiểm tra trên giấy thật đúng hai liên CUSTOMER/STORE, đủ tiếng Việt, tổng tiền, nguồn tiền và dao cắt. Bàn giao ảnh/video, model, firmware, log attempt, receipt ids và chữ ký thu ngân.
+4. Ngắt kết nối/hết giấy giữa hai liên; xác nhận copy còn lại UNKNOWN, không tự phát lại, in lại có lý do + watermark, không có payment/receipt batch mới.
+5. Không dùng `scripts/test-printer-hardware.mjs`: file này **không tồn tại trong repository**. Chỉ nghiệm thu với driver/command có thật. Không chuyển PASS khi chưa có giấy vật lý.
 
-### Quy trình 2: Nghiệm thu Ứng dụng Staff Mobile trên thiết bị thật (ORDER-06)
-1. Cài đặt bản build nội bộ (`.apk` cho Android, TestFlight cho iOS) lên điện thoại nhân viên phục vụ.
-2. Kết nối điện thoại vào mạng Wi-Fi nội bộ của quán bánh mì.
-3. Mở ứng dụng, quét mã QR ghép nối (Pairing Code) trên màn hình thu ngân để xác thực thiết bị.
-4. Tạo thử đơn hàng có 3 món bánh mì kèm ghi chú chi tiết.
-5. Tắt Wi-Fi trên điện thoại, bấm "Lưu đơn hàng": Ứng dụng phải báo "Đã lưu vào bộ nhớ tạm thời của máy".
-6. Bật lại Wi-Fi: Đơn hàng phải tự động đẩy lên màn hình Thu ngân trong vòng dưới 2 giây mà không bị nhân đôi đơn.
-7. Đạt tiêu chí trên: Chuyển trạng thái `ORDER-06` sang **PASS**.
+### Quy trình 2: Két tiền RJ11/RJ12 (DRAWER-PHYS; tách khỏi CASH-01)
+1. `CASH-01` tự động xác minh phép tính tiền thối và ledger, **không** chứng nhận cơ cấu mở két.
+2. `apps/store-hub/src/printer.ts` hiện chưa có lệnh Drawer Kick/ESC p được xác nhận. Trước khi kiểm tra, BE cần thiết kế luồng mở két có cashier authorization, audit và driver theo model/SDK thực tế.
+3. Dùng két tương thích, kết nối với cổng DK của máy in đã kiểm thử. Kiểm tra mở két sau thu tiền, không mở khi STAFF gọi API, không lặp xung khi retry cùng key; ghi nhận bằng chứng thực địa. **Chưa có driver + chưa có phần cứng = NOT IMPLEMENTED/BLOCKED**, không PASS.
 
-### Quy trình 3: Nghiệm thu Thanh toán VietQR với Ngân hàng đối tác (BANK-01 & BANK-02)
-1. Cập nhật các biến môi trường trong `.env.production`: `BANK_MERCHANT_ID`, `BANK_API_KEY`, `BANK_HMAC_SECRET`.
-2. Tạo một đơn hàng có giá trị 10.000 VND trên POS Web, chọn phương thức "Chuyển khoản VietQR".
-3. Dùng ứng dụng ngân hàng thật trên điện thoại quét mã QR hiển thị trên màn hình.
-4. Chuyển khoản thành công 10.000 VND.
-5. Quan sát màn hình Thu ngân: Trong vòng 3-5 giây, màn hình phải tự động chuyển sang trạng thái "ĐÃ THANH TOÁN" và máy in tự nhả hóa đơn mà thu ngân không cần bấm phím nào.
-6. Thử chuyển sai số tiền hoặc chuyển vào tài khoản cá nhân khác: Màn hình không được phép gạch nợ.
-7. Đạt tiêu chí trên: Chuyển trạng thái `BANK-01` và `BANK-02` sang **PASS**.
+### Quy trình 3: Staff React Native trên điện thoại thật (ORDER-06)
+1. Cài internal native builds Android/iOS lên điện thoại QA; cấu hình trusted HTTPS SAN, paired device, cửa hàng Wi-Fi, không mở insecure LAN với dữ liệu thật.
+2. Đặt một đơn từ mobile và đối chiếu đúng UUID/giá, tắt Wi-Fi trước ACK rồi kill/restart app, xác thực lại, retry đúng idempotency key. Đối chiếu một đơn duy nhất trên POS; không giả lập đã ACK khi kết quả UNKNOWN.
+3. Test thu hồi thiết bị, UI 320dp/safe area, rớt mạng, mất WAN, nhiều nhân viên. Lưu screenshots + log + sign-off.
+
+### Quy trình 4: SePay / VietQR và đối tác ngân hàng (BANK-01..02 physical/provider)
+1. **Cloud SePay adapter có triển khai trong `apps/cloud-api/src/sepay.ts`**, CI `cloud-ci.yml` chạy PostgreSQL và fake signed webhook; đây không phải sandbox/merchant acceptance.
+2. Cấu hình Store Hub theo mã nguồn: `BANK_CODE`, `BANK_ACCOUNT_NUMBER`, `BANK_BRIDGE_SECRET`. Cấu hình Cloud theo `SEPAY_WEBHOOK_SECRET`, `SEPAY_ACCOUNT_NUMBER`, `SEPAY_BANK_GATEWAY`, `CLOUD_SYNC_SECRET`, `CLOUD_STORE_ID`; chỉ bật `ENABLE_VERIFIED_BANK_INBOX=1` sau nghiệm thu đối tác.
+3. Với tài khoản merchant **thử nghiệm được phép**, xác nhận QR, chuyển đúng/sai số tiền, sai đích, webhook trùng/trễ, WAN-down cash/bank race và signed inbox; kiểm tra payout thực tế, exception ledger và chỉ **một** receipt batch/payment cho một đơn.
+4. Ghi provider event IDs đã che số tài khoản, thời gian nhận, status/kết quả đối soát và người xác nhận. Không tuyên bố có ngân hàng/sandbox thật nếu chưa được cấp quyền.
+
+### Quy trình 5: Cloud PostgreSQL và đồng bộ (CLOUD-01..03)
+1. CI dùng PostgreSQL 16 isolation qua `.github/workflows/cloud-ci.yml`, nhưng staging/production WAN, backup và permission vẫn chưa nghiệm thu.
+2. Trên **PostgreSQL staging biệt lập**, kiểm tra init/backfill SQLite, HMAC store isolation, delayed/out-of-order sync, 30 phút rớt WAN, remote Owner stale indicator, restore PG và no double revenue.
+3. Đính kèm query đối soát, logs, RPO/RTO và người phụ trách. Không nâng staging gate lên PASS bằng CI-only simulation.
+
+### Quy trình 6: Windows backup/restore service (RESILIENCE-02)
+1. Dùng máy Windows QA/spare, user service và đường dẫn backup riêng; chạy `npm run backup:store`, `npm run verify:backup`, `npm run restore:copy` theo `docs/ops/LOCAL_PILOT.md` / `docs/ops/RUNBOOK.md`.
+2. Test kill process, reboot, mất nguồn mô phỏng; backup có manifest/checksum, restore không ghi đè cửa hàng đang hoạt động, không mất giao dịch đã ACK ngoài RPO thử nghiệm.
+3. Chốt ca đối soát tiền/tồn đơn và ký biên bản; Windows CI smoke không thay được service quyền/ổ cứng thật.
 
 ---
 
@@ -168,3 +173,15 @@ Dựa trên toàn bộ bằng chứng kiểm thử thực tế và các quy đ�
 - **Lý do:** Dự án đang bị **BLOCKED** ở 6 hạng mục phần cứng và tích hợp ngân hàng ngoại vi (Máy in ESC/POS thực tế, két tiền vật lý, ứng dụng di động trên máy thật, và tài khoản Sandbox ngân hàng).
 - **Điều kiện mở khóa Go-Live:** Cửa hàng chỉ được phép khai trương kinh doanh chính thức sau khi Đội ngũ Kỹ thuật thực địa hoàn thành trọn vẹn 3 Quy trình nghiệm thu trong **Blocker Runbook** trên thiết bị thật tại mặt bằng quán.
 
+
+
+---
+
+## 9. Independent QA reconciliation — bổ sung ngày 2026-11-03
+
+- **Provenance:** các workflow GitHub Actions của PR #77 tại QA HEAD `7145f726bdd7e62d5ef520b11c915adc0c893818` đã báo SUCCESS. Ghi rõ run ids: E2E `41647090297`, App checks `41647090332`, Docs `41647090271`, UI `41647090250`, HTTP perf `41647090275`, Windows backup `41647090262`, Expo bundle `41647090364`. CI kiểm tra PR merge ref; khác với Windows report nguồn `42480e8...`.
+- **Count audited (CI baseline):** domain 9 + bundle 2 + integration 29 + perf smoke 2 + UI 104 + real Hub API 9 + burst 1 + Chromium real Hub browser 2 = **158 node:test / Playwright cases**, 0 FAIL trong các log này. **36 là số file planning/docs được kiểm tra**, không phải 36 unit tests. Windows backup tests và HTTP burst profile thuộc workflow bổ sung, không tự cộng vào baseline 158 để tránh đếm trùng.
+- **Traceability:** `E2E_CASES.md` có **42 IDs**, không phải 37; 6 BLOCKED là **nhóm nghiệm thu**, không phải số lượng test. CASH-04 (browser crash during capture), LOAD-02 (100k cursor benchmark), SEC-01 (HTTP header/redaction), UI-02 (network failure) chưa đủ test tự động tương ứng để gọi verified; UI-01 Firefox/WebKit là mocked smoke, không phải real-Hub cross-engine.
+- **CI caveat:** loopback HTTP p95 25,12 ms ở profile smoke Linux; không phải p95 của thiết bị Windows/Wi-Fi. `concurrency-load.e2e.test.mjs` đo burst và ghi latency nhưng chỉ assert correctness, không enforce 400 ms field target.
+- **QA remediation in progress:** sau commit `7145f726...`, test harness đã được cập nhật thành Playwright Hub database tạm mỗi run, loại các integration secrets và bắt buộc mở ca từ dữ liệu sạch. **Chưa tự tuyên bố PASS trên các commit mới** cho đến khi GitHub Actions hoàn tất.
+- **Release:** Software core đã có bằng chứng CI tốt cho pilot logic; Commercial Go-Live vẫn **NO-GO**, đặc biệt chưa có Cash Drawer Kick implementation/physical proof, provider sandbox, native phones, staging/cloud WAN và Windows operations acceptance. Đây là correction/addendum, không thay thế acceptance thực địa.
