@@ -229,4 +229,64 @@ test.describe('E2E Real Store Hub & Web Frontend Integration', () => {
     expect(copies.map((x: { kind: string }) => x.kind).sort()).toEqual(['CUSTOMER', 'STORE']);
   });
 
+  test('UI-02: real Hub queue 503 blocks payment then recovers without false PAID', async ({ page }) => {
+    const order = await createStaffOrder();
+    const cashierResponse = await fetch(`${HUB_URL}/v1/auth/login`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ user_id: 'cashier', pin: CASHIER_PIN })
+    });
+    expect(cashierResponse.status).toBe(201);
+    const { token } = await cashierResponse.json();
+    const requestLog: string[] = [];
+    let simulateOutage = false;
+
+    await page.route('**/v1/orders', async route => {
+      if (route.request().method() === 'GET' && simulateOutage) {
+        requestLog.push('GET /v1/orders => injected 503');
+        await route.fulfill({
+          status: 503, contentType: 'application/json',
+          body: JSON.stringify({ code: 'QA_NETWORK_OUTAGE', message: 'Test-only queue outage' })
+        });
+        return;
+      }
+      await route.continue();
+    });
+    await page.route('**/v1/orders/*/payments/cash', async route => {
+      requestLog.push('UNEXPECTED CASH CAPTURE');
+      await route.continue();
+    });
+    await page.goto('http://127.0.0.1:5173');
+    await page.locator('#pin').fill(CASHIER_PIN);
+    await page.locator('button.primary').click();
+    await expect(page.locator('.network')).toContainText('Store Hub');
+    await page.locator('button[aria-label="Tải lại đơn"]').click();
+
+    const orderTile = page.locator(`.order-tile:has-text("#${order.display_code}")`);
+    await expect(orderTile).toBeVisible({ timeout: 10000 });
+    await orderTile.click();
+    await expect(page.locator('.checkout-pane')).toContainText('Chưa thanh toán');
+
+    simulateOutage = true;
+    await page.locator('button[aria-label="Tải lại đơn"]').click();
+    await expect(page.locator('.network')).toContainText('Mất kết nối', {timeout: 10000});
+    await expect(page.locator('.alert.wide')).toContainText('Không kết nối được Store Hub');
+    await expect(page.locator('.checkout-pane')).not.toContainText('Đã thu tiền');
+    await page.locator('#tender').fill('100000');
+    await expect(page.getByRole('button', { name: 'Xác nhận đã nhận tiền' })).toBeDisabled();
+    expect(requestLog).not.toContain('UNEXPECTED CASH CAPTURE');
+
+    // Restore real API and fetch again; the browser must not invent a payment.
+    simulateOutage = false;
+    await page.locator('button[aria-label="Tải lại đơn"]').click();
+    await expect(page.locator('.network')).toContainText('Store Hub');
+    await expect(page.locator('.alert.wide')).toHaveCount(0);
+    expect(requestLog.some(entry => entry.includes('503'))).toBe(true);
+    const actual = await fetch(`${HUB_URL}/v1/orders/${order.order_id}`, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    expect(actual.status).toBe(200);
+    expect((await actual.json()).payment_status).toBe('UNPAID');
+    expect(requestLog).not.toContain('UNEXPECTED CASH CAPTURE');
+  });
+
 });
