@@ -167,3 +167,4 @@ Dựa trên toàn bộ bằng chứng kiểm thử thực tế và các quy đ�
 ### Đánh giá cho Triển khai Vận hành Thực tế (Production Commercial Go-Live): **NO-GO (TẠM HOÃN)**
 - **Lý do:** Dự án đang bị **BLOCKED** ở 6 hạng mục phần cứng và tích hợp ngân hàng ngoại vi (Máy in ESC/POS thực tế, két tiền vật lý, ứng dụng di động trên máy thật, và tài khoản Sandbox ngân hàng).
 - **Điều kiện mở khóa Go-Live:** Cửa hàng chỉ được phép khai trương kinh doanh chính thức sau khi Đội ngũ Kỹ thuật thực địa hoàn thành trọn vẹn 3 Quy trình nghiệm thu trong **Blocker Runbook** trên thiết bị thật tại mặt bằng quán.
+

@@ -383,3 +383,4 @@ Tài liệu đặc tả chi tiết toàn bộ kịch bản kiểm thử E2E (End
 
 #### LOAD-02: Hiệu năng Truy vấn với Lịch sử 100.000 đơn hàng
 - **Mục tiêu:** Bảng `orders` được đánh index thích hợp (`idx_orders_created_at`, `idx_orders_status`, `idx_orders_shift_id`). Truy vấn phân trang cursor-based trên tập dữ liệu lớn vẫn giữ thời gian phản hồi dưới 50ms.
+

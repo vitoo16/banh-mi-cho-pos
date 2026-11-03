@@ -127,3 +127,4 @@ The following matrix connects requirements, source implementations, actor author
 - **Root Cause:** `tsx` uses esbuild, which strips TypeScript `design:paramtypes` decorator metadata by default. When NestJS resolves `StoreController(private readonly s: StoreService)`, constructor injection fails and `this.s` is `undefined`.
 - **Remediation:** Configured E2E Playwright webServer to execute `node apps/store-hub/dist/main.js` (compiled via `tsc`, which preserves decorator metadata).
 - **Recommendation for BE lane:** Add esbuild plugin or `tsc --watch` for dev server to ensure `npm run dev:hub` preserves decorator metadata.
+
