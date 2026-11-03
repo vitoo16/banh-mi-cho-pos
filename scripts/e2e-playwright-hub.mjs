@@ -44,6 +44,7 @@ function cleanup() {
 const childEnv = {
   ...process.env,
   NODE_ENV: 'test',
+  DOTENV_CONFIG_PATH: join(tempDir, 'no-dotenv-file'),
   STORE_DB_PATH: dbPath,
   HUB_BIND_HOST: host,
   HUB_PORT: String(port),
@@ -57,7 +58,8 @@ for (const key of [
   'CLOUD_SYNC_SECRET', 'CLOUD_STORE_ID', 'ALLOW_INSECURE_LAN_DEV',
   'PAIRING_ENFORCED', 'HUB_TLS_CERT_PATH', 'HUB_TLS_KEY_PATH',
 ]) {
-  delete childEnv[key];
+  // Empty strings also prevent dotenv/config from filling these from a local .env.
+  childEnv[key] = '';
 }
 
 const child = spawn(process.execPath, [resolve('apps/store-hub/dist/main.js')], {
