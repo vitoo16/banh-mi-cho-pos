@@ -9,6 +9,7 @@ const require=createRequire(import.meta.url);
 test('cashier status exposes durable print UNKNOWN and truthful cloud sync, excluding Staff',()=>{
  const dir=mkdtempSync(join(tmpdir(),'bmc-ops-'));
  const original={db:process.env.STORE_DB_PATH,seed:process.env.SEED_DEMO_CATALOG,cloud:process.env.CLOUD_SYNC_URL,printer:process.env.PRINTER_HOST};
+ let svc;
  try{
   process.env.STORE_DB_PATH=join(dir,'store.sqlite');
   process.env.SEED_DEMO_CATALOG='1';
@@ -18,7 +19,7 @@ test('cashier status exposes durable print UNKNOWN and truthful cloud sync, excl
   process.env.BOOTSTRAP_CASHIER_PIN='test-ops-cashier-secret';
   process.env.BOOTSTRAP_STAFF_PIN='test-ops-staff-secret';
   const {StoreService}=require('../apps/store-hub/dist/service.js');
-  const svc=new StoreService();svc.onModuleInit();
+  svc=new StoreService();svc.onModuleInit();
   const staff=svc.actor('Bearer '+svc.login('staff',process.env.BOOTSTRAP_STAFF_PIN).token,['STAFF']);
   const cashier=svc.actor('Bearer '+svc.login('cashier',process.env.BOOTSTRAP_CASHIER_PIN).token,['CASHIER']);
   const owner=svc.actor('Bearer '+svc.login('owner',process.env.BOOTSTRAP_OWNER_PIN).token,['OWNER']);
@@ -67,6 +68,6 @@ test('cashier status exposes durable print UNKNOWN and truthful cloud sync, excl
   for(const [key,value] of Object.entries({STORE_DB_PATH:original.db,SEED_DEMO_CATALOG:original.seed,CLOUD_SYNC_URL:original.cloud,PRINTER_HOST:original.printer})){
    if(value===undefined)delete process.env[key];else process.env[key]=value;
   }
-  rmSync(dir,{recursive:true,force:true});
+  svc?.store?.db?.close();rmSync(dir,{recursive:true,force:true});
  }
 });

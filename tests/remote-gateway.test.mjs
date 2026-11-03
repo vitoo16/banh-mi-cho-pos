@@ -10,6 +10,7 @@ test('LAN gateway permits only session-bound paired STAFF order traffic',()=>{
  const dir=mkdtempSync(join(tmpdir(),'bmc-lan-gateway-'));
  const keys=['STORE_DB_PATH','SEED_DEMO_CATALOG','PAIRING_ENFORCED','BOOTSTRAP_OWNER_PIN','BOOTSTRAP_CASHIER_PIN','BOOTSTRAP_STAFF_PIN'];
  const prev=Object.fromEntries(keys.map(k=>[k,process.env[k]]));
+ let s;
  try{
   process.env.STORE_DB_PATH=join(dir,'gateway.sqlite');
   process.env.SEED_DEMO_CATALOG='1';
@@ -19,7 +20,7 @@ test('LAN gateway permits only session-bound paired STAFF order traffic',()=>{
   process.env.BOOTSTRAP_STAFF_PIN='test-gateway-staff-pin';
   const {StoreService}=require('../apps/store-hub/dist/service.js');
   const {assertRemoteStaffRequest:gate}=require('../apps/store-hub/dist/remote-gateway.js');
-  const s=new StoreService();s.onModuleInit();
+  s=new StoreService();s.onModuleInit();
   const ownerLogin=s.login('owner',process.env.BOOTSTRAP_OWNER_PIN);
   const owner=s.actor('Bearer '+ownerLogin.token,['OWNER']);
   const pair=s.issuePairing(owner,'Android test device','gateway-pair-0001');
@@ -54,6 +55,6 @@ test('LAN gateway permits only session-bound paired STAFF order traffic',()=>{
   assert.throws(()=>permit('POST','/v1/auth/logout'),e=>['SESSION_EXPIRED','DEVICE_NOT_TRUSTED'].includes(e.code));
  }finally{
   for(const [k,v] of Object.entries(prev))if(v===undefined)delete process.env[k];else process.env[k]=v;
-  rmSync(dir,{recursive:true,force:true});
+  s?.store?.db?.close();rmSync(dir,{recursive:true,force:true});
  }
 });

@@ -10,13 +10,14 @@ test('Owner local analytics have no arbitrary 300-order cap and never count unpa
  const dir=mkdtempSync(join(tmpdir(),'bmc-analytics-hub-'));
  const saved={};
  for(const key of ['STORE_DB_PATH','SEED_DEMO_CATALOG','BOOTSTRAP_OWNER_PIN','BOOTSTRAP_CASHIER_PIN','BOOTSTRAP_STAFF_PIN'])saved[key]=process.env[key];
+ let s;
  try{
   process.env.STORE_DB_PATH=join(dir,'shop.sqlite');
   process.env.SEED_DEMO_CATALOG='1';
   process.env.BOOTSTRAP_OWNER_PIN='analytics-owner-pin';
   process.env.BOOTSTRAP_CASHIER_PIN='analytics-cashier-pin';
   process.env.BOOTSTRAP_STAFF_PIN='analytics-staff-pin';
-  const {StoreService}=require('../apps/store-hub/dist/service.js'),s=new StoreService();s.onModuleInit();
+  const {StoreService}=require('../apps/store-hub/dist/service.js');s=new StoreService();s.onModuleInit();
   const today=new Date().toISOString();
   const yesterday=new Date(Date.parse(salesWindow('day').start_utc)-1000).toISOString();
   const body={product_id:'bm-thit',name_snapshot:'Bánh mì thịt',qty:2,unit_price_vnd:35000,line_total_vnd:70000,note:''};
@@ -47,6 +48,6 @@ test('Owner local analytics have no arbitrary 300-order cap and never count unpa
   assert.throws(()=>s.productSales('bad'),/INVALID_PERIOD/);
  }finally{
   for(const [k,v] of Object.entries(saved))if(v===undefined)delete process.env[k];else process.env[k]=v;
-  rmSync(dir,{recursive:true,force:true});
+  s?.store?.db?.close();rmSync(dir,{recursive:true,force:true});
  }
 });

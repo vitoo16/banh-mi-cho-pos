@@ -3,9 +3,10 @@ import {mkdtempSync,rmSync} from 'node:fs';import {tmpdir} from 'node:os';import
 const require=createRequire(import.meta.url);
 test('Store Hub: price snapshots, idempotency, exact change, shift and guards',()=>{
  const dir=mkdtempSync(join(tmpdir(),'bmc-test-'));
+ let s, rebooted;
  try{
   process.env.STORE_DB_PATH=join(dir,'shop.sqlite');process.env.BOOTSTRAP_OWNER_PIN='owner-secure-123';process.env.BOOTSTRAP_CASHIER_PIN='cashier-secure-456';process.env.BOOTSTRAP_STAFF_PIN='staff-secure-789';process.env.SEED_DEMO_CATALOG='1';
-  const {StoreService}=require('../apps/store-hub/dist/service.js'),s=new StoreService();s.onModuleInit();
+  const {StoreService}=require('../apps/store-hub/dist/service.js');s=new StoreService();s.onModuleInit();
   const staffSession=s.login('staff','staff-secure-789');
   const staff=s.actor('Bearer '+staffSession.token,['STAFF']);
   const extra=s.login('staff','staff-secure-789');
@@ -22,7 +23,7 @@ test('Store Hub: price snapshots, idempotency, exact change, shift and guards',(
   assert.throws(()=>s.login('staff','staff-secure-789'),e=>e.code==='TOO_MANY_ATTEMPTS');
   // Failed-login counters live in SQLite, not process memory.
   const {StoreService:Reload}=require('../apps/store-hub/dist/service.js');
-  const rebooted=new Reload();assert.throws(()=>rebooted.login('staff','staff-secure-789'),e=>e.code==='TOO_MANY_ATTEMPTS');
+  rebooted=new Reload();assert.throws(()=>rebooted.login('staff','staff-secure-789'),e=>e.code==='TOO_MANY_ATTEMPTS');
   s.store.run('DELETE FROM login_attempts WHERE user_id=?','staff');
   const menu=s.catalog();assert.equal(menu.products.length,4);
   const bread=menu.products.find(p=>p.id==='bm-thit');
@@ -84,16 +85,17 @@ test('Store Hub: price snapshots, idempotency, exact change, shift and guards',(
   const closed=s.closeShift(cashier,sh.id,{counted_cash_vnd:960000,reason:'Thiếu 20k sau kiểm đếm'},'close-001');
   assert.equal(closed.variance_vnd,-20000);
   assert.throws(()=>s.movement(cashier,sh.id,{kind:'ADD',amount_vnd:20000,reason:'Sửa quỹ'},'after-close-001'),e=>e.code==='INVALID_SHIFT');
- }finally{rmSync(dir,{recursive:true,force:true})}
+ }finally{rebooted?.store?.db?.close();s?.store?.db?.close();rmSync(dir,{recursive:true,force:true})}
 });
 
 test('pair code one-time use, device-bound Staff sessions, restart and Owner revocation',()=>{
  const dir=mkdtempSync(join(tmpdir(),'bmc-pair-'));
  const old={path:process.env.STORE_DB_PATH,pair:process.env.PAIRING_ENFORCED};
+ let s, db2;
  try{
   process.env.STORE_DB_PATH=join(dir,'pairing.sqlite');process.env.PAIRING_ENFORCED='1';
   process.env.BOOTSTRAP_OWNER_PIN='secure-owner-test';process.env.BOOTSTRAP_CASHIER_PIN='secure-cashier-test';process.env.BOOTSTRAP_STAFF_PIN='secure-staff-test';process.env.SEED_DEMO_CATALOG='1';
-  const {StoreService}=require('../apps/store-hub/dist/service.js');const s=new StoreService();s.onModuleInit();
+  const {StoreService}=require('../apps/store-hub/dist/service.js');s=new StoreService();s.onModuleInit();
   const owner=s.actor('Bearer '+s.login('owner','secure-owner-test').token,['OWNER']);
   assert.throws(()=>s.login('staff','secure-staff-test'),e=>e.code==='DEVICE_PAIRING_REQUIRED');
   const issued=s.issuePairing(owner,'Máy nhân viên 01','pairing-issue-001');
@@ -106,7 +108,7 @@ test('pair code one-time use, device-bound Staff sessions, restart and Owner rev
   assert.throws(()=>s.login('staff','secure-staff-test',issued.pairing_code),e=>e.code==='DEVICE_PAIRING_REQUIRED');
   const relogin=s.login('staff','secure-staff-test',undefined,session.device_token);
   assert.ok(s.actor('Bearer '+relogin.token,['STAFF'],session.device_token));
-  const db2=new StoreService(); // persisted device pairing and tokens survive process restart
+  db2=new StoreService(); // persisted device pairing and tokens survive process restart
   assert.ok(db2.actor('Bearer '+relogin.token,['STAFF'],session.device_token));
   assert.throws(()=>s.logout('Bearer '+relogin.token),e=>e.code==='DEVICE_NOT_TRUSTED','logout must require a valid bound device token');
   assert.throws(()=>s.logout('Bearer '+relogin.token,'incorrect'),e=>e.code==='DEVICE_NOT_TRUSTED');
@@ -120,7 +122,7 @@ test('pair code one-time use, device-bound Staff sessions, restart and Owner rev
   assert.throws(()=>s.actor('Bearer '+renewed.token,['STAFF'],session.device_token),e=>e.code==='SESSION_EXPIRED');
   assert.throws(()=>s.login('staff','secure-staff-test',undefined,session.device_token),e=>e.code==='DEVICE_PAIRING_REQUIRED');
  }finally{
-  if(old.path===undefined)delete process.env.STORE_DB_PATH;else process.env.STORE_DB_PATH=old.path;
+  s?.store?.db?.close();db2?.store?.db?.close();if(old.path===undefined)delete process.env.STORE_DB_PATH;else process.env.STORE_DB_PATH=old.path;
   if(old.pair===undefined)delete process.env.PAIRING_ENFORCED;else process.env.PAIRING_ENFORCED=old.pair;
   rmSync(dir,{recursive:true,force:true});
  }

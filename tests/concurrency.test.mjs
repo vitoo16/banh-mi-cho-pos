@@ -3,15 +3,16 @@ import {mkdtempSync,rmSync} from 'node:fs';import {tmpdir} from 'node:os';import
 const require=createRequire(import.meta.url);
 test('8 staff clients and 150 order commits retain unique codes and totals',()=>{
  const dir=mkdtempSync(join(tmpdir(),'bmc-concurrent-'));
+ let main, instances=[];
  try{
   process.env.STORE_DB_PATH=join(dir,'shop.sqlite');
   process.env.BOOTSTRAP_OWNER_PIN='owner-secure-test';process.env.BOOTSTRAP_CASHIER_PIN='cashier-secure-test';process.env.BOOTSTRAP_STAFF_PIN='staff-secure-test';
   process.env.SEED_DEMO_CATALOG='1';
   const {StoreService}=require('../apps/store-hub/dist/service.js');
-  const main=new StoreService();main.onModuleInit();
+  main=new StoreService();main.onModuleInit();
   const owner=main.actor('Bearer '+main.login('owner','owner-secure-test').token,['OWNER']);
   for(let i=1;i<8;i++)main.addEmployee(owner,{id:'staff'+i,name:'Nhân viên '+i,role:'STAFF',pin:'staff-login-'+i},'employee-create-'+i);
-  const instances=Array.from({length:8},()=>new StoreService());
+  instances=Array.from({length:8},()=>new StoreService());
   const actors=instances.map((s,i)=>s.actor('Bearer '+s.login(i===0?'staff':'staff'+i,i===0?'staff-secure-test':'staff-login-'+i).token,['STAFF']));
   const times=[];const results=[];const version=main.catalog().version;
   for(let i=0;i<150;i++){
@@ -34,5 +35,5 @@ test('8 staff clients and 150 order commits retain unique codes and totals',()=>
   const p95=[...times].sort((a,b)=>a-b)[Math.floor(times.length*.95)];
   console.log('8-client 150 order API sequential-arrival smoke P95(ms):',p95.toFixed(2));
   // Does NOT certify HTTP/network/concurrent 150 orders/hr target. Real device+WAN/LAN load gate is separate.
- }finally{rmSync(dir,{recursive:true,force:true})}
+ }finally{for(const inst of [main,...instances])inst?.store?.db?.close();rmSync(dir,{recursive:true,force:true})}
 });
