@@ -11,6 +11,8 @@ on:
     branches: [main]
 permissions:
   contents: read
+permissions:
+  contents: read
 jobs:
   history-index:
     runs-on: ubuntu-latest
