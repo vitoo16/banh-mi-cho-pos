@@ -148,7 +148,7 @@ test('DEF-DEV-01: npm run dev:hub preserves Nest DI, serves real HTTP, hot-resta
     new Promise(resolve=>child.once('exit',resolve)),
     delay(10_000),
    ]);
-   if(child.exitCode===null)child.kill();
+   if(child.exitCode===null&&child.signalCode===null)child.kill('SIGKILL');
   }
   rmSync(temp,{recursive:true,force:true});
  }
