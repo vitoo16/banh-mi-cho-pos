@@ -28,7 +28,8 @@
     "dev:pos": "npm run dev -w @bmc/web-pos",
     "dev:owner": "npm run dev -w @bmc/web-owner",
     "dev:mobile": "npm run start -w @bmc/mobile-staff",
-    "dev:cloud": "npm run dev -w @bmc/cloud-api"
+    "dev:cloud": "npm run dev -w @bmc/cloud-api",
+    "test:dev:hub": "node --test tests/dev-hub-watch-utils.test.mjs tests/dev-hub-watch.test.mjs"
   },
   "devDependencies": {
     "typescript": "^5.9.3",
