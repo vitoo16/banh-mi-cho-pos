@@ -167,9 +167,13 @@ test('LOAD-02: compare cursor-index read gains against write and storage costs',
   const ownerIndexBuildMs=rounded(performance.now()-ownerIndexBuildStarted);
   ownerOnly.store.db.exec('ANALYZE');
 
-  const bothIndexBuildStarted=performance.now();
-  both.store.db.exec(BOTH_INDEX_SQL);
-  const bothIndexBuildMs=rounded(performance.now()-bothIndexBuildStarted);
+  const bothOwnerIndexBuildStarted=performance.now();
+  both.store.db.exec(OWNER_INDEX_SQL);
+  const bothOwnerIndexBuildMs=rounded(performance.now()-bothOwnerIndexBuildStarted);
+  const staffIndexBuildStarted=performance.now();
+  both.store.db.exec(STAFF_INDEX_SQL);
+  const staffIndexBuildMs=rounded(performance.now()-staffIndexBuildStarted);
+  const bothIndexBuildMs=rounded(bothOwnerIndexBuildMs+staffIndexBuildMs);
   both.store.db.exec('ANALYZE');
 
   // Equal-sized 2k inserts on the same logical rows expose index write cost.
@@ -233,7 +237,7 @@ test('LOAD-02: compare cursor-index read gains against write and storage costs',
    pageSize:PAGE_SIZE,
    warmupPasses:1,
    seed100kMs,
-   indexBuildMs:{ownerOnly:ownerIndexBuildMs,ownerAndStaff:bothIndexBuildMs},
+   indexBuildMs:{ownerOnly:ownerIndexBuildMs,ownerAndStaffOwnerIndex:bothOwnerIndexBuildMs,staffIncremental:staffIndexBuildMs,ownerAndStaffTotal:bothIndexBuildMs},
    extraInsert2kMs,
    writeOverheadPercent:{
     ownerOnly:rounded((extraInsert2kMs.ownerOnly/extraInsert2kMs.baseline-1)*100),
