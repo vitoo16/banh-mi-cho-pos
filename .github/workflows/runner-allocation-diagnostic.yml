@@ -25,3 +25,22 @@ jobs:
           Write-Output "RUNNER_ALLOCATION_OK"
           Write-Output "runner=$env:RUNNER_NAME"
           node --version
+  ubuntu-pinned-runner:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 2
+    steps:
+      - name: Prove pinned Ubuntu runner allocation
+        run: |
+          echo "PINNED_RUNNER_ALLOCATION_OK"
+          echo "runner=$RUNNER_NAME"
+          node --version
+  windows-pinned-runner:
+    runs-on: windows-2022
+    timeout-minutes: 2
+    steps:
+      - name: Prove pinned Windows runner allocation
+        shell: pwsh
+        run: |
+          Write-Output "PINNED_RUNNER_ALLOCATION_OK"
+          Write-Output "runner=$env:RUNNER_NAME"
+          node --version
