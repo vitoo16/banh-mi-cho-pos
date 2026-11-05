@@ -134,9 +134,10 @@ test('DEF-DEV-01: npm run dev:hub preserves Nest DI, serves real HTTP, hot-resta
   catalog=await http(base,'/v1/catalog',{headers:{Authorization:'Bearer '+token}});
   assert.equal(catalog.status,200,'DI must remain intact after watch restart');
 
-  assert.ok(child.kill('SIGTERM'),'SIGTERM must be delivered to the npm dev:hub process');
-  await waitFor(()=>child.exitCode!==null||child.signalCode!==null,'dev:hub process exit after SIGTERM',15_000);
-  assert.ok([0,1,143].includes(child.exitCode)||child.signalCode==='SIGTERM', 'dev:hub must terminate after SIGTERM; output: '+output);
+  const shutdownSignal=process.platform==='win32'?'SIGINT':'SIGTERM';
+  assert.ok(child.kill(shutdownSignal),shutdownSignal+' must be delivered to the npm dev:hub process');
+  await waitFor(()=>child.exitCode!==null||child.signalCode!==null,'dev:hub process exit after '+shutdownSignal,15_000);
+  assert.ok([0,1,130,143].includes(child.exitCode)||child.signalCode===shutdownSignal, 'dev:hub must terminate after '+shutdownSignal+'; output: '+output);
   assert.doesNotMatch(output,/Hub runtime exited:|TypeScript watch stopped unexpectedly/,'watcher must not report an unexpected child-process crash');
   let stillHealthy=true;
   try{await http(base,'/v1/health');}catch{stillHealthy=false;}
@@ -144,7 +145,7 @@ test('DEF-DEV-01: npm run dev:hub preserves Nest DI, serves real HTTP, hot-resta
   assert.equal(await canBind(port),true,'Hub port must be released; no orphan runtime process');
  }finally{
   if(child&&child.exitCode===null&&child.signalCode===null){
-   child.kill('SIGTERM');
+   child.kill(process.platform==='win32'?'SIGINT':'SIGTERM');
    await Promise.race([
     new Promise(resolve=>child.once('exit',resolve)),
     delay(10_000),
