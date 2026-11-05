@@ -1,0 +1,27 @@
+name: GitHub Actions runner allocation diagnostic
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/runner-allocation-diagnostic.yml'
+  workflow_dispatch:
+permissions: {}
+jobs:
+  ubuntu-runner:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Prove runner allocation
+        run: |
+          echo "RUNNER_ALLOCATION_OK"
+          echo "runner=$RUNNER_NAME"
+          node --version
+  windows-runner:
+    runs-on: windows-latest
+    timeout-minutes: 2
+    steps:
+      - name: Prove runner allocation
+        shell: pwsh
+        run: |
+          Write-Output "RUNNER_ALLOCATION_OK"
+          Write-Output "runner=$env:RUNNER_NAME"
+          node --version
