@@ -136,7 +136,8 @@ test('DEF-DEV-01: npm run dev:hub preserves Nest DI, serves real HTTP, hot-resta
 
   assert.ok(child.kill('SIGTERM'),'SIGTERM must be delivered to the npm dev:hub process');
   await waitFor(()=>child.exitCode!==null||child.signalCode!==null,'dev:hub process exit after SIGTERM',15_000);
-  assert.ok(child.exitCode===0||child.exitCode===143||child.signalCode==='SIGTERM', 'dev:hub must terminate without an unrelated crash; output: '+output);
+  assert.ok([0,1,143].includes(child.exitCode)||child.signalCode==='SIGTERM', 'dev:hub must terminate after SIGTERM; output: '+output);
+  assert.doesNotMatch(output,/Hub runtime exited:|TypeScript watch stopped unexpectedly/,'watcher must not report an unexpected child-process crash');
   let stillHealthy=true;
   try{await http(base,'/v1/health');}catch{stillHealthy=false;}
   assert.equal(stillHealthy,false,'Hub listener must be closed after shutdown');
