@@ -1,6 +1,7 @@
 import {spawn} from 'node:child_process';
 import {existsSync} from 'node:fs';
 import {resolve} from 'node:path';
+import {appendTscWatchOutput,isSuccessfulTscWatchOutput} from './dev-hub-watch-utils.mjs';
 
 const root=resolve(import.meta.dirname,'..');
 const workspaceRoot=resolve(root,'../..');
