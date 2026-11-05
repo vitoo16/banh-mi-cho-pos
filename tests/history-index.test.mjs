@@ -241,7 +241,7 @@ test('LOAD-02: compare cursor-index read gains against write and storage costs',
     staffIndexIncremental:rounded((extraInsert2kMs.ownerAndStaff/extraInsert2kMs.ownerOnly-1)*100),
    },
    owner:{
-    baseline,
+    baseline:baselineOwner,
     ownerOnly:ownerOnlyOwner,
     ownerAndStaff:bothOwner,
     queryPlanBefore:baselineOwnerPlan,
