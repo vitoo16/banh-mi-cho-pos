@@ -111,6 +111,50 @@ function assertNoTempSort(lines,label){
   label+' must not sort into a temporary B-tree');
 }
 
+test('LOAD-02-MIG-01: reopening an existing SQLite store adds cursor indexes without changing ledger rows',{
+ timeout:30_000,
+},()=>{
+ const folder=mkdtempSync(join(tmpdir(),'bmc-history-index-migration-'));
+ const path=join(folder,'legacy-store.sqlite');
+ const previousDb=process.env.STORE_DB_PATH;
+ const previousMode=process.env.NODE_ENV;
+ let legacy;
+ let migrated;
+ try{
+  process.env.NODE_ENV='test';
+  process.env.STORE_DB_PATH=path;
+  const {StoreService}=require('../apps/store-hub/dist/service.js');
+  legacy=new StoreService();
+  legacy.store.run(
+   'INSERT INTO orders(id,display_code,created_at,created_by,status,payment_status,requested_method,total_vnd,version,note,lines_json) VALUES(?,?,?,?,?,?,?,?,?,?,?)',
+   'migration-order-1','M00001','2026-01-01T00:00:00.000Z','qa_migration',
+   'COMMITTED','UNPAID','CASH',35_000,1,'','[]'
+  );
+  legacy.store.db.exec('DROP INDEX IF EXISTS idx_orders_history_cursor; DROP INDEX IF EXISTS idx_orders_staff_history_cursor;');
+  legacy.store.db.close();
+  legacy=undefined;
+
+  migrated=new StoreService();
+  const indexes=migrated.store.db.prepare(
+   "SELECT name FROM sqlite_master WHERE type='index' AND name IN ('idx_orders_history_cursor','idx_orders_staff_history_cursor') ORDER BY name"
+  ).all().map(row=>row.name);
+  assert.deepEqual(indexes,['idx_orders_history_cursor','idx_orders_staff_history_cursor']);
+  assert.equal(migrated.store.row('SELECT COUNT(*) n FROM orders').n,1);
+  assert.equal(migrated.store.row("SELECT COUNT(*) n FROM sync_outbox WHERE entity='order'").n,1);
+  assert.equal(migrated.store.row('SELECT display_code FROM orders WHERE id=?','migration-order-1').display_code,'M00001');
+  assert.equal(migrated.store.db.prepare('PRAGMA integrity_check').get().integrity_check,'ok');
+  assert.deepEqual(migrated.store.db.prepare('PRAGMA foreign_key_check').all(),[]);
+ }finally{
+  legacy?.store?.db?.close();
+  migrated?.store?.db?.close();
+  if(previousDb===undefined)delete process.env.STORE_DB_PATH;
+  else process.env.STORE_DB_PATH=previousDb;
+  if(previousMode===undefined)delete process.env.NODE_ENV;
+  else process.env.NODE_ENV=previousMode;
+  rmSync(folder,{recursive:true,force:true});
+ }
+});
+
 test('LOAD-02: compare cursor-index read gains against write and storage costs',{
  timeout:300_000,
 },()=>{
