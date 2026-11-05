@@ -147,9 +147,6 @@ test('LOAD-02 follow-up: composite indexes remove cursor sort while preserving r
   const baselineStaffPlan=plan(baseline,staff,50_000);
   assert.ok(baselineOwnerPlan.some(line=>line.includes('TEMP B-TREE')),
    'Baseline owner cursor query should expose the current tie-break sort');
-  const baselineOwner=measure(baseline,owner,VOLUME);
-  const baselineStaff=measure(baseline,staff,VOLUME);
-
   const indexBuildStarted=performance.now();
   indexed.store.db.exec(INDEX_SQL);
   const indexBuildMs=rounded(performance.now()-indexBuildStarted);
@@ -178,11 +175,11 @@ test('LOAD-02 follow-up: composite indexes remove cursor sort while preserving r
    'Staff cursor must not sort into a temporary B-tree');
 
   const rssBefore=process.memoryUsage().rss;
+  const baselineOwnerAfterInsert=measure(baseline,owner,totalRows);
+  const baselineStaffAfterInsert=measure(baseline,staff,totalRows);
   const indexedOwner=measure(indexed,owner,totalRows);
   const indexedStaff=measure(indexed,staff,totalRows);
   const rssAfter=process.memoryUsage().rss;
-  const baselineOwnerAfterInsert=measure(baseline,owner,totalRows);
-  const baselineStaffAfterInsert=measure(baseline,staff,totalRows);
 
   const baselineSize=dbStats(baseline,baselinePath);
   const indexedSize=dbStats(indexed,indexedPath);
@@ -198,14 +195,12 @@ test('LOAD-02 follow-up: composite indexes remove cursor sort while preserving r
    extraInsert2kMs:{withoutIndexes:rounded(baselineInsertMs),withIndexes:rounded(indexedInsertMs)},
    extraInsertOverheadPercent:rounded((indexedInsertMs/baselineInsertMs-1)*100),
    owner:{
-    baselineAt100k:baselineOwner,
     indexedAt102k:indexedOwner,
     baselineAt102k:baselineOwnerAfterInsert,
     queryPlanBefore:baselineOwnerPlan,
     queryPlanAfter:indexedOwnerPlan,
    },
    staff:{
-    baselineAt100k:baselineStaff,
     indexedAt102k:indexedStaff,
     baselineAt102k:baselineStaffAfterInsert,
     queryPlanBefore:baselineStaffPlan,
