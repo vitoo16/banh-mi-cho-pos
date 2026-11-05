@@ -203,6 +203,13 @@ test('LOAD-02: compare cursor-index read gains against write and storage costs',
   assertNoTempSort(bothOwnerPlan,'Two-index OWNER query');
   assertNoTempSort(bothStaffPlan,'Two-index STAFF query');
 
+  // Warm each independent database once before collecting comparable page timings.
+  for(const [service,actor] of [
+   [baseline,owner],[baseline,staff],
+   [ownerOnly,owner],[ownerOnly,staff],
+   [both,owner],[both,staff],
+  ])measure(service,actor,totalRows);
+
   const rssBefore=process.memoryUsage().rss;
   const baselineOwner=measure(baseline,owner,totalRows);
   const baselineStaff=measure(baseline,staff,totalRows);
@@ -222,6 +229,7 @@ test('LOAD-02: compare cursor-index read gains against write and storage costs',
    rows:totalRows,
    sharedTimestampGroupSize:10,
    pageSize:PAGE_SIZE,
+   warmupPasses:1,
    seed100kMs,
    indexBuildMs:{ownerOnly:ownerIndexBuildMs,ownerAndStaff:bothIndexBuildMs},
    extraInsert2kMs,
