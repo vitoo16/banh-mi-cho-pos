@@ -43,9 +43,9 @@ compiler.stdout.on('data',chunk=>{
  const output=String(chunk);
  process.stdout.write(output);
  // Keep a rolling buffer: stream chunks may split the success line.
- compilerOutput=(compilerOutput+output).slice(-8192);
- // tsc watch emits this line only after a successful compilation.
- if(/Found \d+ errors?\. Watching for file changes\./.test(compilerOutput))startRuntime();
+ compilerOutput=appendTscWatchOutput(compilerOutput,output);
+ // Never boot stale dist output when the current source has TypeScript errors.
+ if(isSuccessfulTscWatchOutput(compilerOutput))startRuntime();
 });
 compiler.once('error',error=>{console.error(error);stop();process.exitCode=1;});
 compiler.once('exit',(code,signal)=>{
