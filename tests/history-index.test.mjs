@@ -59,9 +59,9 @@ function plan(service,actor,boundaryIndex){
  const staffScope=actor.role==='STAFF';
  const sql='EXPLAIN QUERY PLAN SELECT * FROM orders '+
   (staffScope?'WHERE created_by=? AND ':'WHERE ')+
-  '(created_at<? OR (created_at=? AND id<?)) '+
+  '(created_at,id)<(?,?) '+
   'ORDER BY created_at DESC,id DESC LIMIT ?';
- const args=staffScope?[actor.id,timestamp,timestamp,id,PAGE_SIZE+1]:[timestamp,timestamp,id,PAGE_SIZE+1];
+ const args=staffScope?[actor.id,timestamp,id,PAGE_SIZE+1]:[timestamp,id,PAGE_SIZE+1];
  return service.store.db.prepare(sql).all(...args).map(row=>row.detail);
 }
 function measure(service,actor,totalRows){
@@ -193,14 +193,14 @@ test('LOAD-02: compare cursor-index read gains against write and storage costs',
   const ownerOnlyStaffPlan=plan(ownerOnly,staff,50_000);
   const bothOwnerPlan=plan(both,owner,50_000);
   const bothStaffPlan=plan(both,staff,50_000);
-  assert.ok(ownerOnlyOwnerPlan.some(line=>line.includes('idx_orders_history_cursor')),
-   'OWNER/CASHIER query must use the owner cursor index');
-  assert.ok(ownerOnlyStaffPlan.some(line=>line.includes('idx_orders_history_cursor')),
-   'STAFF query must at least use the owner cursor index when the staff index is absent');
-  assert.ok(bothOwnerPlan.some(line=>line.includes('idx_orders_history_cursor')),
-   'OWNER/CASHIER query must use the owner cursor index when both are present');
-  assert.ok(bothStaffPlan.some(line=>line.includes('idx_orders_staff_history_cursor')),
-   'STAFF query must use the staff-scoped composite index when present');
+  assert.ok(ownerOnlyOwnerPlan.some(line=>line.startsWith('SEARCH orders USING INDEX idx_orders_history_cursor')),
+   'OWNER/CASHIER cursor must seek into the owner composite index, not scan it');
+  assert.ok(ownerOnlyStaffPlan.some(line=>line.startsWith('SEARCH orders USING INDEX idx_orders_history_cursor')),
+   'STAFF cursor must seek into the owner index when the staff index is absent');
+  assert.ok(bothOwnerPlan.some(line=>line.startsWith('SEARCH orders USING INDEX idx_orders_history_cursor')),
+   'OWNER/CASHIER cursor must seek into the owner index when both are present');
+  assert.ok(bothStaffPlan.some(line=>line.startsWith('SEARCH orders USING INDEX idx_orders_staff_history_cursor')),
+   'STAFF cursor must seek into the staff-scoped composite index when present');
   assertNoTempSort(ownerOnlyOwnerPlan,'Owner-only OWNER query');
   assertNoTempSort(ownerOnlyStaffPlan,'Owner-only STAFF query');
   assertNoTempSort(bothOwnerPlan,'Two-index OWNER query');
@@ -234,6 +234,7 @@ test('LOAD-02: compare cursor-index read gains against write and storage costs',
    syntheticStaffActors:8,
    staffActorShare:0.125,
    pageSize:PAGE_SIZE,
+   cursorPredicate:'(created_at,id)<(?,?)',
    warmupPasses:1,
    seed100kMs,
    indexBuildMs:{ownerOnly:ownerIndexBuildMs,ownerAndStaffOwnerIndex:bothOwnerIndexBuildMs,staffIncremental:staffIndexBuildMs,ownerAndStaffTotal:bothIndexBuildMs},
