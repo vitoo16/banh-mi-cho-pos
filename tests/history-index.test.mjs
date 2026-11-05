@@ -20,7 +20,7 @@ const VOLUME=100_000;
 const EXTRA=2_000;
 const PAGE_SIZE=100;
 const owner={id:'qa_owner',name:'QA',role:'OWNER'};
-const staff={id:'qa_staff_a',name:'QA',role:'STAFF'};
+const staff={id:'qa_staff_0',name:'QA',role:'STAFF'};
 const padded=n=>String(n).padStart(6,'0');
 const rounded=n=>Math.round(n*100)/100;
 const percentile=(sorted,p)=>sorted[Math.max(0,Math.ceil(sorted.length*p)-1)];
@@ -47,7 +47,7 @@ function seed(service,start,count){
    const timestamp=new Date(epoch+Math.floor(i/10)*60_000).toISOString();
    insert.run(
     'synthetic-order-'+padded(i),'H'+padded(i),timestamp,
-    i%2===0?'qa_staff_a':'qa_staff_b',
+    'qa_staff_'+(i%8),
     'COMMITTED','UNPAID','CASH',35_000,1,'','[]'
    );
   }
@@ -77,7 +77,7 @@ function measure(service,actor,totalRows){
   durations.push(performance.now()-t0);
   assert.ok(result.items.length>0&&result.items.length<=PAGE_SIZE);
   for(const row of result.items){
-   const expected=actor.role==='STAFF'?totalRows-2-2*seen:totalRows-1-seen;
+   const expected=actor.role==='STAFF'?totalRows-8-8*seen:totalRows-1-seen;
    assert.equal(row.display_code,'H'+padded(expected),
     'Cursor gap/duplicate/tie-break order mismatch at row '+seen);
    assert.equal(row.payment_status,'UNPAID');
@@ -89,7 +89,7 @@ function measure(service,actor,totalRows){
   pages++;
   assert.ok(pages<=Math.ceil(totalRows/PAGE_SIZE),'Cursor must terminate');
  }while(cursor);
- assert.equal(seen,actor.role==='STAFF'?totalRows/2:totalRows);
+ assert.equal(seen,actor.role==='STAFF'?totalRows/8:totalRows);
  const sorted=[...durations].sort((a,b)=>a-b);
  return {
   pages,rows:seen,
@@ -228,6 +228,8 @@ test('LOAD-02: compare cursor-index read gains against write and storage costs',
    environment:{node:process.versions.node,platform:process.platform,arch:process.arch,sqlite:baseline.store.db.prepare('SELECT sqlite_version() version').get().version},
    rows:totalRows,
    sharedTimestampGroupSize:10,
+   syntheticStaffActors:8,
+   staffActorShare:0.125,
    pageSize:PAGE_SIZE,
    warmupPasses:1,
    seed100kMs,
@@ -279,9 +281,9 @@ test('LOAD-02: compare cursor-index read gains against write and storage costs',
   assert.equal(report.correctness.baselineOwnerRows,totalRows);
   assert.equal(report.correctness.ownerOnlyOwnerRows,totalRows);
   assert.equal(report.correctness.bothOwnerRows,totalRows);
-  assert.equal(report.correctness.baselineStaffRows,totalRows/2);
-  assert.equal(report.correctness.ownerOnlyStaffRows,totalRows/2);
-  assert.equal(report.correctness.bothStaffRows,totalRows/2);
+  assert.equal(report.correctness.baselineStaffRows,totalRows/8);
+  assert.equal(report.correctness.ownerOnlyStaffRows,totalRows/8);
+  assert.equal(report.correctness.bothStaffRows,totalRows/8);
   assert.equal(report.correctness.baselineOutboxRows,totalRows);
   assert.equal(report.correctness.ownerOnlyOutboxRows,totalRows);
   assert.equal(report.correctness.bothOutboxRows,totalRows);
