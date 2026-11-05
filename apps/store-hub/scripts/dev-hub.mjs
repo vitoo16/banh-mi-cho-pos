@@ -21,7 +21,7 @@ function stop(signal='SIGTERM'){
 process.once('SIGINT',()=>stop('SIGINT'));
 process.once('SIGTERM',()=>stop('SIGTERM'));
 
-compiler=spawn(process.execPath,[tsc,'-p','tsconfig.json','--watch','--preserveWatchOutput'],{
+compiler=spawn(process.execPath,[tsc,'-p','tsconfig.json','--watch','--preserveWatchOutput','--noEmitOnError'],{
  cwd:root,stdio:['ignore','pipe','inherit'],windowsHide:true
 });
 compiler.stdout.on('data',chunk=>{
