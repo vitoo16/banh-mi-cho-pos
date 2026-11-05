@@ -1,10 +1,8 @@
 /**
- * LOAD-02 follow-up: compare cursor history before/after additive composite indexes.
+ * LOAD-02: compare no composite index, OWNER/CASHIER-only index, and both
+ * OWNER/CASHIER + STAFF indexes on equal synthetic SQLite datasets.
  *
- * Two disposable SQLite WAL databases receive identical synthetic rows and
- * trigger-generated outbox events. No shop database, customer data, payments,
- * cloud, printer or bank provider is used.
- *
+ * No shop database, customer data, payments, cloud, printer or bank provider.
  * Timings are CI evidence only; Windows cashier UI and LAN acceptance remain
  * separate field gates.
  */
@@ -26,12 +24,15 @@ const staff={id:'qa_staff_a',name:'QA',role:'STAFF'};
 const padded=n=>String(n).padStart(6,'0');
 const rounded=n=>Math.round(n*100)/100;
 const percentile=(sorted,p)=>sorted[Math.max(0,Math.ceil(sorted.length*p)-1)];
-const INDEX_SQL=`
+const OWNER_INDEX_SQL=`
 CREATE INDEX IF NOT EXISTS idx_orders_history_cursor
  ON orders(created_at DESC,id DESC);
+`;
+const STAFF_INDEX_SQL=`
 CREATE INDEX IF NOT EXISTS idx_orders_staff_history_cursor
  ON orders(created_by,created_at DESC,id DESC);
 `;
+const BOTH_INDEX_SQL=OWNER_INDEX_SQL+STAFF_INDEX_SQL;
 
 function seed(service,start,count){
  const db=service.store;
@@ -106,125 +107,184 @@ function dbStats(service,path){
  const pageSize=service.store.db.prepare('PRAGMA page_size').get().page_size;
  return {fileBytes:statSync(path).size,pageCount,pageSize,allocatedBytes:pageCount*pageSize};
 }
+function assertNoTempSort(lines,label){
+ assert.ok(!lines.some(line=>line.includes('TEMP B-TREE')),
+  label+' must not sort into a temporary B-tree');
+}
 
-test('LOAD-02 follow-up: composite indexes remove cursor sort while preserving rows and measuring write/storage trade-offs',{
+test('LOAD-02: compare cursor-index read gains against write and storage costs',{
  timeout:300_000,
 },()=>{
  const folder=mkdtempSync(join(tmpdir(),'bmc-history-index-'));
  const baselinePath=join(folder,'baseline.sqlite');
- const indexedPath=join(folder,'indexed.sqlite');
+ const ownerOnlyPath=join(folder,'owner-only.sqlite');
+ const bothPath=join(folder,'owner-and-staff.sqlite');
  const previousDb=process.env.STORE_DB_PATH;
  const previousMode=process.env.NODE_ENV;
  let baseline;
- let indexed;
+ let ownerOnly;
+ let both;
  try{
   process.env.NODE_ENV='test';
   const {StoreService}=require('../apps/store-hub/dist/service.js');
   process.env.STORE_DB_PATH=baselinePath;
   baseline=new StoreService();
-  process.env.STORE_DB_PATH=indexedPath;
-  indexed=new StoreService();
+  process.env.STORE_DB_PATH=ownerOnlyPath;
+  ownerOnly=new StoreService();
+  process.env.STORE_DB_PATH=bothPath;
+  both=new StoreService();
 
-  // Confirm startup migration created both indexes, then drop them for a same-data baseline.
-  for(const service of [baseline,indexed]){
-   const names=service.store.db.prepare("SELECT name FROM sqlite_master WHERE type='index' AND name IN ('idx_orders_history_cursor','idx_orders_staff_history_cursor')").all().map(row=>row.name);
+  // Confirm startup migration created both indexes in every fresh database.
+  for(const service of [baseline,ownerOnly,both]){
+   const names=service.store.db.prepare(
+    "SELECT name FROM sqlite_master WHERE type='index' AND name IN ('idx_orders_history_cursor','idx_orders_staff_history_cursor')"
+   ).all().map(row=>row.name);
    assert.deepEqual(names.sort(),['idx_orders_history_cursor','idx_orders_staff_history_cursor']);
+   service.store.db.exec('DROP INDEX IF EXISTS idx_orders_history_cursor; DROP INDEX IF EXISTS idx_orders_staff_history_cursor;');
   }
-  baseline.store.db.exec('DROP INDEX IF EXISTS idx_orders_history_cursor; DROP INDEX IF EXISTS idx_orders_staff_history_cursor;');
-  indexed.store.db.exec('DROP INDEX IF EXISTS idx_orders_history_cursor; DROP INDEX IF EXISTS idx_orders_staff_history_cursor;');
-  const baselineSeedMs=seed(baseline,0,VOLUME);
-  const indexedSeedMs=seed(indexed,0,VOLUME);
-  assert.equal(baseline.store.row('SELECT COUNT(*) n FROM orders').n,VOLUME);
-  assert.equal(indexed.store.row('SELECT COUNT(*) n FROM orders').n,VOLUME);
-  assert.equal(baseline.store.row("SELECT COUNT(*) n FROM sync_outbox WHERE entity='order'").n,VOLUME);
-  assert.equal(indexed.store.row("SELECT COUNT(*) n FROM sync_outbox WHERE entity='order'").n,VOLUME);
-  assert.equal(baseline.store.row('SELECT COUNT(*) n FROM payments').n,0);
-  assert.equal(indexed.store.row('SELECT COUNT(*) n FROM payments').n,0);
 
-  baseline.store.db.exec('ANALYZE');
-  indexed.store.db.exec('ANALYZE');
+  const seed100kMs={
+   baseline:rounded(seed(baseline,0,VOLUME)),
+   ownerOnly:rounded(seed(ownerOnly,0,VOLUME)),
+   ownerAndStaff:rounded(seed(both,0,VOLUME)),
+  };
+  for(const service of [baseline,ownerOnly,both]){
+   assert.equal(service.store.row('SELECT COUNT(*) n FROM orders').n,VOLUME);
+   assert.equal(service.store.row("SELECT COUNT(*) n FROM sync_outbox WHERE entity='order'").n,VOLUME);
+   assert.equal(service.store.row('SELECT COUNT(*) n FROM payments').n,0);
+   service.store.db.exec('ANALYZE');
+  }
+
   const baselineOwnerPlan=plan(baseline,owner,50_000);
   const baselineStaffPlan=plan(baseline,staff,50_000);
   assert.ok(baselineOwnerPlan.some(line=>line.includes('TEMP B-TREE')),
    'Baseline owner cursor query should expose the current tie-break sort');
-  const indexBuildStarted=performance.now();
-  indexed.store.db.exec(INDEX_SQL);
-  const indexBuildMs=rounded(performance.now()-indexBuildStarted);
-  indexed.store.db.exec('ANALYZE');
+  assert.ok(baselineStaffPlan.some(line=>line.includes('TEMP B-TREE')),
+   'Baseline staff cursor query should expose the current tie-break sort');
 
-  // Equal-sized, identical post-index insert batches expose write amplification.
-  const baselineInsertMs=seed(baseline,VOLUME,EXTRA);
-  const indexedInsertMs=seed(indexed,VOLUME,EXTRA);
+  const ownerIndexBuildStarted=performance.now();
+  ownerOnly.store.db.exec(OWNER_INDEX_SQL);
+  const ownerIndexBuildMs=rounded(performance.now()-ownerIndexBuildStarted);
+  ownerOnly.store.db.exec('ANALYZE');
+
+  const bothIndexBuildStarted=performance.now();
+  both.store.db.exec(BOTH_INDEX_SQL);
+  const bothIndexBuildMs=rounded(performance.now()-bothIndexBuildStarted);
+  both.store.db.exec('ANALYZE');
+
+  // Equal-sized 2k inserts on the same logical rows expose index write cost.
+  const extraInsert2kMs={
+   baseline:rounded(seed(baseline,VOLUME,EXTRA)),
+   ownerOnly:rounded(seed(ownerOnly,VOLUME,EXTRA)),
+   ownerAndStaff:rounded(seed(both,VOLUME,EXTRA)),
+  };
   const totalRows=VOLUME+EXTRA;
-  assert.equal(baseline.store.row('SELECT COUNT(*) n FROM orders').n,totalRows);
-  assert.equal(indexed.store.row('SELECT COUNT(*) n FROM orders').n,totalRows);
-  assert.equal(baseline.store.row("SELECT COUNT(*) n FROM sync_outbox WHERE entity='order'").n,totalRows);
-  assert.equal(indexed.store.row("SELECT COUNT(*) n FROM sync_outbox WHERE entity='order'").n,totalRows);
+  for(const service of [baseline,ownerOnly,both]){
+   assert.equal(service.store.row('SELECT COUNT(*) n FROM orders').n,totalRows);
+   assert.equal(service.store.row("SELECT COUNT(*) n FROM sync_outbox WHERE entity='order'").n,totalRows);
+   assert.equal(service.store.row('SELECT COUNT(*) n FROM payments').n,0);
+   service.store.db.exec('ANALYZE');
+  }
 
-  baseline.store.db.exec('ANALYZE');
-  indexed.store.db.exec('ANALYZE');
-  const indexedOwnerPlan=plan(indexed,owner,50_000);
-  const indexedStaffPlan=plan(indexed,staff,50_000);
-  assert.ok(indexedOwnerPlan.some(line=>line.includes('idx_orders_history_cursor')),
-   'Owner cursor must use the composite cursor index');
-  assert.ok(indexedStaffPlan.some(line=>line.includes('idx_orders_staff_history_cursor')),
-   'Staff cursor must use the staff-scoped composite index');
-  assert.ok(!indexedOwnerPlan.some(line=>line.includes('TEMP B-TREE')),
-   'Owner cursor must not sort into a temporary B-tree');
-  assert.ok(!indexedStaffPlan.some(line=>line.includes('TEMP B-TREE')),
-   'Staff cursor must not sort into a temporary B-tree');
+  const ownerOnlyOwnerPlan=plan(ownerOnly,owner,50_000);
+  const ownerOnlyStaffPlan=plan(ownerOnly,staff,50_000);
+  const bothOwnerPlan=plan(both,owner,50_000);
+  const bothStaffPlan=plan(both,staff,50_000);
+  assert.ok(ownerOnlyOwnerPlan.some(line=>line.includes('idx_orders_history_cursor')),
+   'OWNER/CASHIER query must use the owner cursor index');
+  assert.ok(ownerOnlyStaffPlan.some(line=>line.includes('idx_orders_history_cursor')),
+   'STAFF query must at least use the owner cursor index when the staff index is absent');
+  assert.ok(bothOwnerPlan.some(line=>line.includes('idx_orders_history_cursor')),
+   'OWNER/CASHIER query must use the owner cursor index when both are present');
+  assert.ok(bothStaffPlan.some(line=>line.includes('idx_orders_staff_history_cursor')),
+   'STAFF query must use the staff-scoped composite index when present');
+  assertNoTempSort(ownerOnlyOwnerPlan,'Owner-only OWNER query');
+  assertNoTempSort(ownerOnlyStaffPlan,'Owner-only STAFF query');
+  assertNoTempSort(bothOwnerPlan,'Two-index OWNER query');
+  assertNoTempSort(bothStaffPlan,'Two-index STAFF query');
 
   const rssBefore=process.memoryUsage().rss;
-  const baselineOwnerAfterInsert=measure(baseline,owner,totalRows);
-  const baselineStaffAfterInsert=measure(baseline,staff,totalRows);
-  const indexedOwner=measure(indexed,owner,totalRows);
-  const indexedStaff=measure(indexed,staff,totalRows);
+  const baselineOwner=measure(baseline,owner,totalRows);
+  const baselineStaff=measure(baseline,staff,totalRows);
+  const ownerOnlyOwner=measure(ownerOnly,owner,totalRows);
+  const ownerOnlyStaff=measure(ownerOnly,staff,totalRows);
+  const bothOwner=measure(both,owner,totalRows);
+  const bothStaff=measure(both,staff,totalRows);
   const rssAfter=process.memoryUsage().rss;
 
   const baselineSize=dbStats(baseline,baselinePath);
-  const indexedSize=dbStats(indexed,indexedPath);
+  const ownerOnlySize=dbStats(ownerOnly,ownerOnlyPath);
+  const bothSize=dbStats(both,bothPath);
   const report={
-   scenario:'LOAD-02 composite cursor index comparison',
-   version:1,
+   scenario:'LOAD-02 three-way composite cursor index comparison',
+   version:2,
    environment:{node:process.versions.node,platform:process.platform,arch:process.arch,sqlite:baseline.store.db.prepare('SELECT sqlite_version() version').get().version},
    rows:totalRows,
    sharedTimestampGroupSize:10,
    pageSize:PAGE_SIZE,
-   seed100kMs:{baseline:rounded(baselineSeedMs),candidate:rounded(indexedSeedMs)},
-   indexBuildMs,
-   extraInsert2kMs:{withoutIndexes:rounded(baselineInsertMs),withIndexes:rounded(indexedInsertMs)},
-   extraInsertOverheadPercent:rounded((indexedInsertMs/baselineInsertMs-1)*100),
+   seed100kMs,
+   indexBuildMs:{ownerOnly:ownerIndexBuildMs,ownerAndStaff:bothIndexBuildMs},
+   extraInsert2kMs,
+   writeOverheadPercent:{
+    ownerOnly:rounded((extraInsert2kMs.ownerOnly/extraInsert2kMs.baseline-1)*100),
+    ownerAndStaff:rounded((extraInsert2kMs.ownerAndStaff/extraInsert2kMs.baseline-1)*100),
+    staffIndexIncremental:rounded((extraInsert2kMs.ownerAndStaff/extraInsert2kMs.ownerOnly-1)*100),
+   },
    owner:{
-    indexedAt102k:indexedOwner,
-    baselineAt102k:baselineOwnerAfterInsert,
+    baseline,
+    ownerOnly:ownerOnlyOwner,
+    ownerAndStaff:bothOwner,
     queryPlanBefore:baselineOwnerPlan,
-    queryPlanAfter:indexedOwnerPlan,
+    queryPlanOwnerOnly:ownerOnlyOwnerPlan,
+    queryPlanOwnerAndStaff:bothOwnerPlan,
    },
    staff:{
-    indexedAt102k:indexedStaff,
-    baselineAt102k:baselineStaffAfterInsert,
+    baseline:baselineStaff,
+    ownerOnly:ownerOnlyStaff,
+    ownerAndStaff:bothStaff,
     queryPlanBefore:baselineStaffPlan,
-    queryPlanAfter:indexedStaffPlan,
+    queryPlanOwnerOnly:ownerOnlyStaffPlan,
+    queryPlanOwnerAndStaff:bothStaffPlan,
    },
-   storage:{withoutIndexes:baselineSize,withIndexes:indexedSize,addedFileBytes:indexedSize.fileBytes-baselineSize.fileBytes},
-   processRss:{beforeIndexedTraversalBytes:rssBefore,afterIndexedTraversalBytes:rssAfter,deltaBytes:rssAfter-rssBefore,
-    caveat:'Process RSS is shared-process informational data, not attributable index-only memory.'},
-   correctness:{baselineRows:baselineOwnerAfterInsert.rows,indexedRows:indexedOwner.rows,staffRows:indexedStaff.rows,
+   storage:{
+    baseline:baselineSize,
+    ownerOnly:ownerOnlySize,
+    ownerAndStaff:bothSize,
+    addedBytesOwnerOnly:ownerOnlySize.fileBytes-baselineSize.fileBytes,
+    addedBytesStaffIndex:bothSize.fileBytes-ownerOnlySize.fileBytes,
+    addedBytesBoth:bothSize.fileBytes-baselineSize.fileBytes,
+   },
+   processRss:{
+    beforeTraversalBytes:rssBefore,afterTraversalBytes:rssAfter,deltaBytes:rssAfter-rssBefore,
+    caveat:'Process RSS is shared-process informational data, not attributable index-only memory.'
+   },
+   correctness:{
+    baselineOwnerRows:baselineOwner.rows,ownerOnlyOwnerRows:ownerOnlyOwner.rows,bothOwnerRows:bothOwner.rows,
+    baselineStaffRows:baselineStaff.rows,ownerOnlyStaffRows:ownerOnlyStaff.rows,bothStaffRows:bothStaff.rows,
     baselineOutboxRows:baseline.store.row("SELECT COUNT(*) n FROM sync_outbox WHERE entity='order'").n,
-    indexedOutboxRows:indexed.store.row("SELECT COUNT(*) n FROM sync_outbox WHERE entity='order'").n,
-    paymentRows:0,duplicateOrMissingRows:0},
+    ownerOnlyOutboxRows:ownerOnly.store.row("SELECT COUNT(*) n FROM sync_outbox WHERE entity='order'").n,
+    bothOutboxRows:both.store.row("SELECT COUNT(*) n FROM sync_outbox WHERE entity='order'").n,
+    paymentRows:0,duplicateOrMissingRows:0,
+   },
    caveat:'Synthetic SQLite WAL and StoreService.history only. Not live HTTP, POS browser, 8 phones, Windows cashier UI, cloud or production data. Timings are CI-comparative only; real Windows p95 <=300ms and LAN p95 <=400ms remain field gates.'
   };
-  assert.equal(report.correctness.baselineRows,totalRows);
-  assert.equal(report.correctness.indexedRows,totalRows);
-  assert.equal(report.correctness.staffRows,totalRows/2);
+  assert.equal(report.correctness.baselineOwnerRows,totalRows);
+  assert.equal(report.correctness.ownerOnlyOwnerRows,totalRows);
+  assert.equal(report.correctness.bothOwnerRows,totalRows);
+  assert.equal(report.correctness.baselineStaffRows,totalRows/2);
+  assert.equal(report.correctness.ownerOnlyStaffRows,totalRows/2);
+  assert.equal(report.correctness.bothStaffRows,totalRows/2);
+  assert.equal(report.correctness.baselineOutboxRows,totalRows);
+  assert.equal(report.correctness.ownerOnlyOutboxRows,totalRows);
+  assert.equal(report.correctness.bothOutboxRows,totalRows);
   const dir=resolve('artifacts/perf');
   mkdirSync(dir,{recursive:true});
   writeFileSync(join(dir,'load02-history-index-comparison.json'),JSON.stringify(report,null,2)+'\n');
   console.log('BMC_LOAD02_HISTORY_INDEX '+JSON.stringify(report));
  }finally{
   baseline?.store?.db?.close();
-  indexed?.store?.db?.close();
+  ownerOnly?.store?.db?.close();
+  both?.store?.db?.close();
   if(previousDb===undefined)delete process.env.STORE_DB_PATH;
   else process.env.STORE_DB_PATH=previousDb;
   if(previousMode===undefined)delete process.env.NODE_ENV;
