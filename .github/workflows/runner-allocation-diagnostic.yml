@@ -44,3 +44,12 @@ jobs:
           Write-Output "PINNED_RUNNER_ALLOCATION_OK"
           Write-Output "runner=$env:RUNNER_NAME"
           node --version
+  ubuntu-slim-runner:
+    runs-on: ubuntu-slim
+    timeout-minutes: 2
+    steps:
+      - name: Prove slim container runner allocation
+        run: |
+          echo "SLIM_RUNNER_ALLOCATION_OK"
+          echo "runner=$RUNNER_NAME"
+          node --version
