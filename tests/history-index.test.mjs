@@ -237,13 +237,13 @@ test('LOAD-02: compare cursor-index read gains against write and storage costs',
   const ownerOnlyStaffPlan=plan(ownerOnly,staff,50_000);
   const bothOwnerPlan=plan(both,owner,50_000);
   const bothStaffPlan=plan(both,staff,50_000);
-  assert.ok(ownerOnlyOwnerPlan.some(line=>line.startsWith('SEARCH orders USING INDEX idx_orders_history_cursor')),
+  assert.ok(ownerOnlyOwnerPlan.some(line=>line.startsWith('SEARCH orders USING INDEX idx_orders_history_cursor')&&line.includes('(created_at,id)<(?,?)')),
    'OWNER/CASHIER cursor must seek into the owner composite index, not scan it');
-  assert.ok(ownerOnlyStaffPlan.some(line=>line.startsWith('SEARCH orders USING INDEX idx_orders_history_cursor')),
+  assert.ok(ownerOnlyStaffPlan.some(line=>line.startsWith('SEARCH orders USING INDEX idx_orders_history_cursor')&&line.includes('(created_at,id)<(?,?)')),
    'STAFF cursor must seek into the owner index when the staff index is absent');
-  assert.ok(bothOwnerPlan.some(line=>line.startsWith('SEARCH orders USING INDEX idx_orders_history_cursor')),
+  assert.ok(bothOwnerPlan.some(line=>line.startsWith('SEARCH orders USING INDEX idx_orders_history_cursor')&&line.includes('(created_at,id)<(?,?)')),
    'OWNER/CASHIER cursor must seek into the owner index when both are present');
-  assert.ok(bothStaffPlan.some(line=>line.startsWith('SEARCH orders USING INDEX idx_orders_staff_history_cursor')),
+  assert.ok(bothStaffPlan.some(line=>line.startsWith('SEARCH orders USING INDEX idx_orders_staff_history_cursor')&&line.includes('(created_at,id)<(?,?)')),
    'STAFF cursor must seek into the staff-scoped composite index when present');
   assertNoTempSort(ownerOnlyOwnerPlan,'Owner-only OWNER query');
   assertNoTempSort(ownerOnlyStaffPlan,'Owner-only STAFF query');
