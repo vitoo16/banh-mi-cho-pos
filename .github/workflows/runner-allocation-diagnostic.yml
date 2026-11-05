@@ -52,4 +52,3 @@ jobs:
         run: |
           echo "SLIM_RUNNER_ALLOCATION_OK"
           echo "runner=$RUNNER_NAME"
-          node --version
