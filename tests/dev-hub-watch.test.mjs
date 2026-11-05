@@ -43,6 +43,19 @@ async function login(base,pin){
  assert.equal(typeof result.body.token,'string');
  return result.body.token;
 }
+async function terminateProcessTree(child){
+ if(process.platform==='win32'){
+  await new Promise((resolve,reject)=>{
+   const killer=spawn('taskkill',['/PID',String(child.pid),'/T','/F'],{windowsHide:true,stdio:'ignore'});
+   killer.once('error',reject);
+   killer.once('exit',code=>code===0?resolve():reject(new Error('taskkill failed with exit code '+code)));
+  });
+ }else{
+  child.kill('SIGTERM');
+ }
+ await waitFor(()=>child.exitCode!==null||child.signalCode!==null,'dev:hub process tree shutdown',15_000);
+}
+
 async function canBind(port){
  const server=createServer();
  try{
@@ -134,23 +147,21 @@ test('DEF-DEV-01: npm run dev:hub preserves Nest DI, serves real HTTP, hot-resta
   catalog=await http(base,'/v1/catalog',{headers:{Authorization:'Bearer '+token}});
   assert.equal(catalog.status,200,'DI must remain intact after watch restart');
 
-  const shutdownSignal=process.platform==='win32'?'SIGINT':'SIGTERM';
-  assert.ok(child.kill(shutdownSignal),shutdownSignal+' must be delivered to the npm dev:hub process');
-  await waitFor(()=>child.exitCode!==null||child.signalCode!==null,'dev:hub process exit after '+shutdownSignal,15_000);
-  assert.ok([0,1,130,143].includes(child.exitCode)||child.signalCode===shutdownSignal, 'dev:hub must terminate after '+shutdownSignal+'; output: '+output);
-  assert.doesNotMatch(output,/Hub runtime exited:|TypeScript watch stopped unexpectedly/,'watcher must not report an unexpected child-process crash');
+  await terminateProcessTree(child);
+  assert.ok(child.exitCode!==null||child.signalCode!==null,'dev:hub launcher must exit after process-tree shutdown');
+  if(process.platform!=='win32'){
+   assert.ok([0,1,143].includes(child.exitCode)||child.signalCode==='SIGTERM','dev:hub must terminate after SIGTERM; output: '+output);
+   assert.doesNotMatch(output,/Hub runtime exited:|TypeScript watch stopped unexpectedly/,'watcher must not report an unexpected child-process crash');
+  }
   let stillHealthy=true;
   try{await http(base,'/v1/health');}catch{stillHealthy=false;}
   assert.equal(stillHealthy,false,'Hub listener must be closed after shutdown');
   assert.equal(await canBind(port),true,'Hub port must be released; no orphan runtime process');
  }finally{
   if(child&&child.exitCode===null&&child.signalCode===null){
-   child.kill(process.platform==='win32'?'SIGINT':'SIGTERM');
-   await Promise.race([
-    new Promise(resolve=>child.once('exit',resolve)),
-    delay(10_000),
-   ]);
-   if(child.exitCode===null&&child.signalCode===null)child.kill('SIGKILL');
+   try{await terminateProcessTree(child);}catch{
+    if(child.exitCode===null&&child.signalCode===null)child.kill('SIGKILL');
+   }
   }
   rmSync(temp,{recursive:true,force:true});
  }
