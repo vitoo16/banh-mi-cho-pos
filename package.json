@@ -20,6 +20,7 @@
     "test:perf:http": "node --test tests/perf-hub-http.test.mjs",
     "test:e2e": "node --test tests/e2e/real-hub-api.test.mjs tests/e2e/concurrency-load.e2e.test.mjs && playwright test -c playwright.e2e.config.ts",
     "docs:check": "node scripts/check-docs.mjs",
+    "test:security:hub-network": "node --test tests/hub-network-policy.test.mjs",
     "backup:store": "node scripts/store-backup.mjs backup",
     "verify:backup": "node scripts/store-backup.mjs verify",
     "check:backup-freshness": "node scripts/check-backup-freshness.mjs",
@@ -28,8 +29,7 @@
     "dev:pos": "npm run dev -w @bmc/web-pos",
     "dev:owner": "npm run dev -w @bmc/web-owner",
     "dev:mobile": "npm run start -w @bmc/mobile-staff",
-    "dev:cloud": "npm run dev -w @bmc/cloud-api",
-    "test:security:hub-network": "node --test tests/hub-network-policy.test.mjs"
+    "dev:cloud": "npm run dev -w @bmc/cloud-api"
   },
   "devDependencies": {
     "typescript": "^5.9.3",
