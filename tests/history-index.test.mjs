@@ -32,7 +32,6 @@ const STAFF_INDEX_SQL=`
 CREATE INDEX IF NOT EXISTS idx_orders_staff_history_cursor
  ON orders(created_by,created_at DESC,id DESC);
 `;
-const BOTH_INDEX_SQL=OWNER_INDEX_SQL+STAFF_INDEX_SQL;
 
 function seed(service,start,count){
  const db=service.store;
