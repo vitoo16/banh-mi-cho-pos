@@ -1,0 +1,30 @@
+name: Store Hub development watcher smoke
+on:
+  pull_request:
+    paths:
+      - 'apps/store-hub/**'
+      - 'packages/contracts/**'
+      - 'tests/dev-hub-watch.test.mjs'
+      - 'tests/dev-hub-watch-utils.test.mjs'
+      - 'package.json'
+      - '.github/workflows/store-hub-dev-watch.yml'
+  push:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  dev-watch:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm install --no-audit --no-fund
+      - run: npm run build -w @bmc/contracts
+      - run: npm run test:dev:hub
