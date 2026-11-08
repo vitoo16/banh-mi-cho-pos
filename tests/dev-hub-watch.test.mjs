@@ -130,22 +130,37 @@ test('DEF-DEV-01: npm run dev:hub preserves Nest DI, serves real HTTP, hot-resta
   let catalog=await http(base,'/v1/catalog',{headers:{Authorization:'Bearer '+token}});
   assert.equal(catalog.status,200,'GET /v1/catalog must succeed; output: '+output);
 
-  // Touch a copied, imported controller source file. The compiler must emit
-  // controller.js and Node --watch must restart the actual Hub process.
+  // Introduce a real TypeScript error. The old Hub must stop instead of
+  // serving stale dist output while the source tree is broken.
   const controllerPath=join(tempHub,'src','controller.ts');
   const controllerSource=readFileSync(controllerPath,'utf8');
   const firstStartCount=(output.match(/BMC PILOT HUB/g)||[]).length;
-  writeFileSync(controllerPath,controllerSource+'\n// DEV_HUB_WATCH_RESTART_FIXTURE\n');
-  await waitFor(()=>((output.match(/BMC PILOT HUB/g)||[]).length)>firstStartCount,'Node watch restart after TypeScript recompilation');
+  writeFileSync(controllerPath,controllerSource+'\nconst DEV_HUB_WATCH_BROKEN: string = 42;\n');
+  await waitFor(()=>/Found 1 error\. Watching for file changes\./.test(output),'TypeScript watch error result');
+  let unavailable=false;
+  for(let attempt=0;attempt<40;attempt++){
+   try{
+    const response=await fetch(base+'/v1/health',{signal:AbortSignal.timeout(500)});
+    if(!response.ok){unavailable=true;break;}
+   }catch{unavailable=true;break;}
+   await delay(150);
+  }
+  assert.equal(unavailable,true,'Hub must stop serving the last successful build while TypeScript has errors; output: '+output);
+
+  // Repair the source. A fresh clean compile must launch the Hub again.
+  writeFileSync(controllerPath,controllerSource+'\n// DEV_HUB_WATCH_RECOVERY_FIXTURE\n');
+  await waitFor(()=>((output.match(/BMC PILOT HUB/g)||[]).length)>firstStartCount,'Hub restart after TypeScript error recovery');
   health=undefined;
   for(let attempt=0;attempt<40;attempt++){
    try{health=await http(base,'/v1/health');if(health.ok)break;}catch{}
    await delay(150);
   }
-  assert.equal(health?.status,200,'Hub must serve HTTP after watch restart; output: '+output);
+  assert.equal(health?.status,200,'Hub must serve HTTP after TypeScript error recovery; output: '+output);
   token=await login(base,staffPin);
   catalog=await http(base,'/v1/catalog',{headers:{Authorization:'Bearer '+token}});
-  assert.equal(catalog.status,200,'DI must remain intact after watch restart');
+  assert.equal(catalog.status,200,'Nest dependency injection must remain intact after error recovery');
+  assert.doesNotMatch(output,/Hub runtime stopped:|Hub runtime exited:|TypeScript watch stopped unexpectedly/,
+   'intentional stop during compiler errors must not be reported as an unexpected crash');
 
   await terminateProcessTree(child);
   assert.ok(child.exitCode!==null||child.signalCode!==null,'dev:hub launcher must exit after process-tree shutdown');
