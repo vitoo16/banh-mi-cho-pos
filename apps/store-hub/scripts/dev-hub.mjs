@@ -1,7 +1,7 @@
 import {spawn} from 'node:child_process';
 import {existsSync} from 'node:fs';
 import {resolve} from 'node:path';
-import {appendTscWatchOutput,isSuccessfulTscWatchOutput} from './dev-hub-watch-utils.mjs';
+import {appendTscWatchOutput,getTscWatchStatus} from './dev-hub-watch-utils.mjs';
 
 const root=resolve(import.meta.dirname,'..');
 const workspaceRoot=resolve(root,'../..');
@@ -12,25 +12,51 @@ if(!existsSync(tsc))throw new Error('TypeScript compiler not found at '+tsc+'. R
 let compiler;
 let runtime;
 let stopping=false;
-let compiled=false;
+let runtimeWanted=false;
 let compilerOutput='';
 
+function isRunning(child){
+ return Boolean(child&&child.exitCode===null&&child.signalCode===null);
+}
+function stopRuntimeForCompileError(){
+ runtimeWanted=false;
+ const active=runtime;
+ if(isRunning(active)){
+  active.expectedStop=true;
+  active.kill('SIGTERM');
+ }
+}
 function stop(signal='SIGTERM'){
  if(stopping)return;
  stopping=true;
- if(runtime&&!runtime.killed)runtime.kill(signal);
- if(compiler&&!compiler.killed)compiler.kill(signal);
+ runtimeWanted=false;
+ const active=runtime;
+ if(isRunning(active)){
+  active.expectedStop=true;
+  active.kill(signal);
+ }
+ if(isRunning(compiler))compiler.kill(signal);
 }
 function startRuntime(){
- if(compiled||stopping)return;
- compiled=true;
- runtime=spawn(process.execPath,['--watch',entry],{
+ if(stopping)return;
+ runtimeWanted=true;
+ if(isRunning(runtime))return;
+ const child=spawn(process.execPath,['--watch',entry],{
   cwd:root,stdio:'inherit',windowsHide:true
  });
- runtime.once('error',error=>{console.error(error);stop();process.exitCode=1;});
- runtime.once('exit',(code,signal)=>{
-  if(!stopping&&signal){console.error('Hub runtime stopped:',signal);stop();process.exitCode=1;}
-  else if(!stopping&&code!==0){console.error('Hub runtime exited:',code);stop();process.exitCode=code||1;}
+ runtime=child;
+ child.once('error',error=>{console.error(error);stop();process.exitCode=1;});
+ child.once('exit',(code,signal)=>{
+  if(runtime===child)runtime=undefined;
+  if(stopping)return;
+  // A compile error intentionally stops the old server. If a clean compile
+  // arrived before this exit event, bring the server back on the fresh output.
+  if(child.expectedStop){
+   if(runtimeWanted)startRuntime();
+   return;
+  }
+  if(signal){console.error('Hub runtime stopped:',signal);stop();process.exitCode=1;}
+  else if(code!==0){console.error('Hub runtime exited:',code);stop();process.exitCode=code||1;}
  });
 }
 process.once('SIGINT',()=>stop('SIGINT'));
@@ -42,10 +68,15 @@ compiler=spawn(process.execPath,[tsc,'-p','tsconfig.json','--watch','--preserveW
 compiler.stdout.on('data',chunk=>{
  const output=String(chunk);
  process.stdout.write(output);
- // Keep a rolling buffer: stream chunks may split the success line.
+ // Keep a rolling buffer: stream chunks may split the compiler status line.
  compilerOutput=appendTscWatchOutput(compilerOutput,output);
- // Never boot stale dist output when the current source has TypeScript errors.
- if(isSuccessfulTscWatchOutput(compilerOutput))startRuntime();
+ const status=getTscWatchStatus(compilerOutput);
+ if(status==='error'){
+  // Do not leave the last known-good server running while source is broken.
+  stopRuntimeForCompileError();
+ }else if(status==='success'){
+  startRuntime();
+ }
 });
 compiler.once('error',error=>{console.error(error);stop();process.exitCode=1;});
 compiler.once('exit',(code,signal)=>{
