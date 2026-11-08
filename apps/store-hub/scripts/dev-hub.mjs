@@ -18,12 +18,24 @@ let compilerOutput='';
 function isRunning(child){
  return Boolean(child&&child.exitCode===null&&child.signalCode===null);
 }
+function terminateRuntimeTree(child,signal='SIGTERM'){
+ if(!isRunning(child))return;
+ if(process.platform!=='win32'){
+  child.kill(signal);
+  return;
+ }
+ const killer=spawn('taskkill',['/PID',String(child.pid),'/T','/F'],{
+  windowsHide:true,stdio:'ignore'
+ });
+ killer.once('error',()=>{if(isRunning(child))child.kill(signal);});
+ killer.once('exit',code=>{if(code!==0&&isRunning(child))child.kill(signal);});
+}
 function stopRuntimeForCompileError(){
  runtimeWanted=false;
  const active=runtime;
  if(isRunning(active)){
   active.expectedStop=true;
-  active.kill('SIGTERM');
+  terminateRuntimeTree(active,'SIGTERM');
  }
 }
 function stop(signal='SIGTERM'){
@@ -33,7 +45,7 @@ function stop(signal='SIGTERM'){
  const active=runtime;
  if(isRunning(active)){
   active.expectedStop=true;
-  active.kill(signal);
+  terminateRuntimeTree(active,signal);
  }
  if(isRunning(compiler))compiler.kill(signal);
 }
