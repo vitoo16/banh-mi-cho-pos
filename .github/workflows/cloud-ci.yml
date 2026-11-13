@@ -1,7 +1,24 @@
+# Keep main/production-history verification intact; cancel only obsolete revisions of the same PR.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 name: Cloud Postgres contract and sync tests
 on:
   pull_request:
-    paths: ['apps/cloud-api/**','apps/store-hub/src/sync.ts','apps/store-hub/src/db.ts','tests/cloud.test.mjs','tests/remote-product-commands.test.mjs','tests/cloud-projection-order.test.mjs','tests/owner-analytics-cloud.test.mjs','apps/store-hub/src/service.ts','.github/workflows/cloud-ci.yml']
+    paths:
+      - 'apps/cloud-api/**'
+      - 'apps/store-hub/src/sync.ts'
+      - 'apps/store-hub/src/db.ts'
+      - 'apps/store-hub/src/service.ts'
+      - 'packages/contracts/**'
+      - 'package.json'
+      - 'tests/cloud.test.mjs'
+      - 'tests/sepay.test.mjs'
+      - 'tests/remote-product-commands.test.mjs'
+      - 'tests/cloud-projection-order.test.mjs'
+      - 'tests/owner-analytics-cloud.test.mjs'
+      - '.github/workflows/cloud-ci.yml'
   push:
     branches: [main]
 permissions:

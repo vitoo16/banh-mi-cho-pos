@@ -1,3 +1,8 @@
+# Keep main/production-history verification intact; cancel only obsolete revisions of the same PR.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 name: Documentation and contract starter validation
 on:
   pull_request:
@@ -15,6 +20,8 @@ jobs:
           node-version: '24'
       - name: Validate planning pack
         run: node scripts/check-docs.mjs
+      - name: Verify CI trigger coverage (no third-party parser)
+        run: node --test tests/ci-workflow-triggers.test.mjs
 # Production code CI (pnpm install, lint, typecheck, unit, contract, DB integration,
 # web Playwright, Android native build and load/print gates) will be added under M1-M5.
 # This documentation-only check must never be presented as production validation.
