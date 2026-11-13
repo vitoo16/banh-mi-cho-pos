@@ -20,6 +20,8 @@ jobs:
           node-version: '24'
       - name: Validate planning pack
         run: node scripts/check-docs.mjs
+      - name: Verify CI trigger coverage (no third-party parser)
+        run: node --test tests/ci-workflow-triggers.test.mjs
 # Production code CI (pnpm install, lint, typecheck, unit, contract, DB integration,
 # web Playwright, Android native build and load/print gates) will be added under M1-M5.
 # This documentation-only check must never be presented as production validation.

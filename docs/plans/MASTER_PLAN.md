@@ -105,6 +105,7 @@ See `docs/ui/UI_IMPLEMENTATION_MASTER_PLAN.md` for P0 RN Staff + POS touch UI an
 
 - [x] Inventory current code, 8 workflows, workspaces, all committed test paths, and acceptance evidence at `c425f25fd8d737ca61bba7193973a64d8095260e`.
 - [x] Cancel superseded PR runs only, preserving main branch, manual performance profiles, Windows restore, UI browser coverage, cloud Postgres tests and mobile bundle verification.
+- [x] Add static Cloud CI trigger coverage regression in the always-on documentation workflow; inspect its tests at the exact PR SHA after Actions recovery.
 - [x] Fix missing cloud test paths so editing `tests/sepay.test.mjs` or other tests exercised by `cloud-ci.yml` triggers the relevant PR workflow.
 - [ ] Generate, review and commit a complete npm `package-lock.json` using pinned Node/npm in a capable development environment. Existing repository has neither npm nor pnpm lockfile; cannot safely adopt `npm ci` or dependency caching until it exists.
 - [ ] Verify clean `npm ci`, native dependency install and platform coverage against committed lockfile, then migrate jobs consistently and add cache keyed to lockfile.

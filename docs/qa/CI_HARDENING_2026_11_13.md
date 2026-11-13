@@ -37,3 +37,7 @@ Store Hub (NestJS/Fastify + SQLite WAL) owns cash, order commits, receipt queue,
 ## Required acceptance
 
 All tests retained; trigger matrix tested with PR fixtures; no false skipped=passed; no `continue-on-error` masking; same-SHA clean installs, build, unit/integration, domain/payment/print, E2E, Windows, mobile, UI and performance checks; measured runner-minutes and critical path; documented rollback. Existing physical hardware/vendor blockers stay open until real evidence exists.
+
+## CI trigger regression guard
+
+The always-on `docs-ci.yml` now runs `node --test tests/ci-workflow-triggers.test.mjs` using only Node's built-in test runner. It validates direct `node --test` file paths in Cloud CI against its PR path filter and checks shared contracts/manifests. This is a narrow, explicit regression check for the current YAML layout; it is **not** a general GitHub Actions workflow parser and does not replace functional cloud/SePay/PostgreSQL tests. If the workflow structure changes, update the guard with reviewed parsing rather than silently skipping its checks. The guard cannot validate execution until Actions allocation is restored.
