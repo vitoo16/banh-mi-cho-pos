@@ -39,6 +39,12 @@ jobs:
         run: npm install --no-audit --no-fund
       - name: Build shared typed API client
         run: npm run build -w @bmc/contracts
+      # Keep all browser projects; the installer still fetches any browser revision missing from the cache.
+      - name: Restore Playwright browser cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: bmc-playwright-${{ runner.os }}-${{ hashFiles('package.json', 'playwright.config.ts', 'playwright.e2e.config.ts') }}
       - name: Install Chromium
         run: npx playwright install --with-deps chromium firefox webkit
       - name: Run responsive UI tests with mocked Hub API
