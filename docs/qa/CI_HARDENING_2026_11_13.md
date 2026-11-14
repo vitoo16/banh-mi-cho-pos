@@ -41,3 +41,11 @@ All tests retained; trigger matrix tested with PR fixtures; no false skipped=pas
 ## CI trigger regression guard
 
 The always-on `docs-ci.yml` now runs `node --test tests/ci-workflow-triggers.test.mjs` using only Node's built-in test runner. It validates direct `node --test` file paths in Cloud CI against its PR path filter and checks shared contracts/manifests. This is a narrow, explicit regression check for the current YAML layout; it is **not** a general GitHub Actions workflow parser and does not replace functional cloud/SePay/PostgreSQL tests. If the workflow structure changes, update the guard with reviewed parsing rather than silently skipping its checks. The guard cannot validate execution until Actions allocation is restored.
+
+## Follow-up implementation — 2026-11-14 (candidate, not accepted)
+- All eight workflow files and their job/run commands remain present. PR-only cancellation and Cloud CI trigger regression checks from this branch remain intact.
+- Added Playwright browser-payload caching in `e2e-ci.yml` (Chromium) and `ui-ci.yml` (Chromium, Firefox, WebKit), keyed to runner OS, root package manifest and browser configs. Each job continues installing required browsers/system libraries and executing exactly the same existing suites.
+- No npm dependency cache or `npm ci` migration was attempted: the repository still lacks a verified committed npm lockfile; `npm install` reproducibility is an existing blocker, not an optimization to hide.
+- Keep all payment, cash, printer UNKNOWN/reprint, offline recovery, PostgreSQL, Windows SQLite restore, 150/1,500-order performance, JS mobile export and browser contracts as separately applicable gates.
+- **Acceptance remains blocked** on actual hosted-runner allocation and same-SHA cross-platform passes. Verify cached versus cold runs, artifacts and regression matrix before claiming speed or financial savings.
+- Rollback: remove only the browser-cache steps without changing existing test stages.
