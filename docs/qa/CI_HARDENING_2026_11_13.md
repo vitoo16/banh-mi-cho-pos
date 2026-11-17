@@ -49,3 +49,15 @@ The always-on `docs-ci.yml` now runs `node --test tests/ci-workflow-triggers.tes
 - Keep all payment, cash, printer UNKNOWN/reprint, offline recovery, PostgreSQL, Windows SQLite restore, 150/1,500-order performance, JS mobile export and browser contracts as separately applicable gates.
 - **Acceptance remains blocked** on actual hosted-runner allocation and same-SHA cross-platform passes. Verify cached versus cold runs, artifacts and regression matrix before claiming speed or financial savings.
 - Rollback: remove only the browser-cache steps without changing existing test stages.
+
+## Follow-up correction — 2026-11-17 (candidate, not accepted)
+
+A design review identified that `cancel-in-progress: false` does **not** protect queued `main` runs when they share the same concurrency group. GitHub's default concurrency queue holds only one pending run per group; a newer queued run replaces the previous pending run. This can silently discard commit-level `main` evidence even without canceling a currently running job. See [GitHub Actions concurrency documentation](https://docs.github.com/en/actions/how-tos/write-workflows/choose-when-workflows-run/control-workflow-concurrency).
+
+- Corrected all eight workflows to use the PR number for `pull_request` concurrency groups and unique `github.run_id` for `push` and manual runs. Keep `cancel-in-progress` true only for PR events. PR supersession remains efficient while distinct `main`/manual run checks no longer replace each other's pending slots.
+- Added `scripts/check-web-bundles.mjs` to App CI's PR paths; changing the budget-checking script must trigger the `npm run test:bundle` gate.
+- Expanded `tests/ci-workflow-triggers.test.mjs` from three to five built-in Node regression tests. The two new tests lock the eight-workflow concurrency invariant and App CI bundle-checker PR path.
+- **Supplemental static inspection of the actual PR branch:** all eight workflow concurrency expressions matched, all five Cloud CI directly executed test paths remain covered, and App CI references the bundle-checker script in its PR trigger. This is a static source inspection, **not** a GitHub Actions execution pass.
+- **Still blocked:** current Docs/App/Cloud jobs on this PR head continue to have `runner_id=0` and zero executed steps. Do not claim regression tests ran on Node 24 or merge the PR until real CI executes.
+
+**Rollback:** Revert this PR if workflow syntax or required gates regress; do not selectively restore a shared `main` concurrency group, which could once again replace pending `main` evidence. The `scripts/check-web-bundles.mjs` trigger is a correctness fix and should be retained when replacing the broader CI orchestration.
