@@ -1,13 +1,7 @@
 name: Expo Staff production JS bundle
+# Local-first: keep this workflow only for manual fallback.
 on:
-  pull_request:
-    paths:
-      - 'apps/mobile-staff/**'
-      - 'packages/contracts/**'
-      - 'package.json'
-      - '.github/workflows/mobile-bundle-ci.yml'
-  push:
-    branches: [main]
+  workflow_dispatch:
 permissions:
   contents: read
 jobs:

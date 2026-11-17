@@ -31,3 +31,5 @@ artifacts/perf/
 store-backups/
 test-results/
 store-data/
+.local-ci/
+.expo-native-export/

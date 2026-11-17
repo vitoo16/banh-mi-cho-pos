@@ -1,8 +1,7 @@
 name: Documentation and contract starter validation
+# Local-first: keep this workflow only for manual fallback.
 on:
-  pull_request:
-  push:
-    branches: [main]
+  workflow_dispatch:
 permissions:
   contents: read
 jobs:

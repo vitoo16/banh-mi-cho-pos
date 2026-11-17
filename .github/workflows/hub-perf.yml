@@ -1,20 +1,6 @@
 name: Hub HTTP performance profile
+# Local-first: keep this workflow only for manual fallback.
 on:
-  pull_request:
-    paths:
-      - 'apps/store-hub/**'
-      - 'packages/contracts/**'
-      - 'tests/perf-hub-http.test.mjs'
-      - 'package.json'
-      - '.github/workflows/hub-perf.yml'
-  push:
-    branches: [main]
-    paths:
-      - 'apps/store-hub/**'
-      - 'packages/contracts/**'
-      - 'tests/perf-hub-http.test.mjs'
-      - 'package.json'
-      - '.github/workflows/hub-perf.yml'
   workflow_dispatch:
     inputs:
       profile:

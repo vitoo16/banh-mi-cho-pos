@@ -1,24 +1,7 @@
 name: POS and Owner responsive browser E2E
+# Local-first: keep this workflow only for manual fallback.
 on:
-  pull_request:
-    paths:
-      - 'apps/web-pos/**'
-      - 'apps/web-owner/**'
-      - 'packages/contracts/**'
-      - 'tests/ui/**'
-      - 'playwright.config.ts'
-      - 'package.json'
-      - '.github/workflows/ui-ci.yml'
-  push:
-    branches: [main]
-    paths:
-      - 'apps/web-pos/**'
-      - 'apps/web-owner/**'
-      - 'packages/contracts/**'
-      - 'tests/ui/**'
-      - 'playwright.config.ts'
-      - 'package.json'
-      - '.github/workflows/ui-ci.yml'
+  workflow_dispatch:
 permissions:
   contents: read
 jobs:

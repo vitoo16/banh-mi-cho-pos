@@ -1,9 +1,7 @@
 name: App typecheck and build
+# Local-first: keep this workflow only for manual fallback.
 on:
-  pull_request:
-    paths: ['apps/**','packages/**','tests/**','scripts/store-backup.mjs','scripts/check-backup-freshness.mjs','package.json','.github/workflows/app-ci.yml']
-  push:
-    branches: [main]
+  workflow_dispatch:
 permissions:
   contents: read
 jobs:

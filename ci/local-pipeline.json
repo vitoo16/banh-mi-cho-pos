@@ -1,0 +1,144 @@
+{
+  "repository": "vitoo16/banh-mi-cho-pos",
+  "nodeMajor": 24,
+  "env": {
+    "DATABASE_URL": "postgresql://bmc_test:bmc_test_password@127.0.0.1:15433/bmc_test",
+    "EXPO_PUBLIC_HUB_URL": "https://pos.example.invalid"
+  },
+  "cleanup": [
+    "docker compose -p bmc-local-ci -f ci/docker-compose.local-ci.yml down -v"
+  ],
+  "stages": [
+    {
+      "id": "install",
+      "command": "npm install --no-audit --no-fund"
+    },
+    {
+      "id": "docs",
+      "command": "npm run docs:check"
+    },
+    {
+      "id": "typecheck",
+      "command": "npm run check"
+    },
+    {
+      "id": "build",
+      "command": "npm run build"
+    },
+    {
+      "id": "bundle-budget",
+      "command": "npm run test:bundle"
+    },
+    {
+      "id": "domain",
+      "command": "npm run test:domain"
+    },
+    {
+      "id": "integration",
+      "command": "npm run test:integration"
+    },
+    {
+      "id": "hub-perf-smoke",
+      "command": "npm run test:perf:http",
+      "env": {
+        "BMC_PERF_PROFILE": "smoke"
+      }
+    },
+    {
+      "id": "backup-restore-windows",
+      "command": "node --test tests/backup-freshness.test.mjs tests/restore.test.mjs tests/restore-process-rehearsal.test.mjs tests/windows-backup-job.test.mjs"
+    },
+    {
+      "id": "cloud-up",
+      "command": "docker compose -p bmc-local-ci -f ci/docker-compose.local-ci.yml up -d --wait postgres"
+    },
+    {
+      "id": "cloud-sync-contract",
+      "command": "node --test --test-concurrency=1 tests/cloud.test.mjs tests/sepay.test.mjs tests/remote-product-commands.test.mjs tests/cloud-projection-order.test.mjs tests/owner-analytics-cloud.test.mjs"
+    },
+    {
+      "id": "playwright-install",
+      "command": "npx playwright install chromium firefox webkit"
+    },
+    {
+      "id": "responsive-ui",
+      "command": "npm run test:ui"
+    },
+    {
+      "id": "hub-e2e",
+      "command": "npm run test:e2e"
+    },
+    {
+      "id": "hub-perf-burst",
+      "command": "npm run test:perf:http",
+      "env": {
+        "BMC_PERF_PROFILE": "burst"
+      }
+    },
+    {
+      "id": "expo-export",
+      "command": "npx expo export --platform all --output-dir ../../.expo-native-export --max-workers 2",
+      "cwd": "apps/mobile-staff"
+    },
+    {
+      "id": "stage-release",
+      "command": "node scripts/local-stage-release.mjs"
+    }
+  ],
+  "profiles": {
+    "quick": [
+      "install",
+      "docs",
+      "typecheck",
+      "build",
+      "bundle-budget",
+      "domain",
+      "integration",
+      "hub-perf-smoke"
+    ],
+    "full": [
+      "install",
+      "docs",
+      "typecheck",
+      "build",
+      "bundle-budget",
+      "domain",
+      "integration",
+      "hub-perf-smoke",
+      "backup-restore-windows",
+      "cloud-up",
+      "cloud-sync-contract",
+      "playwright-install",
+      "responsive-ui",
+      "hub-e2e",
+      "hub-perf-burst",
+      "expo-export"
+    ],
+    "release": [
+      "install",
+      "docs",
+      "typecheck",
+      "build",
+      "bundle-budget",
+      "domain",
+      "integration",
+      "hub-perf-smoke",
+      "backup-restore-windows",
+      "cloud-up",
+      "cloud-sync-contract",
+      "playwright-install",
+      "responsive-ui",
+      "hub-e2e",
+      "hub-perf-burst",
+      "expo-export",
+      "stage-release"
+    ]
+  },
+  "releaseOutputs": [
+    "apps/web-pos/dist",
+    "apps/web-owner/dist",
+    "apps/store-hub/dist",
+    "apps/cloud-api/dist",
+    ".expo-native-export"
+  ]
+}

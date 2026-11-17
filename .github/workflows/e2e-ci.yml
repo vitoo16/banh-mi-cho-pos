@@ -1,17 +1,7 @@
 name: Senior E2E Test Suite
+# Local-first: keep this workflow only for manual fallback.
 on:
-  pull_request:
-    paths:
-      - 'apps/**'
-      - 'packages/**'
-      - 'tests/**'
-      - 'scripts/seed-e2e.mjs'
-      - 'scripts/e2e-playwright-hub.mjs'
-      - 'package.json'
-      - 'playwright.e2e.config.ts'
-      - '.github/workflows/e2e-ci.yml'
-  push:
-    branches: [main]
+  workflow_dispatch:
 permissions:
   contents: read
 jobs:

@@ -1,0 +1,14 @@
+services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: bmc_test
+      POSTGRES_PASSWORD: bmc_test_password
+      POSTGRES_DB: bmc_test
+    ports:
+      - '127.0.0.1:15433:5432'
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U bmc_test -d bmc_test']
+      interval: 5s
+      timeout: 5s
+      retries: 15
