@@ -1,6 +1,6 @@
-# Keep main/production-history verification intact; cancel only obsolete revisions of the same PR.
+# Give each main/dispatch run its own group; only superseded revisions of the same PR can cancel.
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  group: ${{ github.workflow }}-${{ github.event_name == 'pull_request' && github.event.pull_request.number || github.run_id }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 name: Cloud Postgres contract and sync tests
