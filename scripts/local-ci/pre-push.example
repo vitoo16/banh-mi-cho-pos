@@ -1,0 +1,7 @@
+#!/bin/sh
+# Optional Git for Windows hook. Review before installing at .git/hooks/pre-push.
+# Uses the repo root, even if the push is invoked from a workspace directory.
+set -eu
+root="$(git rev-parse --show-toplevel)"
+cd "$root"
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File ./run-ci.ps1 -Suite quick
