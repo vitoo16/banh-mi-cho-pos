@@ -98,3 +98,18 @@ P0: correctness/durability/security (no false paid, no missing cash, no double r
 ## UI sequencing refinement (2026-10-10)
 
 See `docs/ui/UI_IMPLEMENTATION_MASTER_PLAN.md` for P0 RN Staff + POS touch UI and P1 Owner UI, `docs/ui/SCREEN_SPECS.md` for each screen, and `docs/ui/AGENT_UI_WORKFLOW.md` for Vercel Web Interface Guidelines + Taste skill routing. Shared API fixture freeze (M1) comes before parallel RN/Web implementation. UI validation must include the narrow 320dp phone, 1024px POS, keyboard, safe-area, no horizontal overflow, user-visible payment authority and printer-UNKNOWN recovery.
+
+## CI reliability and runner usage hardening (2026-11-13)
+
+**State: IN PROGRESS / NOT ACCEPTED.** This is reliability hardening, **not** proof of a faster CI. See [CI hardening audit](../qa/CI_HARDENING_2026_11_13.md).
+
+- [x] Inventory current code, 8 workflows, workspaces, all committed test paths, and acceptance evidence at `c425f25fd8d737ca61bba7193973a64d8095260e`.
+- [x] Cancel superseded PR runs only, preserving main branch, manual performance profiles, Windows restore, UI browser coverage, cloud Postgres tests and mobile bundle verification.
+- [x] Add static Cloud CI trigger coverage regression in the always-on documentation workflow; inspect its tests at the exact PR SHA after Actions recovery.
+- [x] Fix missing cloud test paths so editing `tests/sepay.test.mjs` or other tests exercised by `cloud-ci.yml` triggers the relevant PR workflow.
+- [ ] Generate, review and commit a complete npm `package-lock.json` using pinned Node/npm in a capable development environment. Existing repository has neither npm nor pnpm lockfile; cannot safely adopt `npm ci` or dependency caching until it exists.
+- [ ] Verify clean `npm ci`, native dependency install and platform coverage against committed lockfile, then migrate jobs consistently and add cache keyed to lockfile.
+- [ ] Build command-to-test traceability for financial ledger, offline orders, printer two-copy UNKNOWN/reprint, Windows SQLite restore, PostgreSQL, Expo, Web UI (Chromium/Firefox/WebKit), and 150/1,500 order load profiles.
+- [ ] Add correct change-impact routing with fallback to complete checks for unknown/shared/security changes and a stable required gate. Never silence a failed job.
+- [ ] Confirm same-SHA CI success and gather before/after runner-minutes and wall-clock durations after account runner allocation recovers.
+- [ ] Enable required branch checks where GitHub permissions/tier allow, and document rollback for any gate routing change.

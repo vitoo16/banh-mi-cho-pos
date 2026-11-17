@@ -1,3 +1,8 @@
+# Give each main/dispatch run its own group; only superseded revisions of the same PR can cancel.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name == 'pull_request' && github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 name: POS and Owner responsive browser E2E
 on:
   pull_request:
@@ -34,6 +39,12 @@ jobs:
         run: npm install --no-audit --no-fund
       - name: Build shared typed API client
         run: npm run build -w @bmc/contracts
+      # Keep all browser projects; the installer still fetches any browser revision missing from the cache.
+      - name: Restore Playwright browser cache
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: ~/.cache/ms-playwright
+          key: bmc-playwright-${{ runner.os }}-${{ hashFiles('package.json', 'playwright.config.ts', 'playwright.e2e.config.ts') }}
       - name: Install Chromium
         run: npx playwright install --with-deps chromium firefox webkit
       - name: Run responsive UI tests with mocked Hub API

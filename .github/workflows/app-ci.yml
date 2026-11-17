@@ -1,7 +1,12 @@
+# Give each main/dispatch run its own group; only superseded revisions of the same PR can cancel.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name == 'pull_request' && github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 name: App typecheck and build
 on:
   pull_request:
-    paths: ['apps/**','packages/**','tests/**','scripts/store-backup.mjs','scripts/check-backup-freshness.mjs','package.json','.github/workflows/app-ci.yml']
+    paths: ['apps/**','packages/**','tests/**','scripts/store-backup.mjs','scripts/check-backup-freshness.mjs','scripts/check-web-bundles.mjs','package.json','.github/workflows/app-ci.yml']
   push:
     branches: [main]
 permissions:
