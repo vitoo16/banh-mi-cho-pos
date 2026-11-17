@@ -42,3 +42,44 @@ test('Cloud CI and the docs gate retain mandatory PR coverage', () => {
   assert.match(docs, /(?:^|\n)  pull_request:/);
   assert.match(docs, /node --test tests\/ci-workflow-triggers\.test\.mjs/);
 });
+
+const SAFETY_WORKFLOWS = [
+  'app-ci.yml',
+  'backup-restore-windows.yml',
+  'cloud-ci.yml',
+  'docs-ci.yml',
+  'e2e-ci.yml',
+  'hub-perf.yml',
+  'mobile-bundle-ci.yml',
+  'ui-ci.yml',
+];
+
+test('every main/dispatch run gets a unique concurrency group; only same-PR revisions cancel', () => {
+  // GitHub permits only one pending run per concurrency group by default.
+  // cancel-in-progress:false does NOT prevent a newer pending main run
+  // from replacing an older pending main run.
+  const expectedGroup =
+    "${{ github.workflow }}-${{ github.event_name == 'pull_request' && github.event.pull_request.number || github.run_id }}";
+  const expectedCancel = "${{ github.event_name == 'pull_request' }}";
+  for (const file of SAFETY_WORKFLOWS) {
+    const workflow = read('.github/workflows/' + file);
+    const group = workflow.match(/^  group: (.+)$/m)?.[1];
+    const cancel = workflow.match(/^  cancel-in-progress: (.+)$/m)?.[1];
+    assert.equal(group, expectedGroup, file + ': push/dispatch runs must use unique github.run_id');
+    assert.equal(cancel, expectedCancel, file + ': cancel only superseded PR runs');
+    assert.match(workflow, /(?:^|\n)  push:/, file + ': keep push verification enabled');
+  }
+});
+
+test('App CI rechecks bundle budgets when its checker source changes', () => {
+  const packageJson = JSON.parse(read('package.json'));
+  const bundleCommand = packageJson.scripts['test:bundle'];
+  assert.match(bundleCommand, /node scripts\/check-web-bundles\.mjs/, 'bundle script must invoke its checker');
+  const workflow = read('.github/workflows/app-ci.yml');
+  assert.match(workflow, /^\s+- run: npm run test:bundle$/m, 'App CI must run the bundle gate');
+  const prPathsLine = workflow.match(/(?:^|\n)  pull_request:\s*\n    paths: \[([^\n]+)\]/)?.[1];
+  assert.ok(prPathsLine, 'App CI must retain a recognizable PR path filter');
+  const paths = new Set([...prPathsLine.matchAll(/'([^']+)'/g)].map(match => match[1]));
+  assert.ok(paths.has('scripts/check-web-bundles.mjs') || paths.has('scripts/**'),
+    'App CI must trigger when the checker used by test:bundle changes');
+});
