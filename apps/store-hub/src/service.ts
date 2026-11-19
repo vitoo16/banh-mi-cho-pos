@@ -280,7 +280,7 @@ export class StoreService implements OnModuleInit {
   }
   const where:string[]=[];const args:(string|number)[]=[];
   if(a.role==='STAFF'){where.push('created_by=?');args.push(a.id)}
-  if(boundary){where.push('(created_at<? OR (created_at=? AND id<?))');args.push(boundary.t,boundary.t,boundary.id)}
+  if(boundary){where.push('(created_at,id)<(?,?)');args.push(boundary.t,boundary.id)}
   const sql='SELECT * FROM orders '+(where.length?'WHERE '+where.join(' AND '):'')+' ORDER BY created_at DESC,id DESC LIMIT ?';
   const rows=this.store.all<any>(sql,...args,limit+1),hasMore=rows.length>limit,items=rows.slice(0,limit);
   const last=items[items.length-1];
