@@ -1,0 +1,33 @@
+name: Isolated 100k history benchmark
+on:
+  pull_request:
+    paths:
+      - 'tests/perf-history-100k.test.mjs'
+      - 'apps/store-hub/src/db.ts'
+      - 'apps/store-hub/src/service.ts'
+      - 'package.json'
+      - '.github/workflows/history-perf-ci.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  load02-history:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm install --no-audit --no-fund
+      - run: npm run build -w @bmc/contracts
+      - run: npm run build -w @bmc/store-hub
+      - name: Synthetic isolated SQLite 100k-history cursor test
+        run: npm run test:perf:history
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: qa-load02-history-100k
+          path: artifacts/perf/load02-history-100k.json
+          if-no-files-found: ignore
+          retention-days: 14
