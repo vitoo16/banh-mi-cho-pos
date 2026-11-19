@@ -1,0 +1,183 @@
+import {test} from 'node:test';
+import assert from 'node:assert/strict';
+import {spawn} from 'node:child_process';
+import {cpSync,mkdirSync,mkdtempSync,readFileSync,rmSync,symlinkSync,writeFileSync} from 'node:fs';
+import {createServer} from 'node:net';
+import {tmpdir} from 'node:os';
+import {join,resolve} from 'node:path';
+import {setTimeout as delay} from 'node:timers/promises';
+
+const repoRoot=resolve(import.meta.dirname,'..');
+const hubSource=join(repoRoot,'apps/store-hub');
+
+async function freeLoopbackPort(){
+ const server=createServer();
+ await new Promise((resolve,reject)=>{
+  server.once('error',reject);
+  server.listen(0,'127.0.0.1',resolve);
+ });
+ const port=server.address().port;
+ await new Promise((resolve,reject)=>server.close(error=>error?reject(error):resolve()));
+ return port;
+}
+async function waitFor(predicate,description,timeoutMs=45_000){
+ const deadline=Date.now()+timeoutMs;
+ while(Date.now()<deadline){
+  if(predicate())return;
+  await delay(150);
+ }
+ throw new Error('Timed out waiting for '+description);
+}
+async function http(base,path,options={}){
+ const response=await fetch(base+path,{...options,signal:AbortSignal.timeout(3000)});
+ const body=await response.json();
+ return {status:response.status,ok:response.ok,body};
+}
+async function login(base,pin){
+ const result=await http(base,'/v1/auth/login',{
+  method:'POST',
+  headers:{'Content-Type':'application/json'},
+  body:JSON.stringify({user_id:'staff',pin}),
+ });
+ assert.equal(result.status,200,'Staff login must work through dev:hub: '+JSON.stringify(result.body));
+ assert.equal(typeof result.body.token,'string');
+ return result.body.token;
+}
+async function terminateProcessTree(child){
+ if(process.platform==='win32'){
+  await new Promise((resolve,reject)=>{
+   const killer=spawn('taskkill',['/PID',String(child.pid),'/T','/F'],{windowsHide:true,stdio:'ignore'});
+   killer.once('error',reject);
+   killer.once('exit',code=>code===0?resolve():reject(new Error('taskkill failed with exit code '+code)));
+  });
+ }else{
+  child.kill('SIGTERM');
+ }
+ await waitFor(()=>child.exitCode!==null||child.signalCode!==null,'dev:hub process tree shutdown',15_000);
+}
+
+async function canBind(port){
+ const server=createServer();
+ try{
+  await new Promise((resolve,reject)=>{
+   server.once('error',reject);
+   server.listen(port,'127.0.0.1',resolve);
+  });
+  return true;
+ }catch{return false}
+ finally{if(server.listening)await new Promise(resolve=>server.close(resolve));}
+}
+
+test('DEF-DEV-01: npm run dev:hub preserves Nest DI, serves real HTTP, hot-restarts, and shuts down cleanly',{
+ timeout:120_000,
+},async()=>{
+ const temp=mkdtempSync(join(tmpdir(),'bmc-dev-hub-watch-'));
+ const tempRepo=join(temp,'repo');
+ const tempHub=join(tempRepo,'apps','store-hub');
+ mkdirSync(tempHub,{recursive:true});
+ let child;
+ let output='';
+ const port=await freeLoopbackPort();
+ const base='http://127.0.0.1:'+port;
+ const staffPin='fixture-staff-watch-2026';
+
+ try{
+  // Isolate source and SQLite; reuse only the already-installed dependency tree.
+  cpSync(join(repoRoot,'package.json'),join(tempRepo,'package.json'));
+  cpSync(join(hubSource,'package.json'),join(tempHub,'package.json'));
+  cpSync(join(hubSource,'tsconfig.json'),join(tempHub,'tsconfig.json'));
+  cpSync(join(hubSource,'src'),join(tempHub,'src'),{recursive:true});
+  cpSync(join(hubSource,'scripts'),join(tempHub,'scripts'),{recursive:true});
+  symlinkSync(join(repoRoot,'node_modules'),join(tempRepo,'node_modules'),process.platform==='win32'?'junction':'dir');
+
+  const npmCli=process.env.npm_execpath;
+  const command=npmCli?process.execPath:process.platform==='win32'?'npm.cmd':'npm';
+  const args=npmCli?[npmCli,'run','dev:hub']:['run','dev:hub'];
+  child=spawn(command,args,{
+   cwd:tempRepo,
+   env:{
+    ...process.env,
+    NODE_ENV:'test',
+    STORE_DB_PATH:join(temp,'isolated-store.sqlite'),
+    HUB_BIND_HOST:'127.0.0.1',
+    HUB_PORT:String(port),
+    BOOTSTRAP_OWNER_PIN:'fixture-owner-watch-2026',
+    BOOTSTRAP_CASHIER_PIN:'fixture-cashier-watch-2026',
+    BOOTSTRAP_STAFF_PIN:staffPin,
+    SEED_DEMO_CATALOG:'1',
+    PAIRING_ENFORCED:'0',
+    CLOUD_SYNC_URL:'',
+    PRINTER_HOST:'',
+    BANK_BRIDGE_SECRET:'',
+   },
+   windowsHide:true,
+   shell:!npmCli&&process.platform==='win32',
+   stdio:['ignore','pipe','pipe'],
+  });
+  for(const stream of [child.stdout,child.stderr]){
+   stream.on('data',chunk=>{output=(output+chunk.toString()).slice(-20_000)});
+  }
+
+  await waitFor(()=>/BMC PILOT HUB 127\.0\.0\.1:/.test(output),'compiled Store Hub startup');
+  let health;
+  for(let attempt=0;attempt<40;attempt++){
+   try{health=await http(base,'/v1/health');if(health.ok)break;}catch{}
+   await delay(150);
+  }
+  assert.equal(health?.status,200,'GET /v1/health must succeed; output: '+output);
+
+  let token=await login(base,staffPin);
+  let catalog=await http(base,'/v1/catalog',{headers:{Authorization:'Bearer '+token}});
+  assert.equal(catalog.status,200,'GET /v1/catalog must succeed; output: '+output);
+
+  // Introduce a real TypeScript error. The old Hub must stop instead of
+  // serving stale dist output while the source tree is broken.
+  const controllerPath=join(tempHub,'src','controller.ts');
+  const controllerSource=readFileSync(controllerPath,'utf8');
+  const firstStartCount=(output.match(/BMC PILOT HUB/g)||[]).length;
+  writeFileSync(controllerPath,controllerSource+'\nconst DEV_HUB_WATCH_BROKEN: string = 42;\n');
+  await waitFor(()=>/Found 1 error\. Watching for file changes\./.test(output),'TypeScript watch error result');
+  let unavailable=false;
+  for(let attempt=0;attempt<40;attempt++){
+   try{
+    const response=await fetch(base+'/v1/health',{signal:AbortSignal.timeout(500)});
+    if(!response.ok){unavailable=true;break;}
+   }catch{unavailable=true;break;}
+   await delay(150);
+  }
+  assert.equal(unavailable,true,'Hub must stop serving the last successful build while TypeScript has errors; output: '+output);
+
+  // Repair the source. A fresh clean compile must launch the Hub again.
+  writeFileSync(controllerPath,controllerSource+'\n// DEV_HUB_WATCH_RECOVERY_FIXTURE\n');
+  await waitFor(()=>((output.match(/BMC PILOT HUB/g)||[]).length)>firstStartCount,'Hub restart after TypeScript error recovery');
+  health=undefined;
+  for(let attempt=0;attempt<40;attempt++){
+   try{health=await http(base,'/v1/health');if(health.ok)break;}catch{}
+   await delay(150);
+  }
+  assert.equal(health?.status,200,'Hub must serve HTTP after TypeScript error recovery; output: '+output);
+  token=await login(base,staffPin);
+  catalog=await http(base,'/v1/catalog',{headers:{Authorization:'Bearer '+token}});
+  assert.equal(catalog.status,200,'Nest dependency injection must remain intact after error recovery');
+  assert.doesNotMatch(output,/Hub runtime stopped:|Hub runtime exited:|TypeScript watch stopped unexpectedly/,
+   'intentional stop during compiler errors must not be reported as an unexpected crash');
+
+  await terminateProcessTree(child);
+  assert.ok(child.exitCode!==null||child.signalCode!==null,'dev:hub launcher must exit after process-tree shutdown');
+  if(process.platform!=='win32'){
+   assert.ok([0,1,143].includes(child.exitCode)||child.signalCode==='SIGTERM','dev:hub must terminate after SIGTERM; output: '+output);
+   assert.doesNotMatch(output,/Hub runtime exited:|TypeScript watch stopped unexpectedly/,'watcher must not report an unexpected child-process crash');
+  }
+  let stillHealthy=true;
+  try{await http(base,'/v1/health');}catch{stillHealthy=false;}
+  assert.equal(stillHealthy,false,'Hub listener must be closed after shutdown');
+  assert.equal(await canBind(port),true,'Hub port must be released; no orphan runtime process');
+ }finally{
+  if(child&&child.exitCode===null&&child.signalCode===null){
+   try{await terminateProcessTree(child);}catch{
+    if(child.exitCode===null&&child.signalCode===null)child.kill('SIGKILL');
+   }
+  }
+  rmSync(temp,{recursive:true,force:true});
+ }
+});

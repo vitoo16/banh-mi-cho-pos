@@ -25,6 +25,7 @@
     "check:backup-freshness": "node scripts/check-backup-freshness.mjs",
     "restore:copy": "node scripts/store-backup.mjs restore-copy",
     "dev:hub": "npm run dev -w @bmc/store-hub",
+    "test:dev:hub": "node --test tests/dev-hub-watch-utils.test.mjs tests/dev-hub-watch.test.mjs",
     "dev:pos": "npm run dev -w @bmc/web-pos",
     "dev:owner": "npm run dev -w @bmc/web-owner",
     "dev:mobile": "npm run start -w @bmc/mobile-staff",
