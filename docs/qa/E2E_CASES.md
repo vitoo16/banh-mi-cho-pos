@@ -44,9 +44,9 @@ Tài liệu đặc tả chi tiết toàn bộ kịch bản kiểm thử E2E (End
 | **CLOUD-03** | P0 | Cloud HMAC Security & RBAC | MVP-v1.2 §8 | Gateway Security | `apps/cloud-backend/` | `tests/remote-gateway.test.mjs` | **AUTOMATED (isolated PG CI where run) / BLOCKED staging** |
 | **RESILIENCE-01** | P0 | Crash Recovery Before ACK | MVP-v1.2 §8 | SQLite WAL Integrity | `apps/store-hub/src/domain.ts` | `tests/concurrency.test.mjs` | **AUTOMATED** |
 | **RESILIENCE-02** | P0 | Backup Integrity & Non-destructive Restore | MVP-v1.2 §8 | Backup Service | `apps/store-hub/` | Manual / Host Windows CLI | **BLOCKED (Ops Env)** |
-| **SEC-01** | P0 | Security Controls & Information Leakage | MVP-v1.2 §4 | HTTP Headers / Logs | `apps/store-hub/src/main.ts` | `tests/e2e/real-hub-api.test.mjs` (Suite 1) | **PARTIAL — security headers/log redaction unverified** |
+| **SEC-01** | P0 | Security Controls & Information Leakage | MVP-v1.2 §4 | HTTP Headers / Logs | `apps/store-hub/src/main.ts` | `tests/e2e/real-hub-api.test.mjs` (Suite 1) | **PARTIAL — HTTP RBAC/CORS/error redaction tested; server log audit pending** |
 | **UI-01** | P1 | Cross-browser & Touch POS Viewport | MVP-v1.2 §9 | Responsive Layout | `apps/pos-web/`, `apps/owner-web/` | `tests/e2e/web-real-hub.spec.ts` | **PARTIAL — Chromium real Hub, mocked Firefox/WebKit smoke** |
-| **UI-02** | P1 | UI Network Failure & Error Boundary | MVP-v1.2 §9 | Error States | `apps/pos-web/` | `tests/cashier-queue.test.mjs` | **NOT VERIFIED by cited file** |
+| **UI-02** | P1 | UI Network Failure & Error Boundary | MVP-v1.2 §9 | Error States | `apps/pos-web/` | `tests/cashier-queue.test.mjs` | **AUTOMATED — real Chromium Hub GET queue 503/recovery** |
 | **LOAD-01** | P0 | 8 Staff Burst (>=150 orders/hour) | MVP-v1.2 §10 | Store Hub Concurrency | `apps/store-hub/src/domain.ts` | `tests/e2e/concurrency-load.e2e.test.mjs` | **AUTOMATED** |
 | **LOAD-02** | P1 | 100k Order Cursor Performance | MVP-v1.2 §10 | SQLite Indexing | `apps/store-hub/src/domain.ts` | Synthetic Load Benchmark | **NOT VERIFIED — 100k benchmark pending** |
 | **OPS-01** | P0 | Operational Health & Backup Freshness | MVP-v1.2 §8 | GET /v1/health | `apps/store-hub/src/domain.ts` | `tests/operational-status.test.mjs` | **AUTOMATED** |
@@ -410,3 +410,11 @@ No hardware/sandbox/field acceptance is marked PASS by this document. A failed, 
 - `CASH-04`: **PASS** in [Senior E2E CI run 41657806452](https://github.com/vitoo16/banh-mi-cho-pos/actions/runs/41657806452) on QA commit `3f5c86570e8cc7d2703a21a8ee98c97dfb69ef16` (GitHub may execute the generated PR merge ref). `node --test` real-Hub API/burst: 10/10; Playwright Chromium real-Hub cases: **3/3** including this failure-injection test.
 - Test count for same code revision after new case: **159** across baseline suites (9 domain + 2 bundle + 29 integration + 2 HTTP perf smoke + 104 mocked UI + 9 real Hub API + 1 burst + 3 real-Hub browser); 36 planning files validated separately. The earlier 158 was valid *before* adding this case, not current full-suite count.
 - The recovered browser request is not equivalent to a physical Windows power-cut or drawer test. Those release gates remain BLOCKED.
+
+
+### 2026-11-04 Independent QA follow-up: SEC-01 and UI-02
+
+- **SEC-01: PARTIAL / implemented assertions PASS.** `tests/e2e/real-hub-api.test.mjs` uses the real Fastify process and isolated SQLite, verifies authorized origin CORS, rejects untrusted origin via absent allowed CORS, denies unauthenticated finance reads (401), denies STAFF Owner read (403), and checks error response hygiene against QA credentials. It does **not** assert application server log redaction, HTTPS certificate trust, or external network security. Keep those portions BLOCKED/PENDING independent security acceptance.
+- **UI-02: PASS for the covered browser scenario.** `tests/e2e/web-real-hub.spec.ts` injects a 503 on real cashier order-queue GET, verifies lost connection and disabled cash capture, restores real Hub responses, and confirms no false settlement. Real native phone/WAN-outage, slow timeout, and a full UI error matrix are separate coverage still needed.
+- Evidence: [Senior E2E run 41709713613](https://github.com/vitoo16/banh-mi-cho-pos/actions/runs/41709713613) on code revision `13ff20a2446f20d24a168150ca4afc5202abb8d6`, 11/11 Node API/burst and 4/4 Chromium real-browser tests, all PASS. Supplement: `docs/qa/INDEPENDENT_REGRESSION_2026-11-04.md`.
+- **LOAD-02 remains NOT VERIFIED.** Do not infer 100k-order performance from the 150-order burst or 340-order queue tests. Commercial production acceptance remains NO-GO.
