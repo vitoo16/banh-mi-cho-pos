@@ -1,0 +1,30 @@
+name: Store Hub LAN network policy regression
+on:
+  pull_request:
+    paths:
+      - 'apps/store-hub/src/main.ts'
+      - 'apps/store-hub/src/network-policy.ts'
+      - 'tests/hub-network-policy.test.mjs'
+      - 'package.json'
+      - '.github/workflows/hub-network-policy.yml'
+  push:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  hub-network-policy:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm install --no-audit --no-fund
+      - run: npm run build -w @bmc/contracts
+      - run: npm run build -w @bmc/store-hub
+      - run: npm run test:security:hub-network
