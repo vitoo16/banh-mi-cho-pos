@@ -25,6 +25,10 @@ coverage/
 # Generated synthetic aggregate-only load measurements
 artifacts/perf/
 
+# Disposable Windows Local CI evidence and Expo exports; never commit local logs
+artifacts/local-ci/
+.expo-native-export/
+
 # Companion metadata contains sensitive operating counts; never commit store backup files
 *.sqlite.manifest.json
 *.db.manifest.json
